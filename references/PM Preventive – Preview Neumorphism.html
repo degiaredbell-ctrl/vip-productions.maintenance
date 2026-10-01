@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#E8ECF1">
+<title>PM Preventive – Preview Neumorphism</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{color-scheme:light;--bg:#E8ECF1;--l:#FFFFFF;--d:#C3CAD6;--tx:#2B3445;--sub:#5A6475;--ac:#0F6E56;--warn:#A86B0B;--bad:#B93A2E;
+--up:6px 6px 14px var(--d),-6px -6px 14px var(--l);--upS:3px 3px 8px var(--d),-3px -3px 8px var(--l);--in:inset 4px 4px 9px var(--d),inset -4px -4px 9px var(--l);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{min-height:100%;background:var(--bg);color:var(--tx);font:15px/1.45 'Plus Jakarta Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+button{font:inherit;color:inherit;border:0;background:var(--bg);cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.55}
+:focus-visible{outline:2px solid var(--ac);outline-offset:3px}
+.main{max-width:760px;margin:0 auto;padding:16px 18px 120px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.top h1{font-size:20px;font-weight:700;letter-spacing:-.01em}
+.top small,.sub{color:var(--sub);font-size:12px}
+.top select{width:122px;flex:none}
+.card{background:var(--bg);border-radius:22px;box-shadow:var(--up);padding:16px;margin-bottom:18px}
+.inset{box-shadow:var(--in);border-radius:14px}
+input,select{font:inherit;color:var(--tx);background:var(--bg);border:0;border-radius:14px;box-shadow:var(--in);padding:12px 14px;width:100%;outline:none}
+input:disabled{opacity:.6}
+.btn{padding:11px 18px;border-radius:14px;box-shadow:var(--upS);font-weight:600;color:var(--ac)}
+.btn:active:not(:disabled){box-shadow:var(--in)}
+.btn.pri{background:var(--ac);color:#fff;box-shadow:4px 4px 10px var(--d),-4px -4px 10px var(--l)}
+.btn.pri:active:not(:disabled){box-shadow:inset 3px 3px 7px rgba(0,0,0,.3)}
+.chips{display:flex;gap:10px;overflow-x:auto;padding:8px 6px 16px;margin:0 -6px}
+.chip{flex:none;padding:8px 14px;border-radius:14px;font-size:13px;font-weight:600;color:var(--sub);box-shadow:var(--upS)}
+.chip.on{box-shadow:var(--in);color:var(--ac)}
+.sum{display:flex;align-items:center;gap:20px}
+.ring{position:relative;flex:none;width:118px;height:118px;border-radius:50%;box-shadow:var(--up);display:grid;place-items:center}
+.ring svg{position:absolute;inset:6px;width:calc(100% - 12px);height:calc(100% - 12px)}
+.ring div{text-align:center;line-height:1.1}.ring b{font-size:24px;display:block}.ring small{font-size:11px;color:var(--sub)}
+.cnts{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.cn{padding:12px 4px;text-align:center}.cn b{display:block;font-size:20px}.cn span{font-size:11px;color:var(--sub)}
+.done{color:var(--ac)}.todo{color:var(--warn)}.issue{color:var(--bad)}
+.list{display:grid;gap:0 20px;margin-top:6px}
+.m{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px;border-radius:20px;box-shadow:var(--up);margin-bottom:18px}
+.m:active{box-shadow:var(--in)}
+.m div{min-width:0}.m b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.m span{font-size:12px;color:var(--sub)}
+.code{flex:none;width:48px;height:48px;border-radius:14px;box-shadow:var(--in);display:grid;place-items:center;font-weight:700;font-size:13px;color:var(--ac)}
+.pill{margin-left:auto;flex:none;font-size:11px;font-weight:700;padding:5px 10px;border-radius:10px;box-shadow:var(--in)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.track{height:14px;border-radius:8px;box-shadow:var(--in);padding:3px}.track i{display:block;height:100%;border-radius:6px;background:var(--ac)}
+.grp{font-size:13px;font-weight:700;color:var(--sub);margin:22px 4px 12px}
+.it label{display:block;font-size:12px;color:var(--sub);margin:12px 0 6px}
+.spec{font-size:11px;padding:4px 10px;color:var(--sub);flex:none}
+.acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;padding-bottom:4px}
+.bars{display:flex;gap:10px;height:170px}
+.bar{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:11px;color:var(--sub)}
+.bar .t{width:100%;flex:1;border-radius:12px;box-shadow:var(--in);display:flex;align-items:flex-end;padding:4px}
+.bar .t i{width:100%;border-radius:9px;background:var(--ac);box-shadow:2px 2px 5px var(--d)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.stats .card{margin:0;text-align:center;padding:14px 6px}.stats b{font-size:22px;display:block}
+.toast{position:fixed;left:50%;top:calc(14px + env(safe-area-inset-top,0px));transform:translate(-50%,-140%);background:var(--bg);box-shadow:var(--up);padding:12px 20px;border-radius:16px;font-weight:600;font-size:14px;transition:transform .25s;z-index:20}
+.toast.show{transform:translate(-50%,0)}
+.side{display:none}
+.bnav{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;padding:12px 14px calc(12px + env(safe-area-inset-bottom,0px));background:var(--bg);box-shadow:0 -6px 16px rgba(195,202,214,.55)}
+.nv{display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 4px;border-radius:14px;font-size:11px;font-weight:600;color:var(--sub)}
+.bnav .nv{flex:1}.nv.on{box-shadow:var(--in);color:var(--ac)}
+@media(min-width:1024px){
+ .app{display:grid;grid-template-columns:270px 1fr}
+ .side{display:flex;flex-direction:column;gap:14px;padding:30px 24px;position:sticky;top:0;height:100vh}
+ .side .brand{font-weight:700;font-size:18px;margin-bottom:14px}.side .nv{flex-direction:row;gap:12px;padding:14px 16px;font-size:14px;box-shadow:var(--upS)}.side .nv.on{box-shadow:var(--in)}
+ .bnav{display:none}.main{max-width:1000px;width:100%;padding:30px 40px 40px}.list{grid-template-columns:1fr 1fr}
+}
+@media(max-width:380px){.sum{flex-direction:column}.cnts{width:100%}}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+ <aside class="side" id="side"></aside>
+ <main class="main"><header class="top" id="top"></header><section id="view"></section></main>
+ <nav class="bnav" id="bnav" aria-label="Navigasi utama"></nav>
+</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+const P=[['jan-feb','Jan–Feb'],['mar-apr','Mar–Apr'],['mei-jun','Mei–Jun'],['jul-ags','Jul–Ags'],['sep-okt','Sep–Okt'],['nov-des','Nov–Des']];
+const M=[['M2','Filling LFM [1]',1,'Filling','done'],['M3','Filling LFM [2]',1,'Filling','done'],['M5','Labeling Automatic [1]',1,'Labeling','todo'],['M7','Shrink Tunnel [1]',1,'Umum','todo'],['M12','Carton Sealer [1]',1,'Umum','issue'],['M17','TOM – Penyusun Botol',2,'TOM','todo'],['M33','Coding DJ45HE [1]',4,'Coding Jet','done'],['M50','Mixer 1',5,'Mixer','todo'],['M58','Timbangan Mixer 1',6,'Timbangan','todo'],['M75','MTC Inject Blow 1',8,'Inject Blow','done'],['M98','[LIFTCO] Reach Truck',6,'Kendaraan','issue'],['M72','Compressor 55',3,'Umum','done']].map(a=>({k:a[0],n:a[1],g:a[2],t:a[3],s:a[4]}));
+const IT=[['Power Input','220-240V','Listrik'],['Neutral-Ground','0V ± 2V','Listrik'],['Lampu Indikator','Nyala','Listrik'],['Kondisi Baut','Kencang','Mekanik'],['Rantai Conveyor','Teralumasi','Pelumasan'],['Emergency Stop','Berfungsi','Keselamatan']];
+const A=[['bersihkan','Bersihkan'],['perbaiki','Perbaiki'],['lumasi','Lumasi'],['ganti','Ganti']];
+const ST={done:'Selesai',todo:'Belum',issue:'Kendala'};
+const R={admin:{l:'Admin',nav:['home','report','machines','users'],fill:1},manager:{l:'Manager',nav:['home','report','machines']},technician:{l:'Teknisi',nav:['home','report'],fill:1},user:{l:'User',nav:['home','report']},viewer:{l:'Viewer',nav:['home','report']}};
+const NV={home:['Beranda','M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],report:['Laporan','M4 20V10M10 20V4M16 20v-7M22 20H2'],machines:['Mesin','M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z'],users:['Pengguna','M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8']};
+const S={role:'technician',v:'home',p:'sep-okt',q:'',f:'all',m:null,d:{},err:0};
+const $=s=>document.querySelector(s);
+const ic=d=>`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const cnt=()=>{const c={done:0,todo:0,issue:0};M.forEach(m=>c[m.s]++);return c};
+const navH=()=>R[S.role].nav.map(n=>`<button class="nv${S.v===n?' on':''}" data-a="nav" data-v="${n}"${S.v===n?' aria-current="page"':''}>${ic(NV[n][1])}<span>${NV[n][0]}</span></button>`).join('');
+function list(){const q=S.q.toLowerCase();const r=M.filter(m=>(S.f==='all'||m.s===S.f)&&(m.k+m.n).toLowerCase().includes(q));
+ return r.length?r.map(m=>`<button class="m" data-a="open" data-v="${m.k}"><span class="code">${m.k}</span><div><b>${m.n}</b><span>Minggu ${m.g} · ${m.t}</span></div><span class="pill ${m.s}">${ST[m.s]}</span></button>`).join(''):'<p class="sub" style="text-align:center;padding:24px">Tidak ada mesin yang cocok.</p>'}
+function home(){const c=cnt(),pc=Math.round(c.done/M.length*100),C=2*Math.PI*46;
+ const fl=[['all','Semua'],['todo','Belum'],['done','Selesai'],['issue','Kendala']];
+ return `<div class="card sum"><div class="ring"><svg viewBox="0 0 110 110"><circle cx="55" cy="55" r="46" fill="none" stroke="var(--d)" stroke-width="9" opacity=".5"/><circle cx="55" cy="55" r="46" fill="none" stroke="var(--ac)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C*pc/100} ${C}" transform="rotate(-90 55 55)"/></svg><div><b>${pc}%</b><small>selesai</small></div></div>
+ <div class="cnts">${['done','todo','issue'].map(k=>`<div class="inset cn"><b class="${k}">${c[k]}</b><span>${ST[k]}</span></div>`).join('')}</div></div>
+ <div class="chips" role="group" aria-label="Periode">${P.map(p=>`<button class="chip${S.p===p[0]?' on':''}" aria-pressed="${S.p===p[0]}" data-a="per" data-v="${p[0]}">${p[1]}</button>`).join('')}</div>
+ <input id="q" type="search" placeholder="Cari kode atau nama mesin…" value="${S.q}" aria-label="Cari mesin">
+ <div class="chips" role="group" aria-label="Filter status">${fl.map(f=>`<button class="chip${S.f===f[0]?' on':''}" aria-pressed="${S.f===f[0]}" data-a="flt" data-v="${f[0]}">${f[1]}</button>`).join('')}</div>
+ <div class="list" id="list">${list()}</div>`}
+function form(){const m=M.find(x=>x.k===S.m),ro=!R[S.role].fill;let last='';
+ const items=IT.map((it,i)=>{const d=S.d[i]||{a:'',x:{}};const h=it[2]!==last?`<div class="grp">${it[2]}</div>`:'';last=it[2];
+ return h+`<div class="card it"><div class="row"><b>${it[0]}</b><span class="spec inset">${it[1]}</span></div><label for="i${i}">Aktual *</label><input id="i${i}" data-i="${i}" value="${d.a}" placeholder="Nilai aktual"${ro?' disabled':''}${S.err&&!d.a?' style="box-shadow:var(--in),0 0 0 2px var(--bad)"':''}>
+ <div class="acts">${A.map(a=>`<button class="chip${d.x[a[0]]?' on':''}" aria-pressed="${!!d.x[a[0]]}" data-a="act" data-i="${i}" data-v="${a[0]}"${ro?' disabled':''}>${a[1]}</button>`).join('')}</div></div>`}).join('');
+ return `<div class="row" style="margin-bottom:16px"><button class="btn" data-a="back">‹ Kembali</button><span class="pill ${m.s}">${ST[m.s]}</span></div>
+ <div class="card"><b>${m.n}</b><div class="sub" style="margin:2px 0 12px">${m.k} · Minggu ${m.g} · ${P.find(p=>p[0]===S.p)[1]} 2026</div><div class="track"><i id="prog" style="width:${prog()}%"></i></div></div>
+ ${ro?'<p class="sub card">Mode baca saja — role '+R[S.role].l+' tidak dapat mengisi checklist.</p>':''}${items}
+ ${ro?'':'<button class="btn pri" data-a="save" style="width:100%;padding:15px">Simpan Checklist</button>'}`}
+const prog=()=>Math.round(IT.filter((_,i)=>S.d[i]&&S.d[i].a).length/IT.length*100);
+function report(){const v=[100,96,88,72,41,0],c=cnt();
+ return `<div class="stats"><div class="card"><b class="done">${c.done+14}</b><span class="sub">Total PM</span></div><div class="card"><b style="color:#534AB7">9</b><span class="sub">Part diganti</span></div><div class="card"><b class="issue">${c.issue}</b><span class="sub">Kendala</span></div></div>
+ <div class="card"><b>Kepatuhan PM per periode</b><div class="sub" style="margin:2px 0 16px">Tahun 2026 (%)</div><div class="bars">${P.map((p,i)=>`<div class="bar"><span>${v[i]}</span><div class="t"><i style="height:${Math.max(v[i],2)}%"></i></div>${p[1].slice(0,3)}</div>`).join('')}</div></div>
+ <div class="card"><b>Komponen paling sering diganti</b>${[['Belt conveyor',4],['Sensor proximity',3],['Seal silinder',2]].map(x=>`<div class="row" style="margin-top:14px"><span>${x[0]}</span><span class="pill done">${x[1]}x</span></div>`).join('')}</div>
+ <button class="btn" data-a="exp">Ekspor Excel / Cetak</button>`}
+function machines(){return `<div class="row" style="margin-bottom:18px"><span class="sub">${M.length} mesin aktif</span><button class="btn pri" data-a="add">+ Tambah Mesin</button></div><div class="list">${M.map(m=>`<div class="m" style="cursor:default"><span class="code">${m.k}</span><div><b>${m.n}</b><span>${m.t} · Minggu ${m.g}</span></div><button class="btn" style="margin-left:auto;padding:8px 14px" data-a="edit">Edit</button></div>`).join('')}</div>`}
+function users(){const U=[['Rina Wijaya','admin'],['Budi Santoso','manager'],['Agus Pratama','technician'],['Dewi Lestari','technician'],['Hendra K.','user'],['Sari Mulyani','viewer']];
+ return `<div class="row" style="margin-bottom:18px"><span class="sub">${U.length} pengguna</span><button class="btn pri" data-a="add">+ Undang User</button></div><div class="list">${U.map(u=>`<div class="m" style="cursor:default"><span class="code">${u[0].split(' ').map(w=>w[0]).join('')}</span><div><b>${u[0]}</b><span>${u[0].toLowerCase().replace(/[^a-z]/g,'.')}@verra.co.id</span></div><span class="pill done">${R[u[1]].l}</span></div>`).join('')}</div>`}
+const TT={home:'Preventive Maintenance',report:'Laporan PM',machines:'Kelola Mesin',users:'Pengguna',form:'Checklist PM'};
+function render(){if(!R[S.role].nav.includes(S.v)&&S.v!=='form')S.v='home';
+ $('#top').innerHTML=`<div><small>PT Verra Inter Pangan · FR-ENG-10</small><h1>${TT[S.v]}</h1></div><select id="role" aria-label="Role demo">${Object.keys(R).map(k=>`<option value="${k}"${k===S.role?' selected':''}>${R[k].l}</option>`).join('')}</select>`;
+ $('#side').innerHTML='<div class="brand">PM Preventive</div>'+navH();$('#bnav').innerHTML=navH();
+ $('#view').innerHTML=({home,report,machines,users,form})[S.v]();}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2200)}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a,v=b.dataset.v;
+ if(a==='nav'){S.v=v}else if(a==='per'){S.p=v}else if(a==='flt'){S.f=v}
+ else if(a==='open'){S.m=v;S.d={};S.err=0;S.v='form'}else if(a==='back'){S.v='home'}
+ else if(a==='act'){const i=b.dataset.i;S.d[i]=S.d[i]||{a:'',x:{}};S.d[i].x[v]=!S.d[i].x[v]}
+ else if(a==='save'){if(prog()<100){S.err=1;toast('Lengkapi semua nilai Aktual');render();return}
+  const m=M.find(x=>x.k===S.m);m.s=Object.values(S.d).some(d=>d.x.perbaiki)?'issue':'done';toast('Checklist tersimpan (demo)');S.v='home'}
+ else{toast('Aksi ini aktif di aplikasi Laravel')}
+ render();window.scrollTo(0,0)});
+document.addEventListener('input',e=>{const t=e.target;
+ if(t.id==='q'){S.q=t.value;$('#list').innerHTML=list()}
+ else if(t.dataset.i!==undefined){const i=t.dataset.i;S.d[i]=S.d[i]||{a:'',x:{}};S.d[i].a=t.value;$('#prog').style.width=prog()+'%'}});
+document.addEventListener('change',e=>{if(e.target.id==='role'){S.role=e.target.value;toast('Role: '+R[S.role].l);render()}});
+render();
+</script>
+</body>
+</html>

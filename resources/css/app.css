@@ -1,0 +1,49 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-neu-bg text-neu-text font-sans antialiased;
+    }
+
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
+}
+
+@layer components {
+    .neu-card {
+        @apply bg-neu-bg rounded-neu shadow-neu-up p-4;
+    }
+
+    .neu-inset {
+        @apply bg-neu-bg rounded-neu-sm shadow-neu-in;
+    }
+
+    .neu-btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-neu-sm px-4 py-2.5 font-semibold text-neu-accent shadow-neu-up-sm transition-all duration-150 active:shadow-neu-in disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
+    }
+
+    .neu-btn-primary {
+        @apply neu-btn bg-neu-accent text-white shadow-[4px_4px_10px_#C3CAD6,-4px_-4px_10px_#FFFFFF] active:shadow-[inset_3px_3px_7px_rgba(0,0,0,0.3)];
+    }
+
+    .neu-input {
+        @apply w-full rounded-neu-sm bg-neu-bg px-4 py-3 shadow-neu-in outline-none text-neu-text placeholder:text-neu-sub/60 min-h-[44px];
+    }
+
+    .neu-chip {
+        @apply inline-flex items-center gap-1.5 rounded-neu-sm px-3.5 py-2 text-sm font-semibold text-neu-sub shadow-neu-up-sm transition-all duration-150 whitespace-nowrap min-h-[44px];
+    }
+
+    .neu-chip-active {
+        @apply shadow-neu-in text-neu-accent;
+    }
+
+    .neu-pill {
+        @apply inline-flex items-center rounded-[10px] px-2.5 py-1 text-[11px] font-bold shadow-neu-in;
+    }
+}
