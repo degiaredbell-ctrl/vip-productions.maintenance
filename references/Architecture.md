@@ -40,25 +40,29 @@ Prinsip: server adalah sumber kebenaran untuk **validasi dan otorisasi**. UI han
 
 ```
 app/
-  Actions/Pm/            SubmitPmRecord, RevisePmRecord, ApprovePmRecord
-  Enums/                 Role, PmStatus, MachineType, Period
+  Actions/Pm/            SubmitPmRecord, RevisePmRecord, SignPmRecord, RejectPmRecord
+  Enums/                 Role, PmStatus, PmDisplayStatus, SignatureStage, MachineType, Period
   Http/
-    Controllers/         DashboardController, PmRecordController, MachineController,
-                         ChecklistTemplateController, ReportController, UserController
-    Middleware/          HandleInertiaRequests (share auth.user, auth.can, flash)
-    Requests/            StorePmRecordRequest, StoreMachineRequest, ...
+    Controllers/         DashboardController, PmRecordController, ApprovalController,
+                         PmSignatureController, MachineController, ChecklistTemplateController,
+                         ReportController, UserController
+    Middleware/          HandleInertiaRequests (share auth.user, auth.can, flash,
+                         pendingApprovals)
+    Requests/            StorePmRecordRequest, SignPmRecordRequest, RejectPmRecordRequest,
+                         StoreMachineRequest, ...
     Resources/           MachineResource, PmRecordResource
   Models/                User, Machine, ChecklistTemplate, ChecklistTemplateItem,
-                         PmRecord, PmRecordItem, PmRecordRevision, AuditLog
-  Policies/              MachinePolicy, PmRecordPolicy, UserPolicy
-  Services/              PeriodService, ReportService
+                         PmRecord, PmRecordItem, PmRecordRevision, PmSignature, AuditLog
+  Policies/              MachinePolicy, PmRecordPolicy (view/create/update/sign/reject), UserPolicy
+  Services/              PeriodService, ReportService, SignatureChain, SignatureStorage
 database/
   migrations/  seeders/  (RoleSeeder, MachineSeeder, TemplateSeeder, UserSeeder)
 resources/js/
-  Components/ui/         NeuCard, NeuButton, NeuInput, NeuChip, NeuPill, NeuRing, NeuBars
-  Layouts/               AppLayout (sidebar ≥lg, bottom-nav <lg), GuestLayout
-  Pages/                 Dashboard, Pm/Form, Machines/History, Reports/Index,
-                         Admin/Machines, Admin/Templates, Admin/Users
+  Components/            NeuCard, NeuButton, NeuInput, NeuChip, NeuPill, NeuToast,
+                         NeuSignaturePad, SignatureChain, SignatureActions
+  Layouts/               AuthenticatedLayout (sidebar ≥lg, bottom-nav <lg), GuestLayout
+  Pages/                 Dashboard/Index, Approvals/Index, Pm/Form, Machines/History,
+                         Reports/Index, Admin/Machines, Admin/Templates, Admin/Users
   lib/                   period.js, format.js, offlineQueue.js
 routes/web.php
 tests/Feature/  tests/Unit/
@@ -75,13 +79,16 @@ checklist_templates   id, machine_type*, name, is_default, timestamps
 checklist_template_items
                       id, template_id→, category, name, spec, sort_no
 pm_records            id, machine_id→, year, period (enum 6 nilai), technician_id→users,
-                      status (draft|submitted|approved|rejected), general_note,
+                      status (draft|submitted|pic_approved|approved|rejected), general_note,
                       revision_count, submitted_at, approved_by?, approved_at?, timestamps
                       UNIQUE(machine_id, year, period)
 pm_record_items       id, pm_record_id→, item_name, category, spec, actual,
                       act_clean, act_repair, act_lubricate, act_replace (bool),
                       final_condition, parts_replaced (uint)
 pm_record_revisions   id, pm_record_id→, revised_by→users, snapshot (json), reason, created_at
+pm_signatures         id, pm_record_id→, stage (technician|pic|supervisor), image_path,
+                      signed_by→users, signed_by_name, signed_by_role, note?, signed_at
+                      UNIQUE(pm_record_id, stage)
 audit_logs            id, user_id?, action, subject_type, subject_id, changes (json), ip, created_at
 ```
 
@@ -97,29 +104,47 @@ Catatan desain:
 **Role:** `admin`, `manager`, `technician`, `user`, `viewer` (enum `App\Enums\Role`, disimpan lewat spatie permission).
 
 **Permission (contoh):**
-`dashboard.view`, `pm.fill`, `pm.approve`, `pm.history.view`, `report.view`, `report.export`, `machine.manage`, `template.manage`, `user.manage`, `audit.view`.
+`dashboard.view`, `pm.fill`, `pm.sign`, `pm.acknowledge`, `pm.approve`, `pm.history.view`,
+`report.view`, `report.export`, `machine.manage`, `template.manage`, `user.manage`, `audit.view`.
 
 | Role | Permission |
 |---|---|
 | admin | semua |
 | manager | dashboard.view, pm.approve, pm.history.view, report.*, machine.manage, template.manage, audit.view |
-| technician | dashboard.view, pm.fill, pm.history.view, report.view, report.export |
-| user | dashboard.view, pm.history.view, report.view |
+| technician | dashboard.view, pm.fill, pm.sign, pm.history.view, report.view, report.export |
+| user | dashboard.view, pm.acknowledge, pm.history.view, report.view |
 | viewer | dashboard.view, pm.history.view, report.view, report.export |
 
+Tiga permission tanda tangan memetakan langsung ke tiga tahap rantai
+(`SignatureStage`): `technician → pm.sign`, `user → pm.acknowledge`,
+`manager → pm.approve`. `admin` lolos di semua tahap sebagai cadangan.
+
 Penerapan:
-1. **Route:** `->middleware('can:pm.fill')` atau `role:admin|manager`.
-2. **Policy:** `PmRecordPolicy@update` memastikan technician hanya merevisi record miliknya, status bukan `approved`, dan periode tidak di masa depan.
-3. **Inertia share:** `HandleInertiaRequests` mengirim `auth.user` dan `auth.can` (map boolean permission) ke React. Komponen memakai `can('pm.fill')` untuk menampilkan/menyembunyikan aksi.
+1. **Route:** `->middleware('can:pm.fill')`, `can:dashboard.view`, atau `role:admin|manager`.
+2. **Policy:** `PmRecordPolicy` mengatur lima gate:
+   - `view` — semua user aktif boleh melihat record.
+   - `create` — butuh `pm.fill`.
+   - `update` — hanya saat `PmStatus::isEditable()` (draft atau rejected) **dan** periode
+     belum lewat. Semenjak ada tanda tangan, checklist terkunci otomatis.
+   - `sign` — user harus pemilik record pada tahap `technician`, atau punya permission
+     tahap yang sedang menunggu pada tahap 2/3; user yang sama yang mengisi checklist
+     tidak boleh menyetujui tahap 2/3.
+   - `reject` — hanya tahap 2/3, minimal `pm.acknowledge`.
+3. **Inertia share:** `HandleInertiaRequests` mengirim `auth.user`, `auth.can` (map boolean
+   permission), dan `pendingApprovals` (jumlah antrean, dipakai badge sidebar) ke React.
+   Komponen memakai `can('pm.fill')` untuk menampilkan/menyembunyikan aksi.
 
 ## 6. Routing Utama
 
 | Method | URI | Fungsi | Izin |
 |---|---|---|---|
 | GET | `/` | Dashboard (query `period`, `year`, `q`, `status`) | dashboard.view |
-| GET | `/machines/{machine}/pm` | Form checklist | pm.fill / dashboard.view (read-only) |
+| GET | `/approvals` | Antrean persetujuan milik user yang sedang login | auth + punya tahap |
+| GET | `/machines/{machine}/pm` | Form checklist | dashboard.view (read-only bila sudah ditandatangani) |
 | POST | `/machines/{machine}/pm` | Simpan/revisi PM | pm.fill |
-| POST | `/pm/{record}/approve` · `/reject` | Persetujuan | pm.approve |
+| POST | `/pm/{record}/sign` | Tanda tangan + lanjutkan tahap | PmRecordPolicy@sign |
+| POST | `/pm/{record}/reject` | Tolak + kembalikan ke teknisi | PmRecordPolicy@reject |
+| GET | `/pm/{record}/signature/{stage}` | Ambil PNG tanda tangan | PmRecordPolicy@view |
 | GET | `/machines/{machine}/history` | Riwayat mesin | pm.history.view |
 | GET | `/reports` · `/reports/export` | Laporan, ekspor xlsx/pdf | report.view / report.export |
 | resource | `/admin/machines`, `/admin/templates`, `/admin/users` | CRUD master | machine/template/user.manage |
@@ -132,10 +157,69 @@ React form ──POST──▶ StorePmRecordRequest (validasi: semua actual waji
       └▶ SubmitPmRecord / RevisePmRecord (DB::transaction)
            ├ upsert pm_records (machine_id, year, period)
            ├ replace pm_record_items
+           ├ hapus tanda tangan lama — isi checklist berubah, tanda tangan batal
            ├ jika revisi: simpan snapshot lama → pm_record_revisions, revision_count++
            └ AuditLog::record(...)
-      └▶ redirect + flash "Checklist tersimpan" (Inertia)
+      └▶ status = draft (bukan submitted) + flash "Checklist tersimpan" (Inertia)
 ```
+
+Menyimpan checklist **tidak lagi** langsung menaikkan status ke `submitted`.
+Status naik hanya saat tanda tangan, supaya tidak ada tahap approval yang
+terlewati.
+
+## 7b. Rantai Persetujuan 3 Tahap (Tanda Tangan)
+
+```
+Checklist selesai ──▶ [1] Teknisi tanda tangan ──▶ [2] User PIC "sebagai diketahui"
+                                                        │
+                                                        ▼
+                                                    [3] Atasan
+                                                        │
+                                                        ▼
+                                                     Selesai
+```
+
+Status dan label yang tampil:
+
+| Status | Label di UI | Dot Beranda |
+|---|---|---|
+| `draft` | Menunggu Tanda Tangan | abu |
+| `submitted` | On Progress Approval by User PIC | oranye |
+| `pic_approved` | On Progress Approval by Atasan | oranye |
+| `approved` | Selesai | hijau |
+| `rejected` | Perlu Revisi | merah |
+
+`submitted` dan `pic_approved` memakai satu bucket tampilan baru,
+`PmDisplayStatus::Progress` ("Sedang Approval"). Bucket ini **tidak** dihitung
+selesai oleh dot notifikasi maupun laporan; `ReportService::complianceByPeriod`
+mendapat kolom `approving` untuk memisahkannya dari `completed`.
+
+```
+React ──POST /pm/{record}/sign (signature=dataURL PNG, note)
+  └▶ SignPmRecordRequest (validasi: PNG sungguhan, ≤2 MB, bukan data URL mencurigakan)
+     └▶ PmRecordPolicy@sign  → SignatureChain::canSign($record, $user)
+        └▶ SignPmRecord (DB::transaction)
+             ├ SignatureStorage::put() → storage/app/public/signatures/...
+             ├ upsert pm_signatures (UNIQUE pm_record_id, stage)
+             ├ status = SignatureStage::stageAfterApproval(status)
+             └ AuditLog::record('pm.sign.{stage}')
+```
+
+- **Satu endpoint untuk ketiga tahap.** Tahap aktif dibaca dari status record, jadi
+  rantai tidak bisa dilompati atau diurutkan ulang; tidak ada endpoint terpisah per tahap.
+- **SignatureStorage** memvalidasi data URL, memastikan magic bytes PNG, menulis ke
+  disk, dan menghapus berkas lama saat tahap ditandatangani ulang. Dilayani lewat
+  route ber-otorisasi `PmSignatureController@show` (bukan `storage:link`) supaya path
+  tidak bergantung pada `APP_URL`.
+- **Snapshot** `signed_by_name` dan `signed_by_role` disimpan di `pm_signatures`,
+  jadi history tetap terbaca meski user-nya nanti berubah nama atau dinonaktifkan.
+- **Penolakan** (`RejectPmRecord`) mengembalikan status ke `rejected`, menghapus
+  seluruh tanda tangan, dan mencatat alasan di `audit_logs` (`pm.reject`).
+  `PmRecord::rejectReason()` membacanya kembali. Catatan: Eloquent punya properti
+  internal `protected $changes`, jadi di dalam kelas model kolom `changes`
+  **harus** dibaca lewat `getAttribute('changes')`, bukan `$log->changes`.
+- **Badge sidebar** dan daftar `/approvals` memakai `SignatureChain::pendingQuery`
+  yang sama, sehingga angkanya tidak pernah berbeda.
 
 ## 8. Frontend & Design System (Neumorphism Light)
 
@@ -214,6 +298,9 @@ Akun seeder (hanya lokal): `admin@example.test`, `manager@…`, `tech@…`, `use
 
 - Web server Nginx/Apache + PHP-FPM, HTTPS wajib. `APP_DEBUG=false`.
 - `npm run build`, `php artisan config:cache route:cache view:cache`.
+- Berkas tanda tangan di `storage/app/public/signatures/`, dilayani lewat route
+  ber-otorisasi (bukan symlink `storage:link`), jadi tidak bergantung pada `APP_URL`.
+  Tetap masuk ke backup bersama folder `storage/`.
 - Queue (`database` driver) untuk ekspor besar; scheduler untuk backup & pengingat PM terlambat.
 - Backup: `mysqldump` harian + retensi 30 hari; uji restore berkala.
 - Monitoring: log harian Laravel; opsional Sentry.
@@ -224,6 +311,20 @@ Akun seeder (hanya lokal): `admin@example.test`, `manager@…`, `tech@…`, `use
 - **Unit test:** `PeriodService` (mapping bulan → periode, lock periode), `ReportService` (hitungan kepatuhan).
 - **Manual/UAT:** uji di Android + iOS Safari, mode cetak A4, koneksi lambat.
 - **Aksesibilitas:** cek kontras token neumorphism dan navigasi keyboard.
+
+Skenario yang wajib dijaga dalam uji alur persetujuan:
+
+| Skenario | Ekspektasi |
+|---|---|
+| Simpan checklist | status `draft`, checklist masih bisa diedit |
+| Simpan checklist setelah ditandatangani | tanda tangan lama dibuang, kembali ke `draft` |
+| Tanda tangan kosong / bukan PNG | ditolak, status tidak berubah |
+| Salah tahap | 403 (PIC/Atasan tidak bisa menandatangani tahap teknisi) |
+| Tollar tahap 2/3 oleh orang yang mengisi checklist | 403 |
+| Penolakan | status `rejected`, semua tanda tangan hilang, alasan tercatat di history |
+| Penolakan tanpa alasan | ditolak |
+| Rantai penuh | `draft → submitted → pic_approved → approved`, tiap tahap 1 tanda tangan |
+| Setelah `approved` | checklist terkunci, tidak bisa tanda tangan/tolak lagi |
 
 ## 13. Migrasi dari Prototipe
 

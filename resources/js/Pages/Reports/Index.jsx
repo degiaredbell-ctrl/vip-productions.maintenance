@@ -69,6 +69,17 @@ export default function Reports({ auth, compliance, topParts, actions, totalPm, 
                     <b className="text-sm">Kepatuhan PM per Periode</b>
                     <p className="text-xs text-neu-sub mt-0.5 mb-4">Tahun {year} (%)</p>
                     <NeuBars data={chartData} />
+                    {/* PM yang sudah dikerjakan tapi masih di rantai approval
+                        tetap dihitung belum selesai, jadi alasannya disebut
+                        supaya angka rendah tidak membingungkan. */}
+                    <div className="mt-4 pt-3 border-t border-neu-dark/40 space-y-1.5">
+                        {compliance.filter((c) => c.approving > 0).map((c) => (
+                            <div key={c.period} className="flex items-center justify-between text-xs">
+                                <span className="text-neu-sub">{c.label}</span>
+                                <span className="text-neu-info font-semibold">{c.approving} menunggu approval</span>
+                            </div>
+                        ))}
+                    </div>
                 </NeuCard>
 
                 {/* Action summary */}

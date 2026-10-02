@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Period;
+use App\Enums\PmDisplayStatus;
 use App\Models\Machine;
 use App\Models\PmRecord;
 use App\Services\PeriodService;
@@ -42,6 +43,10 @@ class DashboardController extends Controller
             ->map(function ($machine) {
                 $record = $machine->pmRecords->first();
 
+                $display = $record
+                    ? PmDisplayStatus::fromPmStatus($record->status)
+                    : PmDisplayStatus::Todo;
+
                 return [
                     'id' => $machine->id,
                     'code' => $machine->code,
@@ -51,9 +56,15 @@ class DashboardController extends Controller
                     'sub_category' => $machine->sub_category,
                     'type' => $machine->type,
                     'week_group' => $machine->week_group,
-                    'status' => $this->getDisplayStatus($record),
+                    'status' => $display->value,
                     'record_id' => $record?->id,
                     'record_status' => $record?->status->value,
+                    // "On Progress Approval by ..." hanya muncul saat PM
+                    // benar-benar sedang di rantai approval, bukan saat belum
+                    // dikerjakan — supaya dua kondisi itu tidak tertukar.
+                    'progress_note' => $record?->status->isInApproval()
+                        ? $record->status->label()
+                        : null,
                 ];
             })
             ->values();
@@ -63,9 +74,10 @@ class DashboardController extends Controller
         // saat user memfilter status atau mengetik pencarian.
         $stats = [
             'total' => $machines->count(),
-            'done' => $machines->where('status', 'done')->count(),
-            'todo' => $machines->where('status', 'todo')->count(),
-            'issue' => $machines->where('status', 'issue')->count(),
+            'done' => $machines->where('status', PmDisplayStatus::Done->value)->count(),
+            'progress' => $machines->where('status', PmDisplayStatus::Progress->value)->count(),
+            'todo' => $machines->where('status', PmDisplayStatus::Todo->value)->count(),
+            'issue' => $machines->where('status', PmDisplayStatus::Issue->value)->count(),
         ];
 
         $needle = mb_strtolower(trim($search));
@@ -114,12 +126,4 @@ class DashboardController extends Controller
         ]);
     }
 
-    private function getDisplayStatus(?PmRecord $record): string
-    {
-        if (!$record) return 'todo';
-        if ($record->status->value === 'approved') return 'done';
-        if ($record->status->value === 'rejected') return 'issue';
-        if ($record->status->value === 'submitted') return 'todo';
-        return 'todo';
     }
-}

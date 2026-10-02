@@ -5,14 +5,16 @@ import NeuButton from '@/Components/NeuButton';
 
 export default function History({ auth, machine, records }) {
     const statusLabels = {
-        draft: 'Draft',
-        submitted: 'Terkirim',
-        approved: 'Disetujui',
-        rejected: 'Ditolak',
+        draft: 'Menunggu Tanda Tangan',
+        submitted: 'On Progress Approval by User PIC',
+        pic_approved: 'On Progress Approval by Atasan',
+        approved: 'Selesai',
+        rejected: 'Perlu Revisi',
     };
     const statusVariants = {
         draft: 'todo',
-        submitted: 'todo',
+        submitted: 'progress',
+        pic_approved: 'progress',
         approved: 'done',
         rejected: 'issue',
     };
@@ -57,8 +59,30 @@ export default function History({ auth, machine, records }) {
                                 <div className="text-xs text-neu-sub space-y-0.5">
                                     <p>Revisi: {record.revision_count}x</p>
                                     {record.submitted_at && <p>Submit: {record.submitted_at}</p>}
-                                    {record.approved_at && <p>Approved: {record.approved_at}</p>}
+                                    {record.approved_at && <p>Disetujui penuh: {record.approved_at}</p>}
                                 </div>
+
+                                {record.reject_reason && (
+                                    <p className="text-xs text-neu-bad mt-2">
+                                        Alasan ditolak: {record.reject_reason}
+                                    </p>
+                                )}
+
+                                {/* Jejak tanda tangan per tahap, supaya riwayat
+                                    menunjukkan siapa sudah menyetujui dan kapan. */}
+                                {record.signatures?.some((s) => s.signed_by_name) && (
+                                    <div className="mt-3 pt-3 border-t border-neu-dark/40 space-y-1">
+                                        {record.signatures.filter((s) => s.signed_by_name).map((s) => (
+                                            <div key={s.stage} className="flex items-center justify-between text-xs gap-2">
+                                                <span className="text-neu-sub">TT {s.label}</span>
+                                                <span className="text-neu-text text-right truncate">
+                                                    {s.signed_by_name}
+                                                    {s.signed_at && ` · ${s.signed_at}`}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 {record.items.length > 0 && (
                                     <div className="mt-3 space-y-1.5">
                                         {record.items.map((item, i) => (

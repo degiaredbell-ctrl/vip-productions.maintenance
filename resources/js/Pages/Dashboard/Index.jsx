@@ -10,9 +10,17 @@ const PERIODS_FALLBACK = [];
 const STATUS_FILTERS = [
     { value: 'all', label: 'Semua' },
     { value: 'todo', label: 'Belum' },
+    { value: 'progress', label: 'Sedang Approval' },
     { value: 'done', label: 'Selesai' },
-    { value: 'issue', label: 'Kendala' },
+    { value: 'issue', label: 'Perlu Revisi' },
 ];
+
+const STATUS_TILE_COLORS = {
+    done: 'text-neu-accent',
+    progress: 'text-neu-info',
+    todo: 'text-neu-warn',
+    issue: 'text-neu-bad',
+};
 
 const DOT_LEGEND = [
     { dot: 'green', label: 'Semua selesai' },
@@ -110,8 +118,10 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
 
     const percentage = stats.total > 0 ? Math.round(stats.done / stats.total * 100) : 0;
 
-    const statusLabels = { done: 'Selesai', todo: 'Belum', issue: 'Kendala' };
-    const statusVariants = { done: 'done', todo: 'todo', issue: 'issue' };
+    // "Sedang Approval" = checklist sudah dikerjakan tapi masih menunggu User PIC
+    // atau Atasan. Dipisahkan dari "Belum" karena keduanya berbeda tindakan.
+    const statusLabels = { done: 'Selesai', progress: 'Sedang Approval', todo: 'Belum', issue: 'Perlu Revisi' };
+    const statusVariants = { done: 'done', progress: 'progress', todo: 'todo', issue: 'issue' };
     const typeLabels = Object.fromEntries((types ?? []).map((t) => [t.value, t.label]));
 
     return (
@@ -182,13 +192,13 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
                 <NeuCard className="mb-4">
                     <div className="flex items-center gap-5">
                         <NeuRing percentage={percentage} />
-                        <div className="flex-1 grid grid-cols-3 gap-2.5">
-                            {['done', 'todo', 'issue'].map((key) => (
-                                <div key={key} className="neu-inset py-3 px-2 text-center">
-                                    <span className={`text-xl font-bold block ${key === 'done' ? 'text-neu-accent' : key === 'todo' ? 'text-neu-warn' : 'text-neu-bad'}`}>
-                                        {stats[key]}
+                        <div className="flex-1 grid grid-cols-4 gap-2">
+                            {['done', 'progress', 'todo', 'issue'].map((key) => (
+                                <div key={key} className="neu-inset py-3 px-1.5 text-center">
+                                    <span className={`text-xl font-bold block ${STATUS_TILE_COLORS[key]}`}>
+                                        {stats[key] ?? 0}
                                     </span>
-                                    <span className="text-[11px] text-neu-sub">{statusLabels[key]}</span>
+                                    <span className="text-[10px] text-neu-sub leading-tight block">{statusLabels[key]}</span>
                                 </div>
                             ))}
                         </div>
@@ -295,18 +305,26 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
                                 status: filters.status !== 'all' ? filters.status : undefined,
                                 q: filters.q || undefined,
                             })}
-                            className="neu-card-link flex items-center gap-3.5 w-full text-left p-3.5 mb-4 active:shadow-neu-in"
+                            className="neu-card-link flex items-start gap-3.5 w-full text-left p-3.5 mb-4 active:shadow-neu-in"
                         >
                             <span className="neu-inset w-12 h-12 flex-none grid place-items-center font-bold text-sm text-neu-accent">
                                 {machine.sub_category ?? '—'}
                             </span>
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                                 <b className="block text-sm truncate">{machine.name}</b>
                                 <span className="block text-xs text-neu-sub truncate">
                                     {machine.code} · {typeLabels[machine.type] ?? machine.type} · Minggu {machine.week_group}
                                 </span>
+                                {/* "On Progress Approval by ..." hanya tampil saat PM
+                                    benar-benar di rantai approval, supaya tidak
+                                    tertukar dengan PM yang belum dikerjakan. */}
+                                {machine.progress_note && (
+                                    <span className="block text-[11px] font-semibold text-neu-info truncate">
+                                        {machine.progress_note}
+                                    </span>
+                                )}
                             </div>
-                            <NeuPill variant={statusVariants[machine.status]} className="ml-auto">
+                            <NeuPill variant={statusVariants[machine.status]} className="ml-auto self-start">
                                 {statusLabels[machine.status]}
                             </NeuPill>
                         </Link>

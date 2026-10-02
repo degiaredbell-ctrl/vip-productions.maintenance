@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\SignatureStage;
 use App\Http\Requests\StoreMachineRequest;
 use App\Http\Requests\UpdateMachineRequest;
 use App\Models\Machine;
@@ -66,7 +67,7 @@ class MachineController extends Controller
 
     public function history(Request $request, Machine $machine): Response
     {
-        $records = PmRecord::with(['technician', 'items'])
+        $records = PmRecord::with(['technician', 'items', 'signatures'])
             ->where('machine_id', $machine->id)
             ->orderByDesc('year')
             ->orderByDesc('period')
@@ -83,6 +84,16 @@ class MachineController extends Controller
                     'revision_count' => $r->revision_count,
                     'submitted_at' => $r->submitted_at?->format('d M Y'),
                     'approved_at' => $r->approved_at?->format('d M Y'),
+                    'reject_reason' => $r->status->isFinal() ? null : $r->rejectReason(),
+                    'signatures' => collect(SignatureStage::ordered())
+                        ->map(fn (SignatureStage $stage) => [
+                            'stage' => $stage->value,
+                            'label' => $stage->shortLabel(),
+                            'signed_by_name' => $r->signatureFor($stage)?->signed_by_name,
+                            'signed_at' => $r->signatureFor($stage)?->signed_at?->format('d M Y H:i'),
+                        ])
+                        ->values()
+                        ->all(),
                     'items' => $r->items->map(function ($item) {
                         return [
                             'item_name' => $item->item_name,

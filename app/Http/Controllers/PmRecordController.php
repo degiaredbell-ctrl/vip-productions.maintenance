@@ -2,9 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\Pm\ApprovePmRecord;
+use App\Actions\Pm\RejectPmRecord;
+use App\Actions\Pm\SignPmRecord;
 use App\Actions\Pm\SubmitPmRecord;
 use App\Enums\Period;
+use App\Enums\SignatureStage;
+use App\Http\Requests\RejectPmRecordRequest;
+use App\Http\Requests\SignPmRecordRequest;
 use App\Http\Requests\StorePmRecordRequest;
 use App\Models\Machine;
 use App\Models\PmRecord;
@@ -21,7 +25,7 @@ class PmRecordController extends Controller
         $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
         $year = (int) $request->query('year', now()->year);
 
-        $existing = PmRecord::with('items')
+        $existing = PmRecord::with(['items', 'signatures'])
             ->where('machine_id', $machine->id)
             ->where('year', $year)
             ->where('period', $period->value)
@@ -72,6 +76,8 @@ class PmRecordController extends Controller
         // tujuan redirect tidak bisa dipakai untuk open redirect.
         $request->session()->put('pm_dashboard_url', $dashboardUrl);
 
+        $user = $request->user();
+
         return Inertia::render('Pm/Form', [
             'machine' => [
                 'id' => $machine->id,
@@ -90,11 +96,13 @@ class PmRecordController extends Controller
             'existing' => $existing ? [
                 'id' => $existing->id,
                 'status' => $existing->status->value,
+                'status_label' => $existing->status->label(),
                 'revision_count' => $existing->revision_count,
                 'general_note' => $existing->general_note,
             ] : null,
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
-            'canFill' => $request->user()->can('pm.fill'),
+            'canFill' => $user->can('pm.fill') && (! $existing || $user->can('update', $existing)),
+            'chain' => $this->chainProps($existing, $user),
         ]);
     }
 
@@ -106,20 +114,64 @@ class PmRecordController extends Controller
         // Kembali ke Beranda dengan filter yang tadi sedang aktif.
         return redirect()
             ->to($request->session()->pull('pm_dashboard_url', route('dashboard')))
-            ->with('success', 'Checklist PM berhasil disimpan.');
+            ->with('success', $record->wasRecentlyCreated
+                ? 'Checklist PM berhasil disimpan. Lanjutkan dengan tanda tangan.'
+                : 'Checklist PM berhasil disimpan. Tanda tangan sebelumnya dibatalkan karena checklist berubah.');
     }
 
-    public function approve(Request $request, PmRecord $record): RedirectResponse
+    /**
+     * Satu endpoint untuk ketiga tahap. Tahap mana yang aktif ditentukan dari
+     * status record, bukan dari parameter, jadi rantai tidak bisa dilompati.
+     */
+    public function sign(SignPmRecordRequest $request, PmRecord $record): RedirectResponse
     {
-        $this->authorize('approve', $record);
+        $stage = $record->status->awaiting();
 
-        $validated = $request->validate([
-            'approved' => ['required', 'boolean'],
-            'note' => ['nullable', 'string', 'max:500'],
-        ]);
+        app(SignPmRecord::class)->handle($record, $request->validated('signature'), $request->validated('note'));
 
-        app(ApprovePmRecord::class)->handle($record, $validated['approved'], $validated['note'] ?? null);
+        return redirect()->back()->with('success', match ($stage) {
+            SignatureStage::Technician => 'Tanda tangan dicatat. Menunggu persetujuan User PIC.',
+            SignatureStage::Pic => 'Persetujuan User PIC dicatat. Menunggu persetujuan Atasan.',
+            SignatureStage::Supervisor => 'PM disetujui penuh dan berstatus Selesai.',
+            default => 'Tanda tangan dicatat.',
+        });
+    }
 
-        return redirect()->back()->with('success', $validated['approved'] ? 'PM disetujui.' : 'PM ditolak.');
+    public function reject(RejectPmRecordRequest $request, PmRecord $record): RedirectResponse
+    {
+        app(RejectPmRecord::class)->handle($record, $request->validated('note'));
+
+        return redirect()->back()->with('success', 'PM ditolak dan dikembalikan ke teknisi untuk revisi.');
+    }
+
+    /**
+     * Data rantai persetujuan untuk stepper dan panel aksi di form PM.
+     */
+    private function chainProps(?PmRecord $record, $user): array
+    {
+        $status = $record?->status;
+
+        return [
+            'stages' => collect(SignatureStage::ordered())->map(function (SignatureStage $stage) use ($record) {
+                $signature = $record?->signatureFor($stage);
+
+                return [
+                    'value' => $stage->value,
+                    'label' => $stage->label(),
+                    'short_label' => $stage->shortLabel(),
+                    'signed' => $signature !== null,
+                    'signed_by_name' => $signature?->signed_by_name,
+                    'signed_at' => $signature?->signed_at?->translatedFormat('d M Y H:i'),
+                    'note' => $signature?->note,
+                    'image_url' => $signature?->imageUrl(),
+                ];
+            })->values()->all(),
+            'status' => $status?->value,
+            'status_label' => $status?->label(),
+            'awaiting' => $status?->awaiting()?->value,
+            'awaiting_label' => $status?->awaiting()?->label(),
+            'canSign' => $record !== null && $user->can('sign', $record),
+            'canReject' => $record !== null && $user->can('reject', $record),
+        ];
     }
 }

@@ -14,6 +14,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('year');
             $table->string('period', 10);
             $table->foreignId('technician_id')->nullable()->constrained('users')->nullOnDelete();
+            // Nilai status: draft, submitted, pic_approved, approved, rejected
             $table->string('status', 20)->default('draft');
             $table->text('general_note')->nullable();
             $table->unsignedInteger('revision_count')->default(0);

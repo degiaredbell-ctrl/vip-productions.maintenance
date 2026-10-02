@@ -3,9 +3,11 @@
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\PmRecordController;
+use App\Http\Controllers\PmSignatureController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Foundation\Application;
@@ -24,16 +26,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Persetujuan (rantai tanda tangan 3 tahap)
+    Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
+
     // PM Records
     Route::get('/machines/{machine}/pm', [PmRecordController::class, 'create'])
         ->name('machines.pm.create')
-        ->middleware('can:pm.fill,dashboard.view');
+        ->middleware('can:dashboard.view');
     Route::post('/machines/{machine}/pm', [PmRecordController::class, 'store'])
         ->name('machines.pm.store')
         ->middleware('can:pm.fill');
-    Route::post('/pm/{record}/approve', [PmRecordController::class, 'approve'])
-        ->name('pm.approve')
-        ->middleware('can:pm.approve');
+
+    // Satu endpoint untuk ketiga tahap; tahap aktif dibaca dari status record
+    // supaya rantai tidak bisa dilompati atau diurutkan ulang.
+    Route::post('/pm/{record}/sign', [PmRecordController::class, 'sign'])
+        ->name('pm.sign');
+    Route::post('/pm/{record}/reject', [PmRecordController::class, 'reject'])
+        ->name('pm.reject');
+    Route::get('/pm/{record}/signature/{stage}', [PmSignatureController::class, 'show'])
+        ->name('pm.signatures.show');
 
     // Machines
     Route::get('/machines', [MachineController::class, 'index'])

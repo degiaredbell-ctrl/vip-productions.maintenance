@@ -11,19 +11,37 @@ class ReportService
 {
     public static function complianceByPeriod(int $year): array
     {
+        // Dihitung dalam satu query grouped, bukan looping COUNT per periode,
+        // supaya laporan tidak menghasilkan 12 query untuk 6 periode.
+        $rows = PmRecord::where('year', $year)
+            ->selectRaw('period, COUNT(*) AS total')
+            ->selectRaw("SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) AS completed")
+            ->selectRaw("SUM(CASE WHEN status IN ('submitted','pic_approved') THEN 1 ELSE 0 END) AS approving")
+            ->groupBy('period')
+            ->get()
+            ->keyBy('period');
+
         $result = [];
+
         foreach (Period::cases() as $period) {
-            $total = PmRecord::where('year', $year)->where('period', $period->value)->count();
-            $completed = PmRecord::where('year', $year)->where('period', $period->value)
-                ->where('status', 'approved')->count();
+            $row = $rows->get($period->value);
+            $total = (int) ($row->total ?? 0);
+            $completed = (int) ($row->completed ?? 0);
+
             $result[] = [
                 'period' => $period->value,
                 'label' => $period->label(),
                 'total' => $total,
                 'completed' => $completed,
+                // Yang sudah dikerjakan tapi masih di rantai approval. Tidak
+                // dihitung sebagai "selesai" supaya laporan tidak terlihat
+                // lebih baik daripada kenyataan, tapi tetap ditampilkan agar
+                // jelas kenapa sebuah periode belum 100%.
+                'approving' => (int) ($row->approving ?? 0),
                 'percentage' => $total > 0 ? round($completed / $total * 100) : 0,
             ];
         }
+
         return $result;
     }
 

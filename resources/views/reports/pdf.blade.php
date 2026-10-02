@@ -18,13 +18,14 @@
 
     <h3>Kepatuhan per Periode</h3>
     <table>
-        <thead><tr><th>Periode</th><th>Total</th><th>Selesai</th><th>%</th></tr></thead>
+        <thead><tr><th>Periode</th><th>Total</th><th>Selesai</th><th>Sedang Approval</th><th>%</th></tr></thead>
         <tbody>
             @foreach($compliance as $c)
             <tr>
                 <td>{{ $c['label'] }}</td>
                 <td>{{ $c['total'] }}</td>
                 <td>{{ $c['completed'] }}</td>
+                <td>{{ $c['approving'] ?? 0 }}</td>
                 <td>{{ $c['percentage'] }}%</td>
             </tr>
             @endforeach

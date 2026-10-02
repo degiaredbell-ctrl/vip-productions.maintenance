@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\SignatureChain;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
@@ -26,6 +27,10 @@ class HandleInertiaRequests extends Middleware
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
             ],
+            // Badge jumlah antrean persetujuan, ditaruh di share supaya
+            // sidebar di semua halaman bisa menampilkannya tanpa tiap controller
+            // harus mengirim ulang.
+            'pendingApprovals' => fn () => SignatureChain::pendingCountFor($request->user()),
             'ziggy' => fn () => [
                 'location' => url()->current(),
             ],

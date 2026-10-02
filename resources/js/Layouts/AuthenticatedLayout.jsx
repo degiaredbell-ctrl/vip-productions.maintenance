@@ -34,8 +34,21 @@ export default function Authenticated({ user: userProp, header, children }) {
     const isActive = (path, exact = false) =>
         exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
 
+    // Badge antrean persetujuan dihitung di backend (SignatureChain), bukan di
+    // client, supaya angka yang sama dipakai juga untuk query daftarnya.
+    const pending = Number(page.props.pendingApprovals ?? 0);
+
     const navItems = [
         { name: 'Beranda', href: route('dashboard'), path: '/dashboard', exact: true, show: true },
+        {
+            name: 'Persetujuan',
+            href: route('approvals.index'),
+            path: '/approvals',
+            badge: pending,
+            // Menu disembunyikan kalau memang tidak ada antrean dan user tidak
+            // punya wewenang, supaya sidebar tidak penuh item mati.
+            show: pending > 0 || can['pm.sign'] || can['pm.acknowledge'] || can['pm.approve'],
+        },
         { name: 'Laporan', href: route('reports.index'), path: '/reports', show: can['report.view'] },
         { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
@@ -66,6 +79,14 @@ export default function Authenticated({ user: userProp, header, children }) {
                                 aria-hidden="true"
                             />
                             {item.name}
+                            {item.badge > 0 && (
+                                <span
+                                    className="ml-auto neu-pill text-neu-info"
+                                    aria-label={`${item.badge} menunggu`}
+                                >
+                                    {item.badge}
+                                </span>
+                            )}
                         </NavLink>
                     ))}
                 </nav>
@@ -122,9 +143,17 @@ export default function Authenticated({ user: userProp, header, children }) {
                         href={item.href}
                         active={isActive(item.path, item.exact)}
                         activeClassName="neu-nav-sunken"
-                        className="neu-nav-raised flex-1 flex flex-col items-center gap-1 py-2 text-[11px] font-semibold"
+                        className="neu-nav-raised flex-1 flex flex-col items-center gap-1 py-2 text-[11px] font-semibold relative"
                     >
                         {item.name}
+                        {item.badge > 0 && (
+                            <span
+                                className="absolute top-1 right-1/4 min-w-[16px] h-4 px-1 grid place-items-center rounded-full bg-neu-info text-white text-[9px] font-bold"
+                                aria-label={`${item.badge} menunggu`}
+                            >
+                                {item.badge > 99 ? '99+' : item.badge}
+                            </span>
+                        )}
                     </NavLink>
                 ))}
             </nav>

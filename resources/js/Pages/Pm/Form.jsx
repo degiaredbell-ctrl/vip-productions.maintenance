@@ -3,10 +3,13 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuButton from '@/Components/NeuButton';
+import NeuPill from '@/Components/NeuPill';
 import NeuTrack from '@/Components/NeuTrack';
+import SignatureActions from '@/Components/SignatureActions';
+import SignatureChain from '@/Components/SignatureChain';
 import { useState } from 'react';
 
-export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill }) {
+export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, chain }) {
     const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
@@ -62,6 +65,10 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
     const readOnly = !canFill || isFuturePeriod;
 
+    // Tahap yang sedang menunggu ditandatangani, untuk judul panel aksi.
+    const activeStage = chain?.stages?.find((stage) => stage.value === chain.awaiting) ?? null;
+    const approvalDone = chain?.status === 'approved';
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <div className="max-w-3xl mx-auto">
@@ -85,7 +92,18 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                 {/* Progress */}
                 <NeuCard className="mb-4">
                     <NeuTrack percentage={progress} />
-                    <p className="text-xs text-neu-sub mt-2 text-center">{progress}% selesai</p>
+                    <div className="flex items-center justify-center gap-2 mt-2">
+                        <p className="text-xs text-neu-sub">{progress}% terisi</p>
+                        {chain?.status && (
+                            <NeuPill variant={
+                                chain.status === 'approved' ? 'done'
+                                    : chain.status === 'rejected' ? 'issue'
+                                        : chain.awaiting ? 'progress' : 'todo'
+                            }>
+                                {chain.status_label}
+                            </NeuPill>
+                        )}
+                    </div>
                 </NeuCard>
 
                 {readOnly && (
@@ -180,20 +198,74 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                     )}
 
                     {(error || submitError) && (
-                        <p className="text-sm text-neu-bad font-semibold mb-3 text-center">{error || submitError}</p>
+                        <p role="alert" className="text-sm text-neu-bad font-semibold mb-3 text-center">
+                            {error || submitError}
+                        </p>
                     )}
 
                     {!readOnly && (
-                        <NeuButton
-                            type="submit"
-                            variant="primary"
-                            className="w-full !py-4 text-base"
-                            disabled={processing}
-                        >
-                            {processing ? 'Menyimpan...' : existing ? 'Simpan Revisi' : 'Simpan Checklist'}
-                        </NeuButton>
+                        <>
+                            <NeuButton
+                                type="submit"
+                                variant="primary"
+                                className="w-full !py-4 text-base"
+                                disabled={processing}
+                            >
+                                {processing ? 'Menyimpan...' : existing ? 'Simpan Revisi' : 'Simpan Checklist'}
+                            </NeuButton>
+
+                            {/*
+                                Checklist tersimpan belum berarti selesai. Tanda tangan
+                                teknisi adalah langkah terpisah, jadi setelah menyimpan
+                                PM masuk tahap approval — bukan langsung "Selesai".
+                            */}
+                            <p className="text-xs text-neu-sub text-center mt-2.5">
+                                {activeStage?.value === 'technician'
+                                    ? 'Setelah checklist tersimpan, lanjutkan dengan tanda tangan di bawah.'
+                                    : 'Simpan checklist sebelum menandatangani.'}
+                            </p>
+                        </>
+                    )}
+
+                    {/*
+                        Checklist tidak boleh diubah setelah ditandatangani: isi yang
+                        disetujui approver harus sama persis dengan isi yang direview.
+                    */}
+                    {!readOnly && activeStage && activeStage.value !== 'technician' && (
+                        <NeuCard className="mb-4 !shadow-neu-in mt-4">
+                            <p className="text-xs text-neu-sub">
+                                Checklist sudah ditandatangani dan sedang berjalan di rantai approval, jadi isinya
+                                dikunci. Anda masih bisa membuka halaman ini untuk melihat tahap persetujuan.
+                            </p>
+                        </NeuCard>
                     )}
                 </form>
+
+                {chain?.stages?.length > 0 && (
+                    <NeuCard className="mb-4">
+                        <b className="text-sm block mb-3">Rantai Persetujuan</b>
+                        <SignatureChain
+                            stages={chain.stages}
+                            awaiting={chain.awaiting}
+                            statusLabel={chain.status_label}
+                            awaitingLabel={chain.awaiting_label}
+                        />
+                    </NeuCard>
+                )}
+
+                {/*
+                    Panel tanda tangan sengaja diletakkan di luar <form> checklist,
+                    supaya Inertia tidak ikut mengirim ulang payload checklist yang
+                    sudah terkunci.
+                */}
+                {activeStage && !approvalDone && !isFuturePeriod && (
+                    <SignatureActions
+                        recordId={existing?.id}
+                        stage={activeStage}
+                        canSign={chain.canSign}
+                        canReject={chain.canReject}
+                    />
+                )}
             </div>
         </AuthenticatedLayout>
     );
