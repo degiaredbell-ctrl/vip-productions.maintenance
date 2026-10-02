@@ -266,6 +266,11 @@ theme: { extend: {
 - Target sentuh ≥ 44px; fokus keyboard wajib terlihat (`focus-visible:ring-2 ring-neu-accent`).
 - Hormati `prefers-reduced-motion`.
 
+### Branding / Logo
+- Aset logo aplikasi: `public/img/logo.png` (tampilan, 310×301) dan `public/img/logo.ico` (favicon, 32×32).
+- Komponen `ApplicationLogo.jsx` merender `<img src="/img/logo.png">` (bukan SVG Laravel lagi); dipakai `GuestLayout` (halaman login/register/lupa sandi).
+- `resources/views/app.blade.php` memasang `<link rel="icon" href="/img/logo.ico">` + `apple-touch-icon`; `public/favicon.ico` juga sudah diganti dengan logo aplikasi agar tab browser konsisten.
+
 ### Layout responsif
 - `< lg`: header + **bottom navigation** (fixed, `pb-[env(safe-area-inset-bottom)]`), konten 1 kolom.
 - `≥ lg`: **sidebar** 270px, daftar mesin 2 kolom.

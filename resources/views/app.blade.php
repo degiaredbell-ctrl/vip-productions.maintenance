@@ -8,6 +8,10 @@
 
         <title inertia>{{ config('app.name', 'PM Preventive') }}</title>
 
+        <!-- Favicon -->
+        <link rel="icon" type="image/x-icon" href="/img/logo.ico">
+        <link rel="apple-touch-icon" href="/img/logo.png">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet">
