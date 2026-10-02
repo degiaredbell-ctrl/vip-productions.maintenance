@@ -59,6 +59,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/machines/{machine}', [MachineController::class, 'destroy'])
         ->name('machines.destroy')
         ->middleware('can:machine.manage');
+    Route::patch('/machines/{machine}/restore', [MachineController::class, 'restore'])
+        ->name('machines.restore')
+        ->whereNumber('machine')
+        ->middleware('can:machine.manage');
     Route::get('/machines/{machine}/history', [MachineController::class, 'history'])
         ->name('machines.history')
         ->middleware('can:pm.history.view');

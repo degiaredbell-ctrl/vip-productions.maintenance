@@ -26,4 +26,14 @@ class MachinePolicy
     {
         return $user->can('machine.manage');
     }
+
+    /**
+     * Memulihkan mesin yang sebelumnya dihapus (soft delete). Izinnya sama dengan
+     * hapus supaya tidak ada user yang bisa mengembalikan mesin tanpa bisa
+     * menghapusnya lagi.
+     */
+    public function restore(User $user): bool
+    {
+        return $user->can('machine.manage');
+    }
 }

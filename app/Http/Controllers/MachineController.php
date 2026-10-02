@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MachineType;
 use App\Enums\SignatureStage;
 use App\Http\Requests\StoreMachineRequest;
 use App\Http\Requests\UpdateMachineRequest;
+use App\Models\ChecklistTemplate;
 use App\Models\Machine;
 use App\Models\PmRecord;
+use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -14,10 +17,20 @@ use Inertia\Response;
 
 class MachineController extends Controller
 {
+    /**
+     * Kolom mesin yang dikelola dari halaman "Kelola Mesin". Dipakai juga untuk
+     * memetakan nilai yang berubah ke audit log supaya jejaknya terbaca.
+     */
+    private const MANAGED_FIELDS = [
+        'code', 'name', 'location', 'category', 'sub_category',
+        'type', 'week_group', 'template_id', 'is_active',
+    ];
+
     public function index(Request $request): Response
     {
         $machines = Machine::with('template')
             ->orderBy('sort_no')
+            ->orderBy('code')
             ->get()
             ->map(function ($m) {
                 return [
@@ -30,13 +43,35 @@ class MachineController extends Controller
                     'type' => $m->type,
                     'week_group' => $m->week_group,
                     'is_active' => $m->is_active,
+                    'template_id' => $m->template_id,
                     'template_name' => $m->template?->name,
                 ];
             });
 
+        // Mesin yang dihapus tetap bisa dipulihkan, jadi daftarnya ikut dikirim
+        // supaya UI bisa menawarkan tombol "Pulihkan" di halaman yang sama.
+        $trashed = Machine::onlyTrashed()
+            ->orderByDesc('deleted_at')
+            ->get()
+            ->map(fn ($m) => [
+                'id' => $m->id,
+                'code' => $m->code,
+                'name' => $m->name,
+                'deleted_at' => $m->deleted_at?->format('d M Y H:i'),
+            ]);
+
         return Inertia::render('Machines/Index', [
             'machines' => $machines,
-            'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'trashed' => $trashed,
+            'types' => collect(MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'templates' => ChecklistTemplate::orderBy('name')
+                ->get(['id', 'name', 'machine_type'])
+                ->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'machine_type' => $t->machine_type]),
+            'categories' => Machine::whereNotNull('category')
+                ->distinct()
+                ->orderBy('category')
+                ->pluck('category')
+                ->values(),
             'subCategories' => Machine::whereNotNull('sub_category')
                 ->distinct()
                 ->orderBy('sub_category')
@@ -47,22 +82,95 @@ class MachineController extends Controller
 
     public function store(StoreMachineRequest $request): RedirectResponse
     {
+        $this->authorize('create', Machine::class);
+
         $data = $request->validated();
-        Machine::create($data);
-        return redirect()->back()->with('success', 'Mesin berhasil ditambahkan.');
+
+        // Urutan tampil mengikuti sort_no. Nilai mesin baru otomatis ditaruh di
+        // akhir. Mesin yang sudah dihapus tetap dihitung supaya nomor urutnya
+        // tidak bertabrakan kalau mesin itu dipulihkan kembali.
+        $data['sort_no'] = ((int) Machine::withTrashed()->max('sort_no')) + 1;
+
+        $machine = Machine::create($data);
+
+        AuditLogService::record('machine.create', Machine::class, $machine->id, [
+            'code' => $machine->code,
+            'name' => $machine->name,
+            'fields' => $machine->only(self::MANAGED_FIELDS),
+        ]);
+
+        return back()->with('success', "Mesin {$machine->code} berhasil ditambahkan.");
     }
 
     public function update(UpdateMachineRequest $request, Machine $machine): RedirectResponse
     {
+        $this->authorize('update', $machine);
+
         $data = $request->validated();
-        $machine->update($data);
-        return redirect()->back()->with('success', 'Mesin berhasil diperbarui.');
+        $before = $machine->only(self::MANAGED_FIELDS);
+
+        // sort_no tidak ada di payload yang divalidasi, jadi urutan daftar tetap
+        // seperti saat mesin dibuat.
+        $machine->fill($data)->save();
+
+        $changes = [];
+        foreach ($data as $key => $value) {
+            if ((string) $before[$key] !== (string) $machine->{$key}) {
+                $changes[$key] = ['dari' => $before[$key], 'ke' => $machine->{$key}];
+            }
+        }
+
+        if ($changes !== []) {
+            AuditLogService::record('machine.update', Machine::class, $machine->id, [
+                'code' => $machine->code,
+                'changed' => $changes,
+            ]);
+        }
+
+        return back()->with('success', "Mesin {$machine->code} berhasil diperbarui.");
     }
 
     public function destroy(Request $request, Machine $machine): RedirectResponse
     {
+        $this->authorize('delete', $machine);
+
+        // Soft delete: riwayat PM beserta tanda tangannya tetap utuh dan mesin
+        // masih bisa dipulihkan, jadi menghapus mesin tidak menghapus data.
+        $recordCount = $machine->pmRecords()->count();
+        $snapshot = $machine->only(['code', 'name', 'location', 'is_active']);
+
         $machine->delete();
-        return redirect()->back()->with('success', 'Mesin dinonaktifkan.');
+
+        AuditLogService::record('machine.delete', Machine::class, $machine->id, [
+            ...$snapshot,
+            'pm_records' => $recordCount,
+        ]);
+
+        return back()->with('success', $recordCount > 0
+            ? "Mesin {$snapshot['code']} dihapus dari daftar. {$recordCount} riwayat PM tetap tersimpan dan mesin bisa dipulihkan."
+            : "Mesin {$snapshot['code']} dihapus dari daftar.");
+    }
+
+    public function restore(Request $request, int $machine): RedirectResponse
+    {
+        $this->authorize('restore', Machine::class);
+
+        // Route model binding tidak pernah mengambil model yang soft-deleted,
+        // jadi pencarian dilakukan manual lewat onlyTrashed().
+        $trashed = Machine::onlyTrashed()->find($machine);
+
+        if (! $trashed) {
+            return back()->with('error', 'Mesin tersebut tidak ada di daftar mesin yang dihapus.');
+        }
+
+        $trashed->restore();
+
+        AuditLogService::record('machine.restore', Machine::class, $trashed->id, [
+            'code' => $trashed->code,
+            'name' => $trashed->name,
+        ]);
+
+        return back()->with('success', "Mesin {$trashed->code} berhasil dipulihkan.");
     }
 
     public function history(Request $request, Machine $machine): Response

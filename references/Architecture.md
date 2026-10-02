@@ -59,10 +59,12 @@ database/
   migrations/  seeders/  (RoleSeeder, MachineSeeder, TemplateSeeder, UserSeeder)
 resources/js/
   Components/            NeuCard, NeuButton, NeuInput, NeuChip, NeuPill, NeuToast,
-                         NeuSignaturePad, SignatureChain, SignatureActions
+                         NeuSignaturePad, SignatureChain, SignatureActions,
+                         MachineFields (kolom form mesin, dipakai form tambah & ubah)
   Layouts/               AuthenticatedLayout (sidebar ≥lg, bottom-nav <lg), GuestLayout
-  Pages/                 Dashboard/Index, Approvals/Index, Pm/Form, Machines/History,
-                         Reports/Index, Admin/Machines, Admin/Templates, Admin/Users
+  Pages/                 Dashboard/Index, Approvals/Index, Pm/Form, Machines/Index,
+                         Machines/History, Reports/Index, Admin/Templates, Admin/Users,
+                         Admin/AuditLogs
   lib/                   period.js, format.js, offlineQueue.js
 routes/web.php
 tests/Feature/  tests/Unit/
@@ -95,7 +97,8 @@ audit_logs            id, user_id?, action, subject_type, subject_id, changes (j
 Catatan desain:
 - `pm_record_items` menyimpan **salinan** nama/spesifikasi item saat PM dilakukan, sehingga perubahan template di kemudian hari tidak mengubah riwayat.
 - Indeks: `pm_records(year, period, status)`, `pm_records(machine_id, year)`, `machines(is_active, week_group)`, `machines(is_active, sub_category)`.
-- Soft delete pada `machines`; riwayat PM tetap utuh.
+- Soft delete pada `machines`; riwayat PM tetap utuh. Halaman **Kelola Mesin** (`/machines`, admin + manager) menyediakan tambah, ubah, hapus, dan pulihkan. Hapus = soft delete, jadi mesin yang sengaja dilepas bisa dikembalikan dari seksi "Mesin Dihapus" dan seluruh riwayat PM-nya tetap ada. `sort_no` mesin baru = nilai maksimum **termasuk mesin terhapus** + 1 supaya urutan tetap unik bila mesin itu dipulihkan.
+- Semua aksi CRUD mesin dicatat ke `audit_logs` (`machine.create`, `machine.update`, `machine.delete`, `machine.restore`).
 - Satu record per mesin per periode (unique key); revisi menambah `revision_count` dan satu baris `pm_record_revisions`.
 - Daftar mesin diimpor dari `references/data.csv` lewat `php artisan machines:import` (`app/Services/MachineImportService.php`). Kolom yang tidak ada di CSV diturunkan: `type` dari kata kunci pada Machine Name, `week_group` dari angka Sub-Category (`C.7` → 7), `sort_no` dari kolom NO.
 
@@ -147,7 +150,16 @@ Penerapan:
 | GET | `/pm/{record}/signature/{stage}` | Ambil PNG tanda tangan | PmRecordPolicy@view |
 | GET | `/machines/{machine}/history` | Riwayat mesin | pm.history.view |
 | GET | `/reports` · `/reports/export` | Laporan, ekspor xlsx/pdf | report.view / report.export |
-| resource | `/admin/machines`, `/admin/templates`, `/admin/users` | CRUD master | machine/template/user.manage |
+| GET/POST | `/machines` | Daftar + tambah mesin (Kelola Mesin) | machine.manage |
+| PUT/DELETE | `/machines/{machine}` | Ubah / hapus mesin (soft delete) | machine.manage |
+| PATCH | `/machines/{machine}/restore` | Pulihkan mesin yang dihapus | machine.manage |
+| resource | `/admin/templates`, `/admin/users` | CRUD master | template/user.manage |
+| GET | `/admin/audit-logs` | Jejak audit | audit.view |
+
+Catatan CRUD mesin:
+- Form tambah dan ubah memakai komponen yang sama (`MachineFields`), jadi daftar kolomnya tidak bisa berbeda.
+- Kolom yang dikelola: `code`, `name`, `location`, `category`, `sub_category`, `type`, `week_group`, `template_id`, `is_active`. `sort_no` hanya diisi otomatis saat mesin dibuat dan tidak ikut diubah.
+- Pelanggaran izin dikembalikan sebagai **403** (middleware `can:machine.manage` dan policy), sedangkan validasi yang gagal mengembalikan redirect + `errors` yang ditampilkan tepat di bawah kolomnya.
 
 ## 7. Alur Simpan Checklist
 
@@ -332,7 +344,7 @@ Skenario yang wajib dijaga dalam uji alur persetujuan:
 |---|---|
 | `DEFAULT_MACHINES` (12 mesin prototype) | `references/data.csv` → `php artisan machines:import` → tabel `machines` (122 mesin) |
 | `DEFAULT_TPL` (per tipe) | `TemplateSeeder` → `checklist_templates` + `_items` |
-| `cfg.extraMachines/machineEdits/customChecklists` (localStorage) | CRUD admin di database |
+| `cfg.extraMachines/machineEdits/customChecklists` (localStorage) | CRUD mesin di database (admin + manager): tambah/ubah/hapus/pulihkan + jejak `audit_logs` |
 | Power Automate `save/load` | Controller + Eloquent (endpoint Inertia) |
 | `teknisi` (nama di localStorage) | Nama dari akun login (`technician_id`) |
 | `syncQueue` | Offline queue IndexedDB (M4) |
