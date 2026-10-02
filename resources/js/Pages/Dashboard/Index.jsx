@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import NeuButton from '@/Components/NeuButton';
 import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuRing from '@/Components/NeuRing';
@@ -124,6 +125,19 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
     const statusVariants = { done: 'done', progress: 'progress', todo: 'todo', issue: 'issue' };
     const typeLabels = Object.fromEntries((types ?? []).map((t) => [t.value, t.label]));
 
+    // Tombol ekspor mengikuti izin yang sama dengan ekspor di halaman Laporan.
+    const canExport = Boolean(auth?.can?.['report.export']);
+
+    // Filter yang sedang aktif ikut dikirim supaya file yang diunduh sama
+    // dengan daftar yang tampil di layar.
+    const exportParams = {
+        year: filters.year,
+        period: filters.period,
+        status: filters.status !== 'all' ? filters.status : undefined,
+        sub: filters.sub !== 'all' ? filters.sub : undefined,
+        q: filters.q || undefined,
+    };
+
     return (
         <AuthenticatedLayout user={auth.user}>
             <div className="max-w-3xl mx-auto">
@@ -204,6 +218,27 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
                         </div>
                     </div>
                 </NeuCard>
+
+                {/* Ekspor & cetak daftar mesin sesuai filter aktif */}
+                {canExport && (
+                    <div className="flex gap-3 mb-4">
+                        <NeuButton
+                            native
+                            href={route('dashboard.export', { ...exportParams, format: 'xlsx' })}
+                            variant="primary"
+                            className="flex-1"
+                        >
+                            Ekspor Excel
+                        </NeuButton>
+                        <NeuButton
+                            native
+                            href={route('dashboard.export', { ...exportParams, format: 'pdf' })}
+                            className="flex-1"
+                        >
+                            Cetak PDF
+                        </NeuButton>
+                    </div>
+                )}
 
                 {/* Search */}
                 <div className="mb-3">

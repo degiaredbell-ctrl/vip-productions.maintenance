@@ -3,118 +3,44 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Period;
-use App\Enums\PmDisplayStatus;
-use App\Models\Machine;
-use App\Models\PmRecord;
+use App\Exports\MachineStatusExport;
+use App\Services\DashboardService;
 use App\Services\PeriodService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
 
 class DashboardController extends Controller
 {
     public function index(Request $request): Response
     {
-        $years = PeriodService::availableYears();
-        $year = (int) $request->query('year', now()->year);
+        [$year, $period] = $this->resolvePeriod($request);
 
-        // Tahun di luar daftar filter dianggap tidak valid agar tidak membuka
-        // periode yang seharusnya masih terkunci (mis. ?year=abc -> 0).
-        if (!in_array($year, $years, true)) {
-            $year = now()->year;
-        }
-
-        $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
         $search = $request->query('q', '');
         $status = $request->query('status', 'all');
-
-        // Periode yang belum tiba dikunci: kembalikan ke periode berjalan
-        // supaya URL lama atau tautan langsung tidak membuka periode terkunci.
-        if ($period->isFuture($year)) {
-            $period = Period::current();
-        }
-
-        $machines = Machine::with(['template.items', 'pmRecords' => function ($q) use ($year, $period) {
-            $q->where('year', $year)->where('period', $period->value);
-        }])
-            ->where('is_active', true)
-            ->orderBy('sort_no')
-            ->get()
-            ->map(function ($machine) {
-                $record = $machine->pmRecords->first();
-
-                $display = $record
-                    ? PmDisplayStatus::fromPmStatus($record->status)
-                    : PmDisplayStatus::Todo;
-
-                return [
-                    'id' => $machine->id,
-                    'code' => $machine->code,
-                    'name' => $machine->name,
-                    'location' => $machine->location,
-                    'category' => $machine->category,
-                    'sub_category' => $machine->sub_category,
-                    'type' => $machine->type,
-                    'week_group' => $machine->week_group,
-                    'status' => $display->value,
-                    'record_id' => $record?->id,
-                    'record_status' => $record?->status->value,
-                    // "On Progress Approval by ..." hanya muncul saat PM
-                    // benar-benar sedang di rantai approval, bukan saat belum
-                    // dikerjakan — supaya dua kondisi itu tidak tertukar.
-                    'progress_note' => $record?->status->isInApproval()
-                        ? $record->status->label()
-                        : null,
-                ];
-            })
-            ->values();
+        $subCategory = (string) $request->query('sub', 'all');
 
         // Statistik memakai seluruh mesin aktif pada periode ini, bukan hasil
         // filter, supaya angka ringkasan dan dot notifikasi tetap konsisten
         // saat user memfilter status atau mengetik pencarian.
-        $stats = [
-            'total' => $machines->count(),
-            'done' => $machines->where('status', PmDisplayStatus::Done->value)->count(),
-            'progress' => $machines->where('status', PmDisplayStatus::Progress->value)->count(),
-            'todo' => $machines->where('status', PmDisplayStatus::Todo->value)->count(),
-            'issue' => $machines->where('status', PmDisplayStatus::Issue->value)->count(),
-        ];
+        $machines = DashboardService::machineStatuses($year, $period);
+        $stats = DashboardService::stats($machines);
 
-        $needle = mb_strtolower(trim($search));
-
-        // Daftar mesin sekarang 120+ baris, jadi sub-category (C.1 s.d. C.9)
-        // dipakai sebagai filter tambahan selain pencarian bebas.
-        $subCategories = Machine::where('is_active', true)
-            ->whereNotNull('sub_category')
-            ->distinct()
-            ->orderBy('sub_category')
-            ->pluck('sub_category')
-            ->values();
-
-        $subCategory = (string) $request->query('sub', 'all');
+        $subCategories = DashboardService::subCategories();
 
         if ($subCategory !== 'all' && !$subCategories->contains($subCategory)) {
             $subCategory = 'all';
         }
 
-        $visible = $machines
-            ->when($subCategory !== 'all', fn ($c) => $c->where('sub_category', $subCategory))
-            ->when($status !== 'all', fn ($c) => $c->where('status', $status))
-            ->when($needle !== '', fn ($c) => $c->filter(fn ($m) =>
-                str_contains(mb_strtolower($m['code']), $needle)
-                || str_contains(mb_strtolower($m['name']), $needle)
-                // Sub-category dan lokasi ikut dicari supaya "C.7" atau
-                // "Milenium" bisa dipakai sebagai kata kunci.
-                || str_contains(mb_strtolower((string) $m['sub_category']), $needle)
-                || str_contains(mb_strtolower((string) $m['location']), $needle)
-            ))
-            ->values();
+        $visible = DashboardService::applyFilters($machines, $status, $subCategory, $search);
 
         return Inertia::render('Dashboard/Index', [
             'machines' => $visible,
             'stats' => $stats,
             'periods' => PeriodService::buildPeriods($year),
-            'years' => $years,
+            'years' => PeriodService::availableYears(),
             'subCategories' => $subCategories,
             'subCategory' => $subCategory,
             'currentPeriod' => $period->value,
@@ -126,4 +52,82 @@ class DashboardController extends Controller
         ]);
     }
 
+    /**
+     * Ekspor daftar mesin + status PM sesuai filter Beranda yang sedang aktif.
+     * File yang dihasilkan identik dengan tabel di layar, termasuk saat user
+     * memfilter area/status/mencari, supaya hasil cetak tidak menyesatkan.
+     */
+    public function export(Request $request)
+    {
+        $validated = $request->validate([
+            'year' => ['nullable', 'integer'],
+            'period' => ['nullable', 'string'],
+            'format' => ['required', 'in:xlsx,pdf'],
+            'status' => ['nullable', 'string'],
+            'sub' => ['nullable', 'string'],
+            'q' => ['nullable', 'string'],
+        ]);
+
+        [$year, $period] = $this->resolvePeriod($request);
+
+        $status = $validated['status'] ?? 'all';
+        $subCategory = $validated['sub'] ?? 'all';
+        $search = $validated['q'] ?? '';
+
+        $filename = "pm-mesin-{$year}-{$period->value}";
+
+        if ($validated['format'] === 'xlsx') {
+            return Excel::download(
+                new MachineStatusExport($year, $period, $status, $subCategory, $search),
+                "{$filename}.xlsx"
+            );
+        }
+
+        $machines = DashboardService::applyFilters(
+            DashboardService::machineStatuses($year, $period),
+            $status,
+            $subCategory,
+            $search
+        );
+
+        $pdf = Pdf::loadView('dashboard.pdf', [
+            'year' => $year,
+            'period' => $period,
+            'status' => $status,
+            'subCategory' => $subCategory,
+            'search' => $search,
+            'machines' => $machines,
+            // Ringkasan di PDF mengikuti hasil filter supaya cocok dengan
+            // baris-baris yang benar-benar tercetak.
+            'stats' => DashboardService::stats($machines),
+            'generatedAt' => now()->format('d/m/Y H:i'),
+        ]);
+
+        return $pdf->download("{$filename}.pdf");
     }
+
+    /**
+     * Normalisasi tahun/periode dari query string. Tahun di luar daftar filter
+     * dan periode yang belum tiba dikembalikan ke nilai berjalan agar URL lama
+     * tidak membuka periode terkunci.
+     *
+     * @return array{0: int, 1: Period}
+     */
+    private function resolvePeriod(Request $request): array
+    {
+        $years = PeriodService::availableYears();
+        $year = (int) $request->query('year', now()->year);
+
+        if (!in_array($year, $years, true)) {
+            $year = now()->year;
+        }
+
+        $period = Period::tryFrom((string) $request->query('period', Period::current()->value)) ?? Period::current();
+
+        if ($period->isFuture($year)) {
+            $period = Period::current();
+        }
+
+        return [$year, $period];
+    }
+}

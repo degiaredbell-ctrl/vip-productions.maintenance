@@ -54,13 +54,15 @@ app/
   Models/                User, Machine, ChecklistTemplate, ChecklistTemplateItem,
                          PmRecord, PmRecordItem, PmRecordRevision, PmSignature, AuditLog
   Policies/              MachinePolicy, PmRecordPolicy (view/create/update/sign/reject), UserPolicy
-  Services/              PeriodService, ReportService, SignatureChain, SignatureStorage
+  Services/              PeriodService, ReportService, DashboardService, SignatureChain,
+                         SignatureStorage
 database/
   migrations/  seeders/  (RoleSeeder, MachineSeeder, TemplateSeeder, UserSeeder)
 resources/js/
   Components/            NeuCard, NeuButton, NeuInput, NeuChip, NeuPill, NeuToast,
                          NeuSignaturePad, SignatureChain, SignatureActions,
-                         MachineFields (kolom form mesin, dipakai form tambah & ubah)
+                         MachineFields (kolom form mesin, dipakai form tambah & ubah),
+                         NeuButton (prop native = anchor biasa untuk unduhan)
   Layouts/               AuthenticatedLayout (sidebar ≥lg, bottom-nav <lg), GuestLayout
   Pages/                 Dashboard/Index, Approvals/Index, Pm/Form, Machines/Index,
                          Machines/History, Reports/Index, Admin/Templates, Admin/Users,
@@ -141,7 +143,8 @@ Penerapan:
 
 | Method | URI | Fungsi | Izin |
 |---|---|---|---|
-| GET | `/` | Dashboard (query `period`, `year`, `q`, `status`) | dashboard.view |
+| GET | `/` | Dashboard (query `period`, `year`, `q`, `status`, `sub`) | dashboard.view |
+| GET | `/dashboard/export` | Ekspor daftar mesin + status PM (query filter sama + `format=xlsx\|pdf`) | report.export |
 | GET | `/approvals` | Antrean persetujuan milik user yang sedang login | auth + punya tahap |
 | GET | `/machines/{machine}/pm` | Form checklist | dashboard.view (read-only bila sudah ditandatangani) |
 | POST | `/machines/{machine}/pm` | Simpan/revisi PM | pm.fill |
@@ -160,6 +163,12 @@ Catatan CRUD mesin:
 - Form tambah dan ubah memakai komponen yang sama (`MachineFields`), jadi daftar kolomnya tidak bisa berbeda.
 - Kolom yang dikelola: `code`, `name`, `location`, `category`, `sub_category`, `type`, `week_group`, `template_id`, `is_active`. `sort_no` hanya diisi otomatis saat mesin dibuat dan tidak ikut diubah.
 - Pelanggaran izin dikembalikan sebagai **403** (middleware `can:machine.manage` dan policy), sedangkan validasi yang gagal mengembalikan redirect + `errors` yang ditampilkan tepat di bawah kolomnya.
+
+Catatan ekspor Beranda:
+- Endpoint `/dashboard/export` memakai `DashboardService` yang sama dengan halaman Beranda, jadi tabel di layar dan file yang diunduh tidak mungkin berbeda.
+- Hanya `format=xlsx` (Excel) dan `format=pdf` (DomPDF) yang diterima; format lain ditolak validasi.
+- File menghormati filter aktif (`year`, `period`, `status`, `sub`, `q`). Izin memakai `report.export`; role `user` (tidak punya izin itu) tidak melihat tombolnya dan ditolak **403** bila memanggil langsung.
+- Tombol "Ekspor Excel" / "Cetak PDF" dirender sebagai anchor native (prop `native` pada `NeuButton`), bukan Inertia `<Link>`, karena Inertia menganggap respons file (xlsx/pdf) sebagai respons tidak valid dan tidak memulai unduhan.
 
 ## 7. Alur Simpan Checklist
 

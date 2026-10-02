@@ -120,6 +120,7 @@ export default function Reports({ auth, compliance, topParts, actions, totalPm, 
                 {/* Export */}
                 <div className="flex gap-3">
                     <NeuButton
+                        native
                         href={route('reports.export', { year, period: selectedPeriod, format: 'xlsx' })}
                         variant="primary"
                         className="flex-1"
@@ -127,6 +128,7 @@ export default function Reports({ auth, compliance, topParts, actions, totalPm, 
                         Ekspor Excel
                     </NeuButton>
                     <NeuButton
+                        native
                         href={route('reports.export', { year, period: selectedPeriod, format: 'pdf' })}
                         className="flex-1"
                     >
