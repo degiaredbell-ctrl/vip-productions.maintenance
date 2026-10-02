@@ -60,9 +60,19 @@ export default function Authenticated({ user: userProp, header, children }) {
         <div className="min-h-screen bg-neu-bg">
             <NeuToast toast={toast} onDismiss={() => setToast(null)} />
 
-            {/* Sidebar - Desktop */}
-            <aside className="hidden lg:flex lg:flex-col lg:w-[270px] lg:fixed lg:inset-y-0 bg-neu-bg p-6 gap-3">
-                <div className="font-bold text-lg mb-4">PM Preventive</div>
+            {/*
+                Sidebar dipakai mulai tablet (md/768px) supaya iPad tidak lagi
+                memakai bottom navigation seperti ponsel. Lebarnya dikecilkan di
+                tablet lalu dilebarkan di desktop agar konten tetap lega.
+            */}
+            <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-[210px] lg:w-[260px] bg-neu-bg p-4 lg:p-6 gap-3">
+                <div className="flex items-center gap-2.5 mb-3 px-1">
+                    <ApplicationLogo className="w-9 h-9 lg:w-10 lg:h-10 flex-none" />
+                    <div className="min-w-0">
+                        <div className="font-bold text-base lg:text-lg leading-tight truncate">PM Preventive</div>
+                        <div className="text-[11px] text-neu-sub truncate">Verra Inter Pangan</div>
+                    </div>
+                </div>
                 <nav className="flex flex-col gap-2">
                     {navItems.map((item) => (
                         <NavLink
@@ -70,7 +80,7 @@ export default function Authenticated({ user: userProp, header, children }) {
                             href={item.href}
                             active={isActive(item.path, item.exact)}
                             activeClassName="neu-nav-sunken"
-                            className="neu-nav-raised flex items-center gap-3 px-4 py-3.5 text-sm font-semibold"
+                            className="neu-nav-raised flex items-center gap-3 px-3.5 py-3 text-sm font-semibold"
                         >
                             <span
                                 className={`h-5 w-1 rounded-full transition-colors duration-150 ${
@@ -78,7 +88,7 @@ export default function Authenticated({ user: userProp, header, children }) {
                                 }`}
                                 aria-hidden="true"
                             />
-                            {item.name}
+                            <span className="truncate">{item.name}</span>
                             {item.badge > 0 && (
                                 <span
                                     className="ml-auto neu-pill text-neu-info"
@@ -93,10 +103,13 @@ export default function Authenticated({ user: userProp, header, children }) {
             </aside>
 
             {/* Main content */}
-            <div className="lg:pl-[270px]">
-                {/* Top bar - Mobile */}
-                <header className="lg:hidden sticky top-0 z-30 bg-neu-bg/90 backdrop-blur px-4 py-3 flex items-center justify-between">
-                    <div className="font-bold">PM Preventive</div>
+            <div className="md:pl-[210px] lg:pl-[260px]">
+                {/* Top bar - ponsel */}
+                <header className="md:hidden sticky top-0 z-30 bg-neu-bg/90 backdrop-blur px-4 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-bold min-w-0">
+                        <ApplicationLogo className="w-7 h-7 flex-none" />
+                        <span className="truncate">PM Preventive</span>
+                    </div>
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className="neu-btn !min-h-[40px] !px-3">
@@ -113,8 +126,8 @@ export default function Authenticated({ user: userProp, header, children }) {
                     </Dropdown>
                 </header>
 
-                {/* Desktop header */}
-                <header className="hidden lg:flex items-center justify-end px-8 py-4">
+                {/* Header - tablet & desktop */}
+                <header className="hidden md:flex items-center justify-end px-5 lg:px-8 py-4">
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className="neu-btn !min-h-[40px] !px-3">
@@ -129,14 +142,14 @@ export default function Authenticated({ user: userProp, header, children }) {
                     </Dropdown>
                 </header>
 
-                <main className="px-4 pb-28 lg:px-8 lg:pb-8 pt-2">
+                <main className="px-4 sm:px-6 md:px-5 lg:px-8 pt-2 pb-28 md:pb-8">
                     {header}
                     {children}
                 </main>
             </div>
 
-            {/* Bottom nav - Mobile */}
-            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-neu-bg flex gap-1 px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))] shadow-[0_-6px_16px_rgba(195,202,214,0.55)] z-30">
+            {/* Bottom nav - ponsel (< md) */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-neu-bg flex gap-1 px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))] shadow-[0_-6px_16px_rgba(195,202,214,0.55)] z-30">
                 {navItems.slice(0, 5).map((item) => (
                     <NavLink
                         key={item.href}

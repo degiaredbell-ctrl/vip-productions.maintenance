@@ -71,14 +71,14 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
                     <NeuButton href={dashboardUrl ?? route('dashboard')} className="!px-3">
                         ‹ Kembali
                     </NeuButton>
                     <div>
-                        <h1 className="text-lg font-bold">{machine.name}</h1>
+                        <h1 className="text-lg sm:text-xl font-bold">{machine.name}</h1>
                         <p className="text-xs text-neu-sub">
                             {machine.code}
                             {machine.sub_category && ` · ${machine.sub_category}`}

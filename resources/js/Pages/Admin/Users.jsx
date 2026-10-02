@@ -21,16 +21,16 @@ export default function AdminUsers({ auth, users, roles }) {
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 <div className="mb-5">
-                    <h1 className="text-xl font-bold">Kelola Pengguna</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold">Kelola Pengguna</h1>
                     <p className="text-sm text-neu-sub">{users.length} pengguna terdaftar</p>
                 </div>
 
                 {/* Add form */}
                 <NeuCard className="mb-5">
                     <h2 className="font-bold text-sm mb-3">Tambah Pengguna</h2>
-                    <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-3">
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <input
                             type="text"
                             placeholder="Nama"
@@ -64,7 +64,7 @@ export default function AdminUsers({ auth, users, roles }) {
                                 <option key={r} value={r}>{roleLabels[r]}</option>
                             ))}
                         </select>
-                        <div className="col-span-2">
+                        <div className="sm:col-span-2">
                             <NeuButton type="submit" variant="primary" disabled={processing}>
                                 {processing ? 'Menambahkan...' : '+ Tambah Pengguna'}
                             </NeuButton>

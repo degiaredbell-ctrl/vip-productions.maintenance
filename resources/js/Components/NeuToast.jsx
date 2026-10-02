@@ -12,7 +12,7 @@ export default function NeuToast({ toast, onDismiss }) {
             role="status"
             aria-live="polite"
             data-toast
-            className="fixed z-50 left-1/2 -translate-x-1/2 top-4 lg:top-6 w-[calc(100%-2rem)] max-w-sm"
+            className="fixed z-50 left-1/2 -translate-x-1/2 top-4 md:top-6 w-[calc(100%-2rem)] max-w-sm"
         >
             <div
                 className={`flex items-start gap-3 rounded-[20px] shadow-neu-up px-4 py-3.5 ${

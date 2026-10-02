@@ -30,9 +30,9 @@ export default function AdminTemplates({ auth, templates, types }) {
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 <div className="mb-5">
-                    <h1 className="text-xl font-bold">Template Checklist</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold">Template Checklist</h1>
                     <p className="text-sm text-neu-sub">{templates.length} template terdaftar</p>
                 </div>
 
@@ -40,7 +40,7 @@ export default function AdminTemplates({ auth, templates, types }) {
                 <NeuCard className="mb-5">
                     <h2 className="font-bold text-sm mb-3">Tambah Template</h2>
                     <form onSubmit={handleSubmit}>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div className="grid grid-cols-1 gap-3 mb-3 sm:grid-cols-2">
                             <select
                                 value={data.machine_type}
                                 onChange={(e) => setData('machine_type', e.target.value)}
@@ -62,7 +62,7 @@ export default function AdminTemplates({ auth, templates, types }) {
 
                         <div className="space-y-2 mb-3">
                             {data.items.map((item, i) => (
-                                <div key={i} className="grid grid-cols-[1fr_1.5fr_1fr] gap-2">
+                                <div key={i} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1.5fr_1fr]">
                                     <input
                                         type="text"
                                         placeholder="Kategori"

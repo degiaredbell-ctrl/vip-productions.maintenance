@@ -148,10 +148,10 @@ export default function Machines({ auth, machines, types, templates, categories,
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 <div className="flex items-center justify-between mb-5">
                     <div>
-                        <h1 className="text-xl font-bold">Kelola Mesin</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold">Kelola Mesin</h1>
                         <p className="text-sm text-neu-sub">
                             {machines.length} mesin terdaftar
                             {visible.length !== machines.length && ` · ${visible.length} ditampilkan`}
@@ -162,7 +162,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                 {/* Add form */}
                 <NeuCard className="mb-5">
                     <h2 className="font-bold text-sm mb-3">Tambah Mesin</h2>
-                    <form onSubmit={submitCreate} className="grid grid-cols-2 gap-3">
+                    <form onSubmit={submitCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <MachineFields
                             data={createForm.data}
                             setData={createForm.setData}
@@ -175,7 +175,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                             onSubCategoryChange={applySubCategory(createForm.setData)}
                             idPrefix="tambah"
                         />
-                        <div className="col-span-2">
+                        <div className="sm:col-span-2">
                             <NeuButton type="submit" variant="primary" disabled={createForm.processing}>
                                 {createForm.processing ? 'Menambahkan...' : '+ Tambah Mesin'}
                             </NeuButton>
@@ -220,13 +220,13 @@ export default function Machines({ auth, machines, types, templates, categories,
                 </div>
 
                 {/* Machine list */}
-                <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-5">
+                <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-4 xl:grid-cols-3 xl:gap-x-5">
                     {visible.length > 0 ? visible.map((machine) => (
                         <div key={machine.id} data-machine-card={machine.id} className="mb-4">
                             {editingId === machine.id ? (
                                 <div className="p-3.5 rounded-[20px] shadow-neu-in">
                                     <h3 className="font-bold text-sm mb-3">Ubah Mesin</h3>
-                                    <form onSubmit={submitEdit} className="grid grid-cols-2 gap-3">
+                                    <form onSubmit={submitEdit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                                         <MachineFields
                                             data={editForm.data}
                                             setData={editForm.setData}
@@ -239,7 +239,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                                             onSubCategoryChange={applySubCategory(editForm.setData)}
                                             idPrefix={`ubah-${machine.id}`}
                                         />
-                                        <div className="col-span-2 flex gap-2">
+                                        <div className="sm:col-span-2 flex gap-2">
                                             <NeuButton type="submit" variant="primary" disabled={editForm.processing}>
                                                 {editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
                                             </NeuButton>
@@ -313,7 +313,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                             )}
                         </div>
                     )) : (
-                        <p className="text-neu-sub text-center py-6 col-span-2">Tidak ada mesin yang cocok.</p>
+                        <p className="text-neu-sub text-center py-6 sm:col-span-2 xl:col-span-3">Tidak ada mesin yang cocok.</p>
                     )}
                 </div>
 

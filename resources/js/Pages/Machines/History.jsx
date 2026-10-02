@@ -21,13 +21,13 @@ export default function History({ auth, machine, records }) {
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 <div className="flex items-center gap-3 mb-5">
                     <NeuButton href={route('machines.index')} className="!px-3">
                         ‹ Kembali
                     </NeuButton>
                     <div>
-                        <h1 className="text-xl font-bold">{machine.name}</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold">{machine.name}</h1>
                         <p className="text-sm text-neu-sub">
                             {machine.code}
                             {machine.sub_category && ` · ${machine.sub_category}`}

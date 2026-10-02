@@ -27,10 +27,10 @@ export default function Approvals({ auth, records, years, year, period, periods,
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 <div className="mb-5">
                     <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
-                    <h1 className="text-xl font-bold">Persetujuan</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold">Persetujuan</h1>
                 </div>
 
                 {!hasStages ? (
@@ -114,7 +114,7 @@ export default function Approvals({ auth, records, years, year, period, periods,
                                 </p>
                             </NeuCard>
                         ) : (
-                            <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-5">
+                            <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-4 xl:grid-cols-3 xl:gap-x-5">
                                 {records.map((record) => (
                                     <NeuCard key={record.id} className="mb-4">
                                         <div className="flex items-start gap-3.5 mb-3">

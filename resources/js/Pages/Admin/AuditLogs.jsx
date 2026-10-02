@@ -4,9 +4,9 @@ import NeuCard from '@/Components/NeuCard';
 export default function AuditLogs({ auth, logs }) {
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 <div className="mb-5">
-                    <h1 className="text-xl font-bold">Audit Log</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold">Audit Log</h1>
                     <p className="text-sm text-neu-sub">{logs.length} catatan terakhir</p>
                 </div>
 

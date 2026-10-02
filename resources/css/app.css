@@ -15,6 +15,12 @@
 }
 
 @layer components {
+    /* Kontainer konten utama: penuh di ponsel/tablet, melebar di layar besar
+       supaya tidak menyisakan ruang kosong berlebih di desktop. */
+    .page-container {
+        @apply mx-auto w-full max-w-3xl lg:max-w-4xl 2xl:max-w-5xl;
+    }
+
     .neu-card {
         @apply bg-neu-bg rounded-neu shadow-neu-up p-4;
     }

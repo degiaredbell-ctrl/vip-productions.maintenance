@@ -63,7 +63,7 @@ resources/js/
                          NeuSignaturePad, SignatureChain, SignatureActions,
                          MachineFields (kolom form mesin, dipakai form tambah & ubah),
                          NeuButton (prop native = anchor biasa untuk unduhan)
-  Layouts/               AuthenticatedLayout (sidebar ≥lg, bottom-nav <lg), GuestLayout
+  Layouts/               AuthenticatedLayout (sidebar ≥md, bottom-nav <md), GuestLayout
   Pages/                 Dashboard/Index, Approvals/Index, Pm/Form, Machines/Index,
                          Machines/History, Reports/Index, Admin/Templates, Admin/Users,
                          Admin/AuditLogs
@@ -272,8 +272,11 @@ theme: { extend: {
 - `resources/views/app.blade.php` memasang `<link rel="icon" href="/img/logo.ico">` + `apple-touch-icon`; `public/favicon.ico` juga sudah diganti dengan logo aplikasi agar tab browser konsisten.
 
 ### Layout responsif
-- `< lg`: header + **bottom navigation** (fixed, `pb-[env(safe-area-inset-bottom)]`), konten 1 kolom.
-- `≥ lg`: **sidebar** 270px, daftar mesin 2 kolom.
+- `< md` (ponsel): header atas + **bottom navigation** (fixed, `pb-[env(safe-area-inset-bottom)]`), konten 1 kolom.
+- `≥ md` (tablet/iPad): **sidebar** 210px, daftar mesin 2 kolom.
+- `≥ lg`: sidebar melebar ke 260px. `≥ xl`: daftar mesin 3 kolom.
+- Konten dibungkus kelas `.page-container` (`max-w-3xl lg:max-w-4xl 2xl:max-w-5xl`) supaya tidak terlalu sempit di layar besar.
+- Form (tambah/ubah mesin, pengguna, template) memakai 1 kolom di ponsel lalu 2 kolom mulai `sm`.
 - Viewport: `width=device-width, initial-scale=1, viewport-fit=cover`.
 
 ### Pola Inertia

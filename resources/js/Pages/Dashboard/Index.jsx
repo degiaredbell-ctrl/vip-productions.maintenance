@@ -140,11 +140,11 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
 
     return (
         <AuthenticatedLayout user={auth.user}>
-            <div className="max-w-3xl mx-auto">
+            <div className="page-container">
                 {/* Header */}
                 <div className="mb-5">
                     <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
-                    <h1 className="text-xl font-bold">Preventive Maintenance</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold">Preventive Maintenance</h1>
                 </div>
 
                 {/* Filter tahun */}
@@ -204,9 +204,9 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
 
                 {/* Summary */}
                 <NeuCard className="mb-4">
-                    <div className="flex items-center gap-5">
+                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
                         <NeuRing percentage={percentage} />
-                        <div className="flex-1 grid grid-cols-4 gap-2">
+                        <div className="flex-1 w-full grid grid-cols-4 gap-2">
                             {['done', 'progress', 'todo', 'issue'].map((key) => (
                                 <div key={key} className="neu-inset py-3 px-1.5 text-center">
                                     <span className={`text-xl font-bold block ${STATUS_TILE_COLORS[key]}`}>
@@ -326,7 +326,7 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
                 <p className="text-xs text-neu-sub mb-3">
                     Menampilkan {machines.length} dari {stats.total} mesin
                 </p>
-                <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-5">
+                <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-4 xl:grid-cols-3 xl:gap-x-5">
                     {machines.length > 0 ? machines.map((machine) => (
                         <Link
                             key={machine.id}
@@ -364,7 +364,7 @@ export default function Dashboard({ auth, machines, stats, periods, years, subCa
                             </NeuPill>
                         </Link>
                     )) : (
-                        <p className="text-neu-sub text-center py-6 col-span-2">Tidak ada mesin yang cocok.</p>
+                        <p className="text-neu-sub text-center py-6 sm:col-span-2 xl:col-span-3">Tidak ada mesin yang cocok.</p>
                     )}
                 </div>
             </div>

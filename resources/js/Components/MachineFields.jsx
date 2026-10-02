@@ -115,7 +115,7 @@ export default function MachineFields({
                 </select>
             </Field>
 
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
                 <Field name="template_id">
                     <select {...inputProps('template_id')}>
                         <option value="">Tanpa template (pakai checklist bawaan)</option>
@@ -129,7 +129,7 @@ export default function MachineFields({
             {/* Status memakai chip, bukan checkbox, supaya tetap konsisten dengan
                 filter area di halaman ini. Nilainya dikirim sebagai 1/0 karena
                 aturan validasi `boolean` menolak string "false". */}
-            <div className="col-span-2">
+            <div className="sm:col-span-2">
                 <NeuChip
                     active={isActive}
                     onClick={() => setData('is_active', isActive ? 0 : 1)}
