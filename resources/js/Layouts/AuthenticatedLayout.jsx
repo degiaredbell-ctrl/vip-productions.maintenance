@@ -5,9 +5,11 @@ import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 
-export default function Authenticated({ user, header, children }) {
+export default function Authenticated({ user: userProp, header, children }) {
     const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
-    const { can } = usePage().props.auth;
+    const page = usePage();
+    const { can } = page.props.auth;
+    const user = userProp ?? page.props.auth.user;
 
     const navItems = [
         { name: 'Beranda', href: route('dashboard'), show: true },
@@ -65,7 +67,7 @@ export default function Authenticated({ user, header, children }) {
                         <Dropdown.Trigger>
                             <button className="flex items-center gap-2 text-sm font-semibold text-neu-sub">
                                 <span>{user.name}</span>
-                                <span className="neu-pill text-neu-accent">{user.roles?.[0]?.name}</span>
+                                <span className="neu-pill text-neu-accent">{user.roles?.[0] ?? '-'}</span>
                             </button>
                         </Dropdown.Trigger>
                         <Dropdown.Content>

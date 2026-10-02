@@ -16,6 +16,6 @@ class ChecklistTemplate extends Model
 
     public function items(): HasMany
     {
-        return $this->hasMany(ChecklistTemplateItem::class)->orderBy('sort_no');
+        return $this->hasMany(ChecklistTemplateItem::class, 'template_id')->orderBy('sort_no');
     }
 }
