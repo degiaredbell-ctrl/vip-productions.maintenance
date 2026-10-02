@@ -9,6 +9,7 @@ import { useState } from 'react';
 export default function PmForm({ auth, machine, items, period, year, existing, isFuturePeriod, canFill }) {
     const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
     const [error, setError] = useState('');
+    const [submitError, setSubmitError] = useState('');
 
     const { data, setData, post, processing } = useForm({
         machine_id: machine.id,
@@ -43,7 +44,13 @@ export default function PmForm({ auth, machine, items, period, year, existing, i
             return;
         }
         setError('');
-        post(route('machines.pm.store', { machine: machine.id }));
+        setSubmitError('');
+        post(route('machines.pm.store', { machine: machine.id }), {
+            preserveScroll: true,
+            onError: (formErrors) => {
+                setSubmitError(Object.values(formErrors)[0] ?? 'Gagal menyimpan checklist.');
+            },
+        });
     };
 
     const actions = [
@@ -120,7 +127,7 @@ export default function PmForm({ auth, machine, items, period, year, existing, i
                                             <NeuChip
                                                 key={action.key}
                                                 active={item[action.key]}
-                                                onClick={() => !readOnly && toggleItem(index, action.key)}
+                                                onClick={() => !readOnly && toggleAction(index, action.key)}
                                                 disabled={readOnly}
                                             >
                                                 {action.label}
@@ -166,8 +173,8 @@ export default function PmForm({ auth, machine, items, period, year, existing, i
                         </NeuCard>
                     )}
 
-                    {error && (
-                        <p className="text-sm text-neu-bad font-semibold mb-3 text-center">{error}</p>
+                    {(error || submitError) && (
+                        <p className="text-sm text-neu-bad font-semibold mb-3 text-center">{error || submitError}</p>
                     )}
 
                     {!readOnly && (

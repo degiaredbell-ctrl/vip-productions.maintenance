@@ -1,31 +1,85 @@
-import { useForm } from '@inertiajs/react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuRing from '@/Components/NeuRing';
 import NeuPill from '@/Components/NeuPill';
-import { Link } from '@inertiajs/react';
+
+const PERIODS_FALLBACK = [];
+const STATUS_FILTERS = [
+    { value: 'all', label: 'Semua' },
+    { value: 'todo', label: 'Belum' },
+    { value: 'done', label: 'Selesai' },
+    { value: 'issue', label: 'Kendala' },
+];
 
 export default function Dashboard({ auth, machines, stats, periods, currentPeriod, currentYear, search, statusFilter, isFuturePeriod }) {
-    const { data, get, processing } = useForm({
+    const [filters, setFilters] = useState({
         period: currentPeriod,
         year: currentYear,
-        q: search,
-        status: statusFilter,
+        q: search ?? '',
+        status: statusFilter ?? 'all',
     });
+    const [isLoading, setIsLoading] = useState(false);
+    const searchTimer = useRef(null);
 
-    const handleSearch = (e) => {
-        data.q = e.target.value;
-        get(route('dashboard'), { data: { ...data, q: e.target.value }, preserveState: true, replace: true });
+    // Selaraskan state lokal dengan props setiap kali server merespons.
+    useEffect(() => {
+        setFilters({
+            period: currentPeriod,
+            year: currentYear,
+            q: search ?? '',
+            status: statusFilter ?? 'all',
+        });
+    }, [currentPeriod, currentYear, search, statusFilter]);
+
+    const applyFilters = (patch, { replace = true } = {}) => {
+        const next = { ...filters, ...patch };
+        setFilters(next);
+        setIsLoading(true);
+
+        router.get(route('dashboard'), next, {
+            preserveState: true,
+            preserveScroll: true,
+            replace,
+            onFinish: () => setIsLoading(false),
+        });
     };
 
     const handlePeriodChange = (period) => {
-        get(route('dashboard'), { data: { ...data, period }, preserveState: true, replace: true });
+        if (period === filters.period) return;
+        applyFilters({ period });
     };
 
     const handleStatusFilter = (status) => {
-        get(route('dashboard'), { data: { ...data, status }, preserveState: true, replace: true });
+        if (status === filters.status) return;
+        applyFilters({ status });
     };
+
+    const handleSearch = (e) => {
+        const q = e.target.value;
+        setFilters((prev) => ({ ...prev, q }));
+
+        clearTimeout(searchTimer.current);
+        searchTimer.current = setTimeout(() => {
+            setIsLoading(true);
+            router.get(route('dashboard'), { ...filters, q }, {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                onFinish: () => setIsLoading(false),
+            });
+        }, 350);
+    };
+
+    const clearSearch = () => {
+        clearTimeout(searchTimer.current);
+        if (!filters.q) return;
+        applyFilters({ q: '' });
+    };
+
+    useEffect(() => () => clearTimeout(searchTimer.current), []);
 
     const percentage = stats.total > 0 ? Math.round(stats.done / stats.total * 100) : 0;
 
@@ -60,11 +114,12 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
 
                 {/* Period chips */}
                 <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-2" role="group" aria-label="Periode">
-                    {periods.map((p) => (
+                    {(periods ?? PERIODS_FALLBACK).map((p) => (
                         <NeuChip
                             key={p.value}
-                            active={data.period === p.value}
+                            active={filters.period === p.value}
                             onClick={() => handlePeriodChange(p.value)}
+                            aria-label={`Periode ${p.label}`}
                         >
                             {p.label}
                         </NeuChip>
@@ -73,33 +128,49 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
 
                 {/* Search */}
                 <div className="mb-3">
-                    <input
-                        type="search"
-                        placeholder="Cari kode atau nama mesin…"
-                        value={data.q}
-                        onChange={handleSearch}
-                        className="neu-input"
-                        aria-label="Cari mesin"
-                    />
+                    <div className="relative">
+                        <input
+                            type="search"
+                            placeholder="Cari kode atau nama mesin…"
+                            value={filters.q}
+                            onChange={handleSearch}
+                            className="neu-input pr-11"
+                            aria-label="Cari mesin"
+                        />
+                        {filters.q && (
+                            <button
+                                type="button"
+                                onClick={clearSearch}
+                                aria-label="Bersihkan pencarian"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 grid place-items-center h-8 w-8 rounded-full text-neu-sub transition-all duration-150 hover:text-neu-bad hover:shadow-neu-in focus:outline-none focus:ring-2 focus:ring-neu-accent/40"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Status filter */}
                 <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3" role="group" aria-label="Filter status">
-                    {[
-                        { value: 'all', label: 'Semua' },
-                        { value: 'todo', label: 'Belum' },
-                        { value: 'done', label: 'Selesai' },
-                        { value: 'issue', label: 'Kendala' },
-                    ].map((f) => (
+                    {STATUS_FILTERS.map((f) => (
                         <NeuChip
                             key={f.value}
-                            active={data.status === f.value}
+                            active={filters.status === f.value}
                             onClick={() => handleStatusFilter(f.value)}
+                            aria-label={`Filter ${f.label}`}
                         >
                             {f.label}
                         </NeuChip>
                     ))}
                 </div>
+
+                {isLoading && (
+                    <p className="text-xs text-neu-sub text-center mb-3" role="status">
+                        Memuat data…
+                    </p>
+                )}
 
                 {/* Future period warning */}
                 {isFuturePeriod && (
@@ -113,15 +184,17 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
                     {machines.length > 0 ? machines.map((machine) => (
                         <Link
                             key={machine.id}
-                            href={route('machines.pm.create', { machine: machine.id, period: data.period, year: data.year })}
-                            className="flex items-center gap-3.5 w-full text-left p-3.5 rounded-[20px] shadow-neu-up mb-4 active:shadow-neu-in transition-shadow"
+                            href={route('machines.pm.create', { machine: machine.id, period: filters.period, year: filters.year })}
+                            className="neu-card-link flex items-center gap-3.5 w-full text-left p-3.5 mb-4 active:shadow-neu-in"
                         >
                             <span className="neu-inset w-12 h-12 flex-none grid place-items-center font-bold text-sm text-neu-accent">
                                 {machine.code}
                             </span>
                             <div className="min-w-0">
                                 <b className="block text-sm truncate">{machine.name}</b>
-                                <span className="text-xs text-neu-sub">Minggu {machine.week_group} · {machine.type}</span>
+                                <span className="text-xs text-neu-sub">
+                                    Minggu {machine.week_group} · {machine.type}
+                                </span>
                             </div>
                             <NeuPill variant={statusVariants[machine.status]} className="ml-auto">
                                 {statusLabels[machine.status]}

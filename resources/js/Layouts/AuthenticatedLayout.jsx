@@ -2,7 +2,6 @@ import { useState } from 'react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
-import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 
 export default function Authenticated({ user: userProp, header, children }) {
@@ -10,14 +9,18 @@ export default function Authenticated({ user: userProp, header, children }) {
     const page = usePage();
     const { can } = page.props.auth;
     const user = userProp ?? page.props.auth.user;
+    const pathname = page.url.split('?')[0];
+
+    const isActive = (path, exact = false) =>
+        exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
 
     const navItems = [
-        { name: 'Beranda', href: route('dashboard'), show: true },
-        { name: 'Laporan', href: route('reports.index'), show: can['report.view'] },
-        { name: 'Mesin', href: route('machines.index'), show: can['machine.manage'] },
-        { name: 'Pengguna', href: route('admin.users'), show: can['user.manage'] },
-        { name: 'Template', href: route('admin.templates'), show: can['template.manage'] },
-        { name: 'Audit Log', href: route('admin.audit-logs'), show: can['audit.view'] },
+        { name: 'Beranda', href: route('dashboard'), path: '/dashboard', exact: true, show: true },
+        { name: 'Laporan', href: route('reports.index'), path: '/reports', show: can['report.view'] },
+        { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] },
+        { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
+        { name: 'Template', href: route('admin.templates'), path: '/admin/templates', show: can['template.manage'] },
+        { name: 'Audit Log', href: route('admin.audit-logs'), path: '/admin/audit-logs', show: can['audit.view'] },
     ].filter(item => item.show);
 
     return (
@@ -30,10 +33,16 @@ export default function Authenticated({ user: userProp, header, children }) {
                         <NavLink
                             key={item.href}
                             href={item.href}
-                            active={route().current(item.href.replace(/^(https?:\/\/[^\/]+)/, '').replace(/^\//, '/'))}
-                            className="flex items-center gap-3 rounded-neu-sm px-4 py-3.5 text-sm font-semibold text-neu-sub shadow-neu-up-sm"
-                            activeClassName="shadow-neu-in text-neu-accent"
+                            active={isActive(item.path, item.exact)}
+                            activeClassName="neu-nav-sunken"
+                            className="neu-nav-raised flex items-center gap-3 px-4 py-3.5 text-sm font-semibold"
                         >
+                            <span
+                                className={`h-5 w-1 rounded-full transition-colors duration-150 ${
+                                    isActive(item.path, item.exact) ? 'bg-neu-accent' : 'bg-transparent'
+                                }`}
+                                aria-hidden="true"
+                            />
                             {item.name}
                         </NavLink>
                     ))}
@@ -65,8 +74,8 @@ export default function Authenticated({ user: userProp, header, children }) {
                 <header className="hidden lg:flex items-center justify-end px-8 py-4">
                     <Dropdown>
                         <Dropdown.Trigger>
-                            <button className="flex items-center gap-2 text-sm font-semibold text-neu-sub">
-                                <span>{user.name}</span>
+                            <button className="neu-btn !min-h-[40px] !px-3">
+                                <span className="text-sm">{user.name}</span>
                                 <span className="neu-pill text-neu-accent">{user.roles?.[0] ?? '-'}</span>
                             </button>
                         </Dropdown.Trigger>
@@ -78,6 +87,7 @@ export default function Authenticated({ user: userProp, header, children }) {
                 </header>
 
                 <main className="px-4 pb-28 lg:px-8 lg:pb-8 pt-2">
+                    {header}
                     {children}
                 </main>
             </div>
@@ -88,8 +98,9 @@ export default function Authenticated({ user: userProp, header, children }) {
                     <NavLink
                         key={item.href}
                         href={item.href}
-                        className="flex-1 flex flex-col items-center gap-1 rounded-neu-sm py-2 text-[11px] font-semibold text-neu-sub"
-                        activeClassName="shadow-neu-in text-neu-accent"
+                        active={isActive(item.path, item.exact)}
+                        activeClassName="neu-nav-sunken"
+                        className="neu-nav-raised flex-1 flex flex-col items-center gap-1 py-2 text-[11px] font-semibold"
                     >
                         {item.name}
                     </NavLink>

@@ -27,23 +27,86 @@
         @apply inline-flex items-center justify-center gap-2 rounded-neu-sm px-4 py-2.5 font-semibold text-neu-accent shadow-neu-up-sm transition-all duration-150 active:shadow-neu-in disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
     }
 
+    .neu-btn:hover:not(:disabled) {
+        @apply text-neu-accent shadow-neu-up;
+    }
+
     .neu-btn-primary {
         @apply neu-btn bg-neu-accent text-white shadow-[4px_4px_10px_#C3CAD6,-4px_-4px_10px_#FFFFFF] active:shadow-[inset_3px_3px_7px_rgba(0,0,0,0.3)];
+    }
+
+    .neu-btn-primary:hover:not(:disabled) {
+        @apply bg-neu-accent brightness-95 shadow-[5px_5px_12px_#C3CAD6,-5px_-5px_12px_#FFFFFF];
     }
 
     .neu-input {
         @apply w-full rounded-neu-sm bg-neu-bg px-4 py-3 shadow-neu-in outline-none text-neu-text placeholder:text-neu-sub/60 min-h-[44px];
     }
 
+    .neu-input:focus {
+        @apply ring-2 ring-neu-accent/35;
+    }
+
     .neu-chip {
         @apply inline-flex items-center gap-1.5 rounded-neu-sm px-3.5 py-2 text-sm font-semibold text-neu-sub shadow-neu-up-sm transition-all duration-150 whitespace-nowrap min-h-[44px];
     }
 
-    .neu-chip-active {
+    .neu-chip:hover:not(:disabled) {
+        @apply text-neu-accent shadow-neu-up;
+    }
+
+    .neu-chip:focus-visible {
+        @apply outline-none ring-2 ring-neu-accent/40;
+    }
+
+    .neu-chip-active,
+    .neu-chip-active:hover:not(:disabled) {
         @apply shadow-neu-in text-neu-accent;
+    }
+
+    .neu-chip:disabled {
+        @apply opacity-40 cursor-not-allowed shadow-neu-in;
     }
 
     .neu-pill {
         @apply inline-flex items-center rounded-[10px] px-2.5 py-1 text-[11px] font-bold shadow-neu-in;
+    }
+
+    /* Menu navigasi */
+    .neu-nav {
+        @apply rounded-neu-sm text-neu-sub transition-all duration-150 cursor-pointer select-none;
+    }
+
+    .neu-nav:hover {
+        @apply text-neu-accent;
+    }
+
+    .neu-nav:focus-visible {
+        @apply outline-none ring-2 ring-neu-accent/40;
+    }
+
+    .neu-nav-raised {
+        @apply shadow-neu-up-sm;
+    }
+
+    .neu-nav-raised:hover {
+        @apply shadow-neu-up;
+    }
+
+    .neu-nav-sunken {
+        @apply shadow-neu-in text-neu-accent;
+    }
+
+    /* Kartu mesin yang bisa diklik */
+    .neu-card-link {
+        @apply block rounded-[20px] shadow-neu-up-sm transition-all duration-150;
+    }
+
+    .neu-card-link:hover {
+        @apply shadow-neu-up;
+    }
+
+    .neu-card-link:focus-visible {
+        @apply outline-none ring-2 ring-neu-accent/40;
     }
 }

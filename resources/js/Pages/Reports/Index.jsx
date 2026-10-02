@@ -1,4 +1,5 @@
-import { useForm } from '@inertiajs/react';
+import { useEffect, useState } from 'react';
+import { router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuBars from '@/Components/NeuBars';
@@ -6,10 +7,22 @@ import NeuButton from '@/Components/NeuButton';
 import NeuPill from '@/Components/NeuPill';
 
 export default function Reports({ auth, compliance, topParts, actions, totalPm, totalApproved, year, period, periods }) {
-    const { data, get } = useForm({ year, period: period || '' });
+    const [selectedPeriod, setSelectedPeriod] = useState(period || '');
+
+    // Selaraskan dengan props setiap kali server merespons.
+    useEffect(() => {
+        setSelectedPeriod(period || '');
+    }, [year, period]);
 
     const handlePeriodChange = (e) => {
-        get(route('reports.index'), { data: { ...data, period: e.target.value }, preserveState: true, replace: true });
+        const value = e.target.value;
+        if (value === selectedPeriod) return;
+        setSelectedPeriod(value);
+        router.get(route('reports.index'), { year, period: value }, {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     };
 
     const chartData = compliance.map(c => ({ value: c.percentage, label: c.label.slice(0, 3) }));
@@ -23,9 +36,10 @@ export default function Reports({ auth, compliance, topParts, actions, totalPm, 
                         <p className="text-sm text-neu-sub">Tahun {year}</p>
                     </div>
                     <select
-                        value={data.period}
+                        value={selectedPeriod}
                         onChange={handlePeriodChange}
                         className="neu-input !w-auto"
+                        aria-label="Filter periode"
                     >
                         <option value="">Semua Periode</option>
                         {periods.map((p) => (
@@ -95,14 +109,14 @@ export default function Reports({ auth, compliance, topParts, actions, totalPm, 
                 {/* Export */}
                 <div className="flex gap-3">
                     <NeuButton
-                        href={route('reports.export', { year, period: data.period, format: 'xlsx' })}
+                        href={route('reports.export', { year, period: selectedPeriod, format: 'xlsx' })}
                         variant="primary"
                         className="flex-1"
                     >
                         Ekspor Excel
                     </NeuButton>
                     <NeuButton
-                        href={route('reports.export', { year, period: data.period, format: 'pdf' })}
+                        href={route('reports.export', { year, period: selectedPeriod, format: 'pdf' })}
                         className="flex-1"
                     >
                         Cetak PDF
