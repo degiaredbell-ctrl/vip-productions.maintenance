@@ -29,12 +29,13 @@ const PERIOD_LABELS = {
     muted: 'Periode belum dibuka',
 };
 
-export default function Dashboard({ auth, machines, stats, periods, years, currentPeriod, currentYear, search, statusFilter, isFuturePeriod }) {
+export default function Dashboard({ auth, machines, stats, periods, years, subCategories, subCategory, types, currentPeriod, currentYear, search, statusFilter, isFuturePeriod }) {
     const [filters, setFilters] = useState({
         period: currentPeriod,
         year: currentYear,
         q: search ?? '',
         status: statusFilter ?? 'all',
+        sub: subCategory ?? 'all',
     });
     const [isLoading, setIsLoading] = useState(false);
     const searchTimer = useRef(null);
@@ -46,8 +47,9 @@ export default function Dashboard({ auth, machines, stats, periods, years, curre
             year: currentYear,
             q: search ?? '',
             status: statusFilter ?? 'all',
+            sub: subCategory ?? 'all',
         });
-    }, [currentPeriod, currentYear, search, statusFilter]);
+    }, [currentPeriod, currentYear, search, statusFilter, subCategory]);
 
     const applyFilters = (patch) => {
         const next = { ...filters, ...patch };
@@ -75,6 +77,11 @@ export default function Dashboard({ auth, machines, stats, periods, years, curre
     const handleStatusFilter = (status) => {
         if (status === filters.status) return;
         applyFilters({ status });
+    };
+
+    const handleSubCategory = (sub) => {
+        if (sub === filters.sub) return;
+        applyFilters({ sub });
     };
 
     const handleSearch = (e) => {
@@ -105,6 +112,7 @@ export default function Dashboard({ auth, machines, stats, periods, years, curre
 
     const statusLabels = { done: 'Selesai', todo: 'Belum', issue: 'Kendala' };
     const statusVariants = { done: 'done', todo: 'todo', issue: 'issue' };
+    const typeLabels = Object.fromEntries((types ?? []).map((t) => [t.value, t.label]));
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -192,7 +200,7 @@ export default function Dashboard({ auth, machines, stats, periods, years, curre
                     <div className="relative">
                         <input
                             type="search"
-                            placeholder="Cari kode atau nama mesin…"
+                            placeholder="Cari kode, nama, area (C.7), atau lokasi…"
                             value={filters.q}
                             onChange={handleSearch}
                             className="neu-input pr-11"
@@ -231,6 +239,31 @@ export default function Dashboard({ auth, machines, stats, periods, years, curre
                     ))}
                 </div>
 
+                {/* Filter sub-category (C.1 s.d. C.9) */}
+                <div
+                    className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3"
+                    role="group"
+                    aria-label="Filter sub kategori"
+                >
+                    <NeuChip
+                        active={filters.sub === 'all'}
+                        onClick={() => handleSubCategory('all')}
+                        aria-label="Semua sub kategori"
+                    >
+                        Semua Area
+                    </NeuChip>
+                    {(subCategories ?? []).map((s) => (
+                        <NeuChip
+                            key={s}
+                            active={filters.sub === s}
+                            onClick={() => handleSubCategory(s)}
+                            aria-label={`Sub kategori ${s}`}
+                        >
+                            {s}
+                        </NeuChip>
+                    ))}
+                </div>
+
                 {isLoading && (
                     <p className="text-xs text-neu-sub text-center mb-3" role="status">
                         Memuat data…
@@ -245,20 +278,32 @@ export default function Dashboard({ auth, machines, stats, periods, years, curre
                 )}
 
                 {/* Machine list */}
+                <p className="text-xs text-neu-sub mb-3">
+                    Menampilkan {machines.length} dari {stats.total} mesin
+                </p>
                 <div className="grid gap-0 lg:grid-cols-2 lg:gap-x-5">
                     {machines.length > 0 ? machines.map((machine) => (
                         <Link
                             key={machine.id}
-                            href={route('machines.pm.create', { machine: machine.id, period: filters.period, year: filters.year })}
+                            href={route('machines.pm.create', {
+                                machine: machine.id,
+                                period: filters.period,
+                                year: filters.year,
+                                // Filter lain ikut dibawa supaya tombol "Kembali"
+                                // di form PM tidak menghapus pilihan pengguna.
+                                sub: filters.sub !== 'all' ? filters.sub : undefined,
+                                status: filters.status !== 'all' ? filters.status : undefined,
+                                q: filters.q || undefined,
+                            })}
                             className="neu-card-link flex items-center gap-3.5 w-full text-left p-3.5 mb-4 active:shadow-neu-in"
                         >
                             <span className="neu-inset w-12 h-12 flex-none grid place-items-center font-bold text-sm text-neu-accent">
-                                {machine.code}
+                                {machine.sub_category ?? '—'}
                             </span>
                             <div className="min-w-0">
                                 <b className="block text-sm truncate">{machine.name}</b>
-                                <span className="text-xs text-neu-sub">
-                                    Minggu {machine.week_group} · {machine.type}
+                                <span className="block text-xs text-neu-sub truncate">
+                                    {machine.code} · {typeLabels[machine.type] ?? machine.type} · Minggu {machine.week_group}
                                 </span>
                             </div>
                             <NeuPill variant={statusVariants[machine.status]} className="ml-auto">

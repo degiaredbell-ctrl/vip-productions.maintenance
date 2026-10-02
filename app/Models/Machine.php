@@ -13,7 +13,8 @@ class Machine extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'code', 'name', 'type', 'week_group', 'template_id', 'is_active', 'sort_no',
+        'code', 'name', 'location', 'category', 'sub_category',
+        'type', 'week_group', 'template_id', 'is_active', 'sort_no',
     ];
 
     protected $casts = [

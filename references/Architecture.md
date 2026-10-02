@@ -68,7 +68,8 @@ tests/Feature/  tests/Unit/
 
 ```
 users                 id, name, email*, password, role_name (via spatie), is_active, timestamps
-machines              id, code*(M2…), name, type (enum), week_group(1–9), template_id?, is_active,
+machines              id, code*(MC.1-FLLFM-101…), name, location, category, sub_category,
+                      type (enum), week_group(1–9), template_id?, is_active,
                       sort_no, deleted_at, timestamps
 checklist_templates   id, machine_type*, name, is_default, timestamps
 checklist_template_items
@@ -86,9 +87,10 @@ audit_logs            id, user_id?, action, subject_type, subject_id, changes (j
 
 Catatan desain:
 - `pm_record_items` menyimpan **salinan** nama/spesifikasi item saat PM dilakukan, sehingga perubahan template di kemudian hari tidak mengubah riwayat.
-- Indeks: `pm_records(year, period, status)`, `pm_records(machine_id, year)`, `machines(is_active, week_group)`.
+- Indeks: `pm_records(year, period, status)`, `pm_records(machine_id, year)`, `machines(is_active, week_group)`, `machines(is_active, sub_category)`.
 - Soft delete pada `machines`; riwayat PM tetap utuh.
 - Satu record per mesin per periode (unique key); revisi menambah `revision_count` dan satu baris `pm_record_revisions`.
+- Daftar mesin diimpor dari `references/data.csv` lewat `php artisan machines:import` (`app/Services/MachineImportService.php`). Kolom yang tidak ada di CSV diturunkan: `type` dari kata kunci pada Machine Name, `week_group` dari angka Sub-Category (`C.7` → 7), `sort_no` dari kolom NO.
 
 ## 5. Autentikasi & Otorisasi
 
@@ -227,7 +229,7 @@ Akun seeder (hanya lokal): `admin@example.test`, `manager@…`, `tech@…`, `use
 
 | Prototipe | Aplikasi baru |
 |---|---|
-| `DEFAULT_MACHINES` | `MachineSeeder` → tabel `machines` |
+| `DEFAULT_MACHINES` (12 mesin prototype) | `references/data.csv` → `php artisan machines:import` → tabel `machines` (122 mesin) |
 | `DEFAULT_TPL` (per tipe) | `TemplateSeeder` → `checklist_templates` + `_items` |
 | `cfg.extraMachines/machineEdits/customChecklists` (localStorage) | CRUD admin di database |
 | Power Automate `save/load` | Controller + Eloquent (endpoint Inertia) |

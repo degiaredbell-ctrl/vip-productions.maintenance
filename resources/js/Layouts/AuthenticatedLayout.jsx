@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import NeuToast from '@/Components/NeuToast';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
@@ -10,6 +11,25 @@ export default function Authenticated({ user: userProp, header, children }) {
     const { can } = page.props.auth;
     const user = userProp ?? page.props.auth.user;
     const pathname = page.url.split('?')[0];
+    const flash = page.props.flash ?? {};
+
+    // Pesan sukses/gagal dari flash Laravel perlu dirender sendiri;
+    // kalau tidak, redirect()->back()->with('success', ...) jadi tidak terlihat.
+    const [toast, setToast] = useState(null);
+
+    useEffect(() => {
+        if (!flash.success && !flash.error) return;
+
+        setToast({ message: flash.success ?? flash.error, variant: flash.success ? 'done' : 'issue' });
+    }, [flash.success, flash.error]);
+
+    useEffect(() => {
+        if (!toast) return;
+
+        const timer = setTimeout(() => setToast(null), 4000);
+
+        return () => clearTimeout(timer);
+    }, [toast]);
 
     const isActive = (path, exact = false) =>
         exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
@@ -25,6 +45,8 @@ export default function Authenticated({ user: userProp, header, children }) {
 
     return (
         <div className="min-h-screen bg-neu-bg">
+            <NeuToast toast={toast} onDismiss={() => setToast(null)} />
+
             {/* Sidebar - Desktop */}
             <aside className="hidden lg:flex lg:flex-col lg:w-[270px] lg:fixed lg:inset-y-0 bg-neu-bg p-6 gap-3">
                 <div className="font-bold text-lg mb-4">PM Preventive</div>
@@ -59,7 +81,7 @@ export default function Authenticated({ user: userProp, header, children }) {
                             <button className="neu-btn !min-h-[40px] !px-3">
                                 <span className="text-sm">{user.name}</span>
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
                         </Dropdown.Trigger>

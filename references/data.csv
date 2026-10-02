@@ -1,0 +1,123 @@
+﻿NO,Code.asset,Machine Name,LOC,Category,Sub-Category
+1,MC.1-FLLFM-101,Filling LFM [1],Factory Milenium,Machine,C.1
+2,MC.1-FLLFM-102,Filling LFM [2],Factory Milenium,Machine,C.1
+3,MC.1-FLLFM-103,Filling LFM [4],Factory Milenium,Machine,C.1
+4,MC.1-LAATM-101,Labeling Automatic [1],Factory Milenium,Machine,C.1
+5,MC.1-LAATM-102,Labeling Automatic [2],Factory Milenium,Machine,C.1
+6,MC.1-SHTNL-101,Shrink Tunnel [1],Factory Milenium,Machine,C.1
+7,MC.1-SHTNL-102,Shrink Tunnel [2],Factory Milenium,Machine,C.1
+8,MC.1-SHTNL-103,Shrink Tunnel [3],Factory Milenium,Machine,C.1
+9,MC.1-SHTNL-104,Shrink Tunnel [4],Factory Milenium,Machine,C.1
+10,MC.1-SHTNL-105,Shrink Tunnel [5],Factory Milenium,Machine,C.1
+11,MC.1-CASEA-101,Carton Sealer [1],Factory Milenium,Machine,C.1
+12,MC.1-CASEA-102,Carton Sealer [2],Factory Milenium,Machine,C.1
+13,MC.1-CASEA-103,Carton Sealer [3],Factory Milenium,Machine,C.1
+14,MC.3-CP2RO-101,Capping 2 Roller [1],Factory Milenium,Machine,C.3
+15,MC.3-CP4RO-101,Capping 4 Roller [2],Factory Milenium,Machine,C.3
+16,MC.2-TOMPB-101,TOM - Penyusun Botol,Factory Milenium,Machine,C.2
+17,MC.2-TOMPB-102,TOM - Pencuci Botol,Factory Milenium,Machine,C.2
+18,MC.2-TOMFO-101,TOM - Filling Otomatis,Factory Milenium,Machine,C.2
+19,MC.2-TOMCO-101,TOM - Capping Otomatis,Factory Milenium,Machine,C.2
+20,MC.2-TOMRT-101,TOM - Round Table 1,Factory Milenium,Machine,C.2
+21,MC.2-TOMLO-101,TOM - Label Otomatis,Factory Milenium,Machine,C.2
+22,MC.2-TOMRT-102,TOM - Round Table 2,Factory Milenium,Machine,C.2
+23,MC.2-TOMSP-101,TOM - Shrink Pack,Factory Milenium,Machine,C.2
+24,MC.2-TOMST-101,TOM - Shrink Tunnel,Factory Milenium,Machine,C.2
+25,MC.2-TOMCE-101,TOM - Carton Eractor,Factory Milenium,Machine,C.2
+26,MC.2-TOMPK-101,TOM - Packaging,Factory Milenium,Machine,C.2
+27,MC.2-TOMBK-101,TOM - Pengecek Berat Pack,Factory Milenium,Machine,C.2
+28,MC.2-TOMCS-101,TOM - Carton Sealer,Factory Milenium,Machine,C.2
+29,MC.3-SCH2G-101,Sachet 2 gr [1],Factory Milenium,Machine,C.3
+30,MC.3-SCH2G-102,Sachet 2 gr [2],Factory Milenium,Machine,C.3
+31,MC.3-SCH2G-103,Sachet 2 gr [3],Factory Milenium,Machine,C.3
+32,MC.4-CDJML-101,Coding Dot Jet DJ45HE [1] - Manual Line 2 Label,Factory Milenium,Machine,C.4
+33,MC.4-CDJML-102,Coding Dot Jet DJ45HE [2] - Manual Line 2 Carton Sealer,Factory Milenium,Machine,C.4
+34,MC.4-CDJTL-101,Coding Dot Jet DJ45HE [3] - TOM 1KG Label,Factory Milenium,Machine,C.4
+35,MC.4-CDJTC-101,Coding Dot Jet DJ45HE [4] - TOM 1KG Carton Sealer,Factory Milenium,Machine,C.4
+36,MC.4-CDJML-103,Coding Dot Jet DJ45HE [5] - Manual Line 4 Label,Factory Milenium,Machine,C.4
+37,MC.4-CDJTC-102,Coding Dot Jet DJ45HE [6] - TOM 25 Carton Sealer,Factory Milenium,Machine,C.4
+38,MC.4-CDJTL-102,Coding Dot Jet DJ45HE [7] - TOM 25 Label ,Factory Milenium,Machine,C.4
+39,MC.4-CDJTL-103,Coding Dot Jet DJ45HE [8] - TOM 55 Label ,Factory Milenium,Machine,C.4
+40,MC.4-CDJTC-103,Coding Dot Jet DJ45HE [9] - TOM 55 Carton Sealer,Factory Milenium,Machine,C.4
+41,MC.4-CDJSC-101,Coding Dot Jet DJ45HE [10] - Sachet 2 gr 1,Factory Milenium,Machine,C.4
+42,MC.4-CDJSC-102,Coding Dot Jet DJ45HE [11] - Sachet 2 gr 2,Factory Milenium,Machine,C.4
+43,MC.4-CDJSC-103,Coding Dot Jet DJ45HE [12] - Sachet 2 gr 3,Factory Milenium,Machine,C.4
+44,MC.3-SILOA-101,SILO,Factory Milenium,Machine,C.3
+45,MC.3-PSILO-101,Pump SILO 1,Factory Milenium,Machine,C.3
+46,MC.3-PSILO-102,Pump SILO 2,Factory Milenium,Machine,C.3
+47,MC.3-TSILO-101,Timbangan - SILO 1,Factory Milenium,Machine,C.3
+48,MC.3-TSILO-102,Timbangan - SILO 2,Factory Milenium,Machine,C.3
+49,MC.5-MIXER-101,Mixer 1,Factory Milenium,Machine,C.5
+50,MC.5-MIXER-102,Mixer 2,Factory Milenium,Machine,C.5
+51,MC.5-MIXER-103,Mixer 3,Factory Milenium,Machine,C.5
+52,MC.5-MIXER-104,Mixer 4,Factory Milenium,Machine,C.5
+53,MC.5-MIXER-105,Mixer Gaulin,Factory Milenium,Machine,C.5
+54,MC.5-MIXER-106,Mixer Aromatic,Factory Milenium,Machine,C.5
+55,MC.6-GH500-101,Gaulin Homogenizer - 500kg,Factory Milenium,Machine,C.6
+56,MC.6-GH300-101,Gaulin Homogenizer - 300kg,Factory Milenium,Machine,C.6
+57,MC.6-TMIX1-101,Timbangan - Mixer 1 DGT 1 AN/0109974347,Factory Milenium,Machine,C.6
+58,MC.6-TMIX2-101,Timbangan - Mixer 2 DGT 1 AN/0100685424,Factory Milenium,Machine,C.6
+59,MC.6-TMIX3-101,Timbangan - Mixer 3 DGT 1 AN/0100707730,Factory Milenium,Machine,C.6
+60,MC.6-TMIX4-101,Timbangan - Mixer 4 DGT 1 AN/0100685886,Factory Milenium,Machine,C.6
+61,MC.6-TMIXG-101,Timbangan - Mixer Gaulin DGT 1 AN/01007061216,Factory Milenium,Machine,C.6
+62,MC.5-OILMX-101,Oilmix,Factory Milenium,Machine,C.5
+63,MC.5-MULMX-101,Multimix,Factory Milenium,Machine,C.5
+64,MC.6-TGST1-101,Timbangan - Gum Solution Tank 1 DGT 1 AN/0100708304,Factory Milenium,Machine,C.6
+65,MC.6-TGST1-102,Timbangan - Gum Solution Tank 2 DGT 1 AN/0101159098,Factory Milenium,Machine,C.6
+66,MC.5-HPMLF-101,Horizontal Plow Mixer - LittleFord,Factory Milenium,Machine,C.5
+67,MC.5-PLMIX-101,plough mixer,Factory Milenium,Machine,C.5
+68,MC.5-MIXTA-101,Mixer Toraq Aromatik,Factory Milenium,Machine,C.5
+69,MC.5-MIXTL-101,Mixer Toraq LC,Factory Milenium,Machine,C.5
+70,MC.5-MAYAK-101,Mesin Ayakan,Factory Milenium,Machine,C.5
+71,MC.3-COM55-101,Compressor 55,Factory Milenium,Machine,C.3
+72,MC.3-COM45-101,Compressor 45,Factory Milenium,Machine,C.3
+73,MC.3-WRPMH-101,Wrapping Machine MH-FG-2000F,Factory Milenium,Machine,C.3
+74,MC.7-LCS30-101,[Nagata] LCS-201W 30kg - 240006 [PACKING COLOUR],Factory Milenium,Machine,C.7
+75,MC.7-LCS30-102,[Nagata] LCS-201W 30kg - 240137 [PACKING ESSENCE],Factory Milenium,Machine,C.7
+76,MC.7-FW100-101,[Nagata] FW-RL 100kg - 310073 [GUDANG],Factory Milenium,Machine,C.7
+77,MC.7-FW100-102,[Nagata] FW-RL 100kg - 310054 [PRODUKSI COLOUR],Factory Milenium,Machine,C.7
+78,MC.7-LPW6G-101,[YAOHUA] LPW 6kg - Z11015972 [AROMATIK],Factory Milenium,Machine,C.7
+79,MC.7-A1230-101,[YAOHUA] A12E 30kg - 1200211630 [PRODUKSI COLOUR],Factory Milenium,Machine,C.7
+80,MC.7-A1230-102,[YAOHUA] A12E 30kg - 1200211620 [PRODUKSI COLOUR],Factory Milenium,Machine,C.7
+81,MC.7-A1230-103,[YAOHUA] A12E 30kg - XK3190 [AROMATIK],Factory Milenium,Machine,C.7
+82,MC.7-A125H-101,[YAOHUA] A12E 500kg - 1200314281 [GUDANG],Factory Milenium,Machine,C.7
+83,MC.7-A126G-101,[Sonic] A12E 6kg - IMIWH12-2010001293 [PRODUKSI COLOUR],Factory Milenium,Machine,C.7
+84,MC.7-A126G-102,[Sonic] A12E 6kg - 15010687 [PACKING COLOUR],Factory Milenium,Machine,C.7
+85,MC.7-A126G-103,[Sonic] A12E 6kg - QB 778294 [PACKING ESSENCE],Factory Milenium,Machine,C.7
+86,MC.7-A126G-104,[Sonic] A12E 6kg - 13110782 [PRODUKSI ESSENCE],Factory Milenium,Machine,C.7
+87,MC.7-A126G-105,[Sonic] A12E 6kg - IS-14040498 [PACKING ESSENCE],Factory Milenium,Machine,C.7
+88,MC.8-A126G-106,[Sonic] A12E 6kg - IMIWH12-2106000958 [PACKING COLOUR],Factory Milenium,Machine,C.8
+89,MC.8-A1230-104,[Sonic] A12E 30kg - IS-15101117 [PACKING ESSENCE],Factory Milenium,Machine,C.8
+90,MC.8-A1230-105,[Sonic] A12E 30kg - IMIWH12-2108001893 [PRODUKSI ESSENCE],Factory Milenium,Machine,C.8
+91,MC.8-A1230-106,[Sonic] A12E 30kg - IMIWH12-2108001892 [PRODUKSI ESSENCE],Factory Milenium,Machine,C.8
+92,MC.8-GSC15-101,GSC 150kg - IMI24018182 [PRODUKSI ESSENCE],Factory Milenium,Machine,C.8
+93,MC.6-PLOMX-101,Plough Mixer Kecil,Factory Milenium,Machine,C.6
+94,MC.6-RECTR-101,[LIFTCO] Reach Truck,Factory Milenium,Machine,C.6
+95,MC.6-RECTR-102,[MHE] Reach Truck,Factory Milenium,Machine,C.6
+96,MC.6-STCKR-101,[MHE] Stacker 1,Factory Milenium,Machine,C.6
+97,MC.6-STCKR-102,[MHE] Stacker 2,Factory Milenium,Machine,C.6
+98,MC.8-TOM1K-101,[TOM] 1 kg - Round Table,Factory Milenium,Machine,C.8
+99,MC.8-TOM1K-102,[TOM] 1 kg - Mesin Filling + Capping,Factory Milenium,Machine,C.8
+100,MC.8-TOM1K-103,[TOM] 1 kg - Mesin Label Otomatis,Factory Milenium,Machine,C.8
+101,MC.8-TOMFI-101,[TOM POWDER] Mesin Foil Insertion,Factory Milenium,Machine,C.8
+102,MC.8-ARBGH-101,Arburgh,Factory Milenium,Machine,C.8
+103,MC.8-INBOW-101,Inject Blow - MSZ30 [1],Factory Milenium,Machine,C.8
+104,MC.8-INBOW-102,Inject Blow - MSZ30 [2],Factory Milenium,Machine,C.8
+105,MC.8-MYCIB-101,MTC Inject Blow 1,Factory Milenium,Machine,C.8
+106,MC.8-MYCIB-102,MTC Inject Blow 2,Factory Milenium,Machine,C.8
+107,MC.9-TM25M-101,[TOM] 25 ml - Bottle Feeding Table,Factory Milenium,Machine,C.9
+108,MC.9-TM25M-102,[TOM] 25 ml - Fully Automatic Bottle Washing Machine,Factory Milenium,Machine,C.9
+109,MC.9-TM25M-103,[TOM] 25 ml - Automatic Filling Machine,Factory Milenium,Machine,C.9
+110,MC.9-TM25M-104,[TOM] 25 ml - Automatic Double Heads Alumunium Cap Sealer,Factory Milenium,Machine,C.9
+111,MC.9-TM25M-105,[TOM] 25 ml - Automatic Cap Pressing Machine,Factory Milenium,Machine,C.9
+112,MC.9-TM25M-106,[TOM] 25 ml - Automatic Capping Machine,Factory Milenium,Machine,C.9
+113,MC.9-TM25M-107,[TOM] 25 ml - Automatic Cap Elevator,Factory Milenium,Machine,C.9
+114,MC.9-TM25M-108,[TOM] 25 ml - Automatic Adhesive Labeling Machine,Factory Milenium,Machine,C.9
+115,MC.9-TOMBF-101,[TOM Powder] Bottle Feeding Table,Factory Milenium,Machine,C.9
+116,MC.9-TOMAP-101,[TOM Powder] Automatic Powder Filling,Factory Milenium,Machine,C.9
+117,MC.9-TOMAC-102,[TOM Powder] Automatic Capping Machine,Factory Milenium,Machine,C.9
+118,MC.9-TOMAC-103,[TOM Powder] Automatic Cap Elevator,Factory Milenium,Machine,C.9
+119,MC.9-TOMAC-104,[TOM Powder] Automatic Adhesive Labeling Machine,Factory Milenium,Machine,C.9
+120,MC.9-TOMAA-101,[TOM Powder] Automatic Bottle weight Checker,Factory Milenium,Machine,C.9
+121,MC.9-TOMAS-101,[TOM Powder] Automatic Sealing Machine,Factory Milenium,Machine,C.9
+122,M-MSTER-101,MASTER ,Factory Milenium,Machine,0

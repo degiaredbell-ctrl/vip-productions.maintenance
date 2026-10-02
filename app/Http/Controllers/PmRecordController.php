@@ -57,17 +57,36 @@ class PmRecordController extends Controller
             ];
         })->toArray() : []);
 
+        // Filter yang sedang aktif di Beranda ikut diteruskan, supaya tombol
+        // "Kembali" dan redirect setelah simpan tidak membuat user kehilangan
+        // filter periode/area/status/pencarian yang sedang dipilih.
+        $dashboardUrl = route('dashboard', array_filter([
+            'period' => $period->value,
+            'year' => $year,
+            'sub' => $request->query('sub'),
+            'status' => $request->query('status'),
+            'q' => $request->query('q'),
+        ], fn ($value) => $value !== null && $value !== '' && $value !== 'all'));
+
+        // Disimpan lewat session, bukan diambil dari input form, supaya URL
+        // tujuan redirect tidak bisa dipakai untuk open redirect.
+        $request->session()->put('pm_dashboard_url', $dashboardUrl);
+
         return Inertia::render('Pm/Form', [
             'machine' => [
                 'id' => $machine->id,
                 'code' => $machine->code,
                 'name' => $machine->name,
+                'location' => $machine->location,
+                'category' => $machine->category,
+                'sub_category' => $machine->sub_category,
                 'type' => $machine->type,
                 'week_group' => $machine->week_group,
             ],
             'items' => $items,
             'period' => $period->value,
             'year' => $year,
+            'dashboardUrl' => $dashboardUrl,
             'existing' => $existing ? [
                 'id' => $existing->id,
                 'status' => $existing->status->value,
@@ -84,7 +103,9 @@ class PmRecordController extends Controller
         $data = $request->validated();
         $record = app(SubmitPmRecord::class)->handle($data);
 
-        return redirect()->route('dashboard')
+        // Kembali ke Beranda dengan filter yang tadi sedang aktif.
+        return redirect()
+            ->to($request->session()->pull('pm_dashboard_url', route('dashboard')))
             ->with('success', 'Checklist PM berhasil disimpan.');
     }
 

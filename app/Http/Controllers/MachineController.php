@@ -23,6 +23,9 @@ class MachineController extends Controller
                     'id' => $m->id,
                     'code' => $m->code,
                     'name' => $m->name,
+                    'location' => $m->location,
+                    'category' => $m->category,
+                    'sub_category' => $m->sub_category,
                     'type' => $m->type,
                     'week_group' => $m->week_group,
                     'is_active' => $m->is_active,
@@ -33,6 +36,11 @@ class MachineController extends Controller
         return Inertia::render('Machines/Index', [
             'machines' => $machines,
             'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'subCategories' => Machine::whereNotNull('sub_category')
+                ->distinct()
+                ->orderBy('sub_category')
+                ->pluck('sub_category')
+                ->values(),
         ]);
     }
 
@@ -96,7 +104,11 @@ class MachineController extends Controller
                 'id' => $machine->id,
                 'code' => $machine->code,
                 'name' => $machine->name,
+                'location' => $machine->location,
+                'category' => $machine->category,
+                'sub_category' => $machine->sub_category,
                 'type' => $machine->type,
+                'week_group' => $machine->week_group,
             ],
             'records' => $records,
         ]);

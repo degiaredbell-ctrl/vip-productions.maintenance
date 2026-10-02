@@ -46,6 +46,9 @@ class DashboardController extends Controller
                     'id' => $machine->id,
                     'code' => $machine->code,
                     'name' => $machine->name,
+                    'location' => $machine->location,
+                    'category' => $machine->category,
+                    'sub_category' => $machine->sub_category,
                     'type' => $machine->type,
                     'week_group' => $machine->week_group,
                     'status' => $this->getDisplayStatus($record),
@@ -67,11 +70,31 @@ class DashboardController extends Controller
 
         $needle = mb_strtolower(trim($search));
 
+        // Daftar mesin sekarang 120+ baris, jadi sub-category (C.1 s.d. C.9)
+        // dipakai sebagai filter tambahan selain pencarian bebas.
+        $subCategories = Machine::where('is_active', true)
+            ->whereNotNull('sub_category')
+            ->distinct()
+            ->orderBy('sub_category')
+            ->pluck('sub_category')
+            ->values();
+
+        $subCategory = (string) $request->query('sub', 'all');
+
+        if ($subCategory !== 'all' && !$subCategories->contains($subCategory)) {
+            $subCategory = 'all';
+        }
+
         $visible = $machines
+            ->when($subCategory !== 'all', fn ($c) => $c->where('sub_category', $subCategory))
             ->when($status !== 'all', fn ($c) => $c->where('status', $status))
             ->when($needle !== '', fn ($c) => $c->filter(fn ($m) =>
                 str_contains(mb_strtolower($m['code']), $needle)
                 || str_contains(mb_strtolower($m['name']), $needle)
+                // Sub-category dan lokasi ikut dicari supaya "C.7" atau
+                // "Milenium" bisa dipakai sebagai kata kunci.
+                || str_contains(mb_strtolower((string) $m['sub_category']), $needle)
+                || str_contains(mb_strtolower((string) $m['location']), $needle)
             ))
             ->values();
 
@@ -80,10 +103,13 @@ class DashboardController extends Controller
             'stats' => $stats,
             'periods' => PeriodService::buildPeriods($year),
             'years' => $years,
+            'subCategories' => $subCategories,
+            'subCategory' => $subCategory,
             'currentPeriod' => $period->value,
             'currentYear' => $year,
             'search' => $search,
             'statusFilter' => $status,
+            'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
         ]);
     }

@@ -6,7 +6,7 @@ import NeuButton from '@/Components/NeuButton';
 import NeuTrack from '@/Components/NeuTrack';
 import { useState } from 'react';
 
-export default function PmForm({ auth, machine, items, period, year, existing, isFuturePeriod, canFill }) {
+export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill }) {
     const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
@@ -67,12 +67,18 @@ export default function PmForm({ auth, machine, items, period, year, existing, i
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
-                    <NeuButton href={route('dashboard')} className="!px-3">
+                    <NeuButton href={dashboardUrl ?? route('dashboard')} className="!px-3">
                         ‹ Kembali
                     </NeuButton>
                     <div>
                         <h1 className="text-lg font-bold">{machine.name}</h1>
-                        <p className="text-xs text-neu-sub">{machine.code} · Minggu {machine.week_group} · {period} {year}</p>
+                        <p className="text-xs text-neu-sub">
+                            {machine.code}
+                            {machine.sub_category && ` · ${machine.sub_category}`}
+                            {machine.location && ` · ${machine.location}`}
+                            {` · Minggu ${machine.week_group}`}
+                        </p>
+                        <p className="text-xs text-neu-sub">Periode {period} {year}</p>
                     </div>
                 </div>
 

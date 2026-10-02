@@ -26,7 +26,12 @@ export default function History({ auth, machine, records }) {
                     </NeuButton>
                     <div>
                         <h1 className="text-xl font-bold">{machine.name}</h1>
-                        <p className="text-sm text-neu-sub">{machine.code} · Riwayat PM</p>
+                        <p className="text-sm text-neu-sub">
+                            {machine.code}
+                            {machine.sub_category && ` · ${machine.sub_category}`}
+                            {machine.location && ` · ${machine.location}`}
+                            {` · Minggu ${machine.week_group} · Riwayat PM`}
+                        </p>
                     </div>
                 </div>
 
