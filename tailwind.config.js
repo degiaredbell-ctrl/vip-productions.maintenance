@@ -10,6 +10,17 @@ export default {
         './resources/js/**/*.jsx',
     ],
 
+    // Nama kelas yang dirakit dinamis di JS (mis. `neu-dot-${warna}`)
+    // tidak terlihat oleh scanner Tailwind, jadi harus didaftarkan manual.
+    safelist: [
+        'neu-dot-green',
+        'neu-dot-blue',
+        'neu-dot-orange',
+        'neu-dot-red',
+        'neu-dot-muted',
+        'neu-dot-live',
+    ],
+
     theme: {
         extend: {
             colors: {
@@ -20,6 +31,7 @@ export default {
                     text: '#2B3445',
                     sub: '#5A6475',
                     accent: '#0F6E56',
+                    info: '#1F6FEB',
                     warn: '#A86B0B',
                     bad: '#B93A2E',
                 },

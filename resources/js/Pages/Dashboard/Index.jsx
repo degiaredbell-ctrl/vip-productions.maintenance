@@ -14,7 +14,22 @@ const STATUS_FILTERS = [
     { value: 'issue', label: 'Kendala' },
 ];
 
-export default function Dashboard({ auth, machines, stats, periods, currentPeriod, currentYear, search, statusFilter, isFuturePeriod }) {
+const DOT_LEGEND = [
+    { dot: 'green', label: 'Semua selesai' },
+    { dot: 'blue', label: 'Belum selesai (periode ini)' },
+    { dot: 'orange', label: 'Belum (periode lalu)' },
+    { dot: 'red', label: 'Tunggakan lebih lama' },
+];
+
+const PERIOD_LABELS = {
+    green: 'Semua mesin selesai',
+    blue: 'Mesin ada yang belum selesai di periode ini',
+    orange: 'Periode sebelumnya ada mesin belum selesai',
+    red: 'Ada tunggakan lebih lama',
+    muted: 'Periode belum dibuka',
+};
+
+export default function Dashboard({ auth, machines, stats, periods, years, currentPeriod, currentYear, search, statusFilter, isFuturePeriod }) {
     const [filters, setFilters] = useState({
         period: currentPeriod,
         year: currentYear,
@@ -34,7 +49,7 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
         });
     }, [currentPeriod, currentYear, search, statusFilter]);
 
-    const applyFilters = (patch, { replace = true } = {}) => {
+    const applyFilters = (patch) => {
         const next = { ...filters, ...patch };
         setFilters(next);
         setIsLoading(true);
@@ -42,7 +57,7 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
         router.get(route('dashboard'), next, {
             preserveState: true,
             preserveScroll: true,
-            replace,
+            replace: true,
             onFinish: () => setIsLoading(false),
         });
     };
@@ -50,6 +65,11 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
     const handlePeriodChange = (period) => {
         if (period === filters.period) return;
         applyFilters({ period });
+    };
+
+    const handleYearChange = (year) => {
+        if (year === filters.year) return;
+        applyFilters({ year });
     };
 
     const handleStatusFilter = (status) => {
@@ -95,6 +115,61 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
                     <h1 className="text-xl font-bold">Preventive Maintenance</h1>
                 </div>
 
+                {/* Filter tahun */}
+                <div
+                    className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-2"
+                    role="group"
+                    aria-label="Filter tahun"
+                >
+                    {(years ?? []).map((y) => (
+                        <NeuChip
+                            key={y}
+                            active={filters.year === y}
+                            onClick={() => handleYearChange(y)}
+                            aria-label={`Tahun ${y}`}
+                        >
+                            {y}
+                        </NeuChip>
+                    ))}
+                </div>
+
+                {/* Filter periode + dot notifikasi */}
+                <div
+                    className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-2"
+                    role="group"
+                    aria-label="Periode"
+                >
+                    {(periods ?? PERIODS_FALLBACK).map((p) => (
+                        <NeuChip
+                            key={p.value}
+                            active={filters.period === p.value}
+                            onClick={p.locked ? undefined : () => handlePeriodChange(p.value)}
+                            disabled={p.locked}
+                            dot={p.dot}
+                            title={p.locked
+                                ? `${p.label} — belum dibuka, periode ini belum memasuki bulan`
+                                : `${p.label} — ${p.done}/${p.total} mesin selesai · ${PERIOD_LABELS[p.dot] ?? ''}`}
+                            aria-label={`Periode ${p.label}${p.isCurrent ? ' (periode berjalan)' : ''}`}
+                            className={[
+                                p.locked ? 'neu-chip-locked' : '',
+                                p.isCurrent ? 'neu-chip-current' : '',
+                            ].filter(Boolean).join(' ')}
+                        >
+                            {p.label}
+                        </NeuChip>
+                    ))}
+                </div>
+
+                {/* Legenda dot */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1.5 mb-4 text-[11px] text-neu-sub">
+                    {DOT_LEGEND.map((l) => (
+                        <span key={l.dot} className="inline-flex items-center gap-1.5">
+                            <span className={`neu-dot neu-dot-${l.dot}`} aria-hidden="true" />
+                            {l.label}
+                        </span>
+                    ))}
+                </div>
+
                 {/* Summary */}
                 <NeuCard className="mb-4">
                     <div className="flex items-center gap-5">
@@ -111,20 +186,6 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
                         </div>
                     </div>
                 </NeuCard>
-
-                {/* Period chips */}
-                <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-2" role="group" aria-label="Periode">
-                    {(periods ?? PERIODS_FALLBACK).map((p) => (
-                        <NeuChip
-                            key={p.value}
-                            active={filters.period === p.value}
-                            onClick={() => handlePeriodChange(p.value)}
-                            aria-label={`Periode ${p.label}`}
-                        >
-                            {p.label}
-                        </NeuChip>
-                    ))}
-                </div>
 
                 {/* Search */}
                 <div className="mb-3">
@@ -153,7 +214,11 @@ export default function Dashboard({ auth, machines, stats, periods, currentPerio
                 </div>
 
                 {/* Status filter */}
-                <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3" role="group" aria-label="Filter status">
+                <div
+                    className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3"
+                    role="group"
+                    aria-label="Filter status"
+                >
                     {STATUS_FILTERS.map((f) => (
                         <NeuChip
                             key={f.value}

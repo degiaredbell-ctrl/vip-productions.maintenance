@@ -72,6 +72,48 @@
         @apply inline-flex items-center rounded-[10px] px-2.5 py-1 text-[11px] font-bold shadow-neu-in;
     }
 
+    /* Dot notifikasi pada tombol periode */
+    .neu-dot {
+        @apply w-2 h-2 rounded-full flex-none;
+    }
+
+    .neu-dot-green {
+        @apply bg-[#1F9D63];
+    }
+
+    .neu-dot-blue {
+        @apply bg-neu-info;
+    }
+
+    .neu-dot-orange {
+        @apply bg-neu-warn;
+    }
+
+    .neu-dot-red {
+        @apply bg-neu-bad;
+    }
+
+    .neu-dot-muted {
+        @apply bg-neu-dark;
+    }
+
+    .neu-dot-live {
+        @apply ring-2 ring-neu-bg;
+    }
+
+    .neu-chip-locked {
+        @apply opacity-45 cursor-not-allowed;
+    }
+
+    .neu-chip-locked:hover {
+        @apply text-neu-sub shadow-neu-up-sm;
+    }
+
+    /* Periode berjalan diberi tanda supaya mudah dibedakan dari riwayat */
+    .neu-chip-current {
+        @apply ring-1 ring-inset ring-neu-accent/30;
+    }
+
     /* Menu navigasi */
     .neu-nav {
         @apply rounded-neu-sm text-neu-sub transition-all duration-150 cursor-pointer select-none;

@@ -14,30 +14,33 @@ class DashboardController extends Controller
 {
     public function index(Request $request): Response
     {
-        $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
+        $years = PeriodService::availableYears();
         $year = (int) $request->query('year', now()->year);
+
+        // Tahun di luar daftar filter dianggap tidak valid agar tidak membuka
+        // periode yang seharusnya masih terkunci (mis. ?year=abc -> 0).
+        if (!in_array($year, $years, true)) {
+            $year = now()->year;
+        }
+
+        $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
         $search = $request->query('q', '');
         $status = $request->query('status', 'all');
+
+        // Periode yang belum tiba dikunci: kembalikan ke periode berjalan
+        // supaya URL lama atau tautan langsung tidak membuka periode terkunci.
+        if ($period->isFuture($year)) {
+            $period = Period::current();
+        }
 
         $machines = Machine::with(['template.items', 'pmRecords' => function ($q) use ($year, $period) {
             $q->where('year', $year)->where('period', $period->value);
         }])
             ->where('is_active', true)
-            ->when($search, function ($q) use ($search) {
-                $q->where(function ($sq) use ($search) {
-                    $sq->where('code', 'like', "%{$search}%")
-                      ->orWhere('name', 'like', "%{$search}%");
-                });
-            })
             ->orderBy('sort_no')
             ->get()
-            ->map(function ($machine) use ($year, $period, $status) {
+            ->map(function ($machine) {
                 $record = $machine->pmRecords->first();
-                $displayStatus = $this->getDisplayStatus($record);
-
-                if ($status !== 'all' && $displayStatus !== $status) {
-                    return null;
-                }
 
                 return [
                     'id' => $machine->id,
@@ -45,14 +48,16 @@ class DashboardController extends Controller
                     'name' => $machine->name,
                     'type' => $machine->type,
                     'week_group' => $machine->week_group,
-                    'status' => $displayStatus,
+                    'status' => $this->getDisplayStatus($record),
                     'record_id' => $record?->id,
                     'record_status' => $record?->status->value,
                 ];
             })
-            ->filter()
             ->values();
 
+        // Statistik memakai seluruh mesin aktif pada periode ini, bukan hasil
+        // filter, supaya angka ringkasan dan dot notifikasi tetap konsisten
+        // saat user memfilter status atau mengetik pencarian.
         $stats = [
             'total' => $machines->count(),
             'done' => $machines->where('status', 'done')->count(),
@@ -60,10 +65,21 @@ class DashboardController extends Controller
             'issue' => $machines->where('status', 'issue')->count(),
         ];
 
+        $needle = mb_strtolower(trim($search));
+
+        $visible = $machines
+            ->when($status !== 'all', fn ($c) => $c->where('status', $status))
+            ->when($needle !== '', fn ($c) => $c->filter(fn ($m) =>
+                str_contains(mb_strtolower($m['code']), $needle)
+                || str_contains(mb_strtolower($m['name']), $needle)
+            ))
+            ->values();
+
         return Inertia::render('Dashboard/Index', [
-            'machines' => $machines,
+            'machines' => $visible,
             'stats' => $stats,
-            'periods' => PeriodService::getPeriods(),
+            'periods' => PeriodService::buildPeriods($year),
+            'years' => $years,
             'currentPeriod' => $period->value,
             'currentYear' => $year,
             'search' => $search,
