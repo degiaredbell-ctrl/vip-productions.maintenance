@@ -101,11 +101,16 @@ class MachineSeeder extends Seeder
         ];
 
         foreach ($templates as $type => $data) {
-            $template = ChecklistTemplate::create([
-                'machine_type' => $type,
-                'name' => $data['name'],
-                'is_default' => true,
-            ]);
+            // Idempoten: db:seed sering dijalankan ulang saat menambah data
+            // baru. Tanpa updateOrCreate, tiap run menambah satu template
+            // duplikat karena machine_type tidak punya unique index, dan
+            // mesin lalu menunjuk ke template yang salah.
+            $template = ChecklistTemplate::updateOrCreate(
+                ['machine_type' => $type],
+                ['name' => $data['name'], 'is_default' => true],
+            );
+
+            $template->items()->delete();
 
             foreach ($data['items'] as $i => $item) {
                 ChecklistTemplateItem::create([

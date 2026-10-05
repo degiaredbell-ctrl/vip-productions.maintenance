@@ -117,6 +117,15 @@ class MachineImportService
                 $subCategory = $record['Sub-Category'] ?? null;
                 $name = $record['Machine Name'] ?? '';
 
+                // Baris sentinel dari spreadsheet asal: namanya persis
+                // "MASTER" dengan Sub-Category "0", bukan "C.<n>" seperti
+                // 121 mesin asli. Ini pengenal sheet, bukan alat, jadi
+                // tidak boleh muncul di daftar mesin maupun dihitung sebagai
+                // penyebut pada dashboard.
+                if (self::isSentinelRow($name)) {
+                    continue;
+                }
+
                 $rows[] = [
                     'code' => $code,
                     'name' => $name,
@@ -207,6 +216,14 @@ class MachineImportService
             'types' => $types,
             'weeks' => $weeks,
         ];
+    }
+
+    /**
+     * Baris pengenal sheet ("MASTER") dari CSV, bukan mesin sungguhan.
+     */
+    public static function isSentinelRow(?string $name): bool
+    {
+        return mb_strtolower(trim((string) $name)) === 'master';
     }
 
     public static function guessType(string $name): MachineType
