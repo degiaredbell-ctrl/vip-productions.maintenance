@@ -83,7 +83,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users');
         Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
         Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
+        Route::put('/admin/users/{user}/password', [UserController::class, 'updatePassword'])->name('admin.users.update-password');
         Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+    });
+
+    Route::middleware('role:admin')->group(function () {
+        Route::resource('/admin/roles', \App\Http\Controllers\Admin\RoleController::class)->names('admin.roles');
     });
 
     Route::middleware('can:template.manage')->group(function () {

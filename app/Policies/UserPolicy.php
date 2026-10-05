@@ -21,6 +21,11 @@ class UserPolicy
         return $user->can('user.manage');
     }
 
+    public function updatePassword(User $user, User $model): bool
+    {
+        return $user->can('user.manage');
+    }
+
     public function delete(User $user, User $model): bool
     {
         return $user->can('user.manage') && $user->id !== $model->id;

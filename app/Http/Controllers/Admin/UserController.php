@@ -68,6 +68,21 @@ class UserController extends Controller
         return redirect()->back()->with('success', 'Pengguna berhasil diperbarui.');
     }
 
+    public function updatePassword(Request $request, User $user): RedirectResponse
+    {
+        $this->authorize('update', $user);
+
+        $validated = $request->validate([
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        return redirect()->back()->with('success', 'Password pengguna berhasil diperbarui.');
+    }
+
     public function destroy(Request $request, User $user): RedirectResponse
     {
         if ($user->id === $request->user()->id) {

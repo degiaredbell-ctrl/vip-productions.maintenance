@@ -11,6 +11,11 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $users = [
+            ['name' => 'Admin Maintenance', 'email' => 'admin.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'admin'],
+            ['name' => 'Manager Maintenance', 'email' => 'manager.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'manager'],
+            ['name' => 'Teknisi Maintenance', 'email' => 'technician.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'technician'],
+            ['name' => 'User Maintenance', 'email' => 'user.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'user'],
+            ['name' => 'Viewer Maintenance', 'email' => 'viewer.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'viewer'],
             ['name' => 'Admin', 'email' => 'admin@example.test', 'password' => 'password', 'role' => 'admin'],
             ['name' => 'Manager', 'email' => 'manager@example.test', 'password' => 'password', 'role' => 'manager'],
             ['name' => 'Teknisi', 'email' => 'tech@example.test', 'password' => 'password', 'role' => 'technician'],

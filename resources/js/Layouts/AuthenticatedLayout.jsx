@@ -52,6 +52,7 @@ export default function Authenticated({ user: userProp, header, children }) {
         { name: 'Laporan', href: route('reports.index'), path: '/reports', show: can['report.view'] },
         { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
+        { name: 'Role', href: route('admin.roles.index'), path: '/admin/roles', show: auth.user?.roles?.some(r => r === 'admin') || auth.user?.roles?.[0] === 'admin' },
         { name: 'Template', href: route('admin.templates'), path: '/admin/templates', show: can['template.manage'] },
         { name: 'Audit Log', href: route('admin.audit-logs'), path: '/admin/audit-logs', show: can['audit.view'] },
     ].filter(item => item.show);
