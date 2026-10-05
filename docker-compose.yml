@@ -1,0 +1,31 @@
+services:
+  app:
+    build: .
+    container_name: vip_app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - app_public:/var/www/html/public
+      - ./storage:/var/www/html/storage
+    networks:
+      - vipnet
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: vip_nginx
+    restart: unless-stopped
+    ports:
+      - "8082:80"
+    volumes:
+      - app_public:/var/www/html/public:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - vipnet
+
+volumes:
+  app_public:
+
+networks:
+  vipnet:

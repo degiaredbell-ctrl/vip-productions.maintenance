@@ -1,0 +1,28 @@
+# ---- Stage 1: build frontend (Vite) ----
+FROM node:20-alpine AS nodebuild
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# ---- Stage 2: PHP-FPM ----
+FROM php:8.3-fpm-alpine
+
+RUN apk add --no-cache git unzip libzip-dev libpng-dev libjpeg-turbo-dev \
+    freetype-dev icu-dev oniguruma-dev \
+ && docker-php-ext-configure gd --with-freetype --with-jpeg \
+ && docker-php-ext-install pdo_mysql mbstring zip gd intl bcmath opcache pcntl
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+COPY . .
+COPY --from=nodebuild /app/public/build ./public/build
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction \
+ && chown -R www-data:www-data storage bootstrap/cache \
+ && chmod -R 775 storage bootstrap/cache
+
+EXPOSE 9000
+CMD ["php-fpm"]
