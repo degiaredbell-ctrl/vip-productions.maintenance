@@ -1,5 +1,27 @@
 # Architecture — PM Preventive
 
+> ## ARSIP - DOKUMEN DESAIN AWAL (SUPERSEDED)
+>
+> Berkas ini adalah **spesifikasi desain sebelum aplikasi dibangun**, berasal dari
+> prototipe single-file HTML. **Bukan sumber kebenaran.**
+>
+> Gunakan dokumen versi final di root proyek:
+> - Kebutuhan produk & aturan bisnis -> [`../PRD.md`](../PRD.md)
+> - Arsitektur teknis & skema database -> [`../Architecture.md`](../Architecture.md)
+>
+> Berikut hal yang **tidak lagi sesuai** dengan implementasi aktual:
+>
+> | Dikatakan di dokumen ini | Kenyataan di implementasi |
+> |---|---|
+> | Status PM 4: `draft`/`submitted`/`approved`/`rejected` | 5 status; ada `pic_approved` karena rantai persetujuan 3 tahap |
+> | Persetujuan dilakukan `manager` | Rantai 3 tahap: `technician` -> `user` (User PIC) -> `manager` (Atasan), tiap tahap punya permission sendiri (`pm.sign`/`pm.acknowledge`/`pm.approve`) |
+> | Tabel `machine_types`, kolom `users.is_active` | Tidak ada; jenis mesin memakai enum `App\Enums\MachineType` |
+> | `TemplateSeeder`, `pm:import`, `RevisePmRecord`, `Http/Resources/*`, `lib/offlineQueue.js` | Tidak ada di implementasi; revisi dicatat di `pm_record_revisions`, impor lewat `machines:import` |
+> | PWA + offline queue (M4), Recharts, Pest | Belum diimplementasikan; pengujian memakai PHPUnit + verifikasi UI via Playwright |
+> | Setup lokal Laragon | Deploy memakai Docker (PHP-FPM + Nginx + Vite) |
+>
+> Dipertahankan hanya sebagai catatan keputusan desain & asal requirement.
+
 Dokumen ini menjelaskan arsitektur teknis aplikasi PM Preventive. Kebutuhan produk ada di `PRD.md`.
 
 ## 1. Tech Stack

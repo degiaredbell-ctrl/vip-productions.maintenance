@@ -1,66 +1,340 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# PM Preventive — Preventive Maintenance System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi web untuk mengelola **Preventive Maintenance (PM)** mesin produksi: mulai dari daftar mesin, pengisian checklist lapangan, **rantai tanda tangan 3 tahap**, sampai laporan kepatuhan dan ekspor XLSX/PDF.
 
-## About Laravel
+Dibangun dengan **Laravel 11 + Inertia.js v2 + React 18 + Tailwind CSS**, dideploy dalam container **Docker (PHP-FPM + Nginx + Vite)**.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+> Nama aplikasi pada UI: **PM Preventive** · Client: Verra Inter Pangan / Redbell Group
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Daftar Isi
 
-## Learning Laravel
+- [Ringkasan Fitur](#ringkasan-fitur)
+- [Teknologi](#teknologi)
+- [Peran dan Permission](#peran-dan-permission)
+- [Rantai Tanda tangan PM](#rantai-tanda-tangan-pm)
+- [Setup / Instalasi](#setup--instalasi)
+- [Akun Demo](#akun-demo)
+- [Perintah Artisan](#perintah-artisan)
+- [Struktur Proyek](#struktur-proyek)
+- [Catatan Deployment](#catatan-deployment)
+- [Dokumentasi Lain](#dokumentasi-lain)
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+---
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## Ringkasan Fitur
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 1. Autentikasi & Profil
+- Register, Login, Logout
+- Remember me dan lupa password (reset via email)
+- Konfirmasi password untuk aksi sensitif
+- Verifikasi email
+- **Halaman Profil**: ubah nama/email, ganti password sendiri, hapus akun
+- Ganti password memakai password lama sebagai pembuktian
 
-## Laravel Sponsors
+### 2. Beranda / Dashboard
+- Grid kartu mesin dengan **status PM untuk periode terpilih**
+- Filter: **periode (6 periode 2-bulanan), tahun, area/sub-kategori, status, pencarian**
+- Filter aktif **diteruskan ke halaman form PM** dan tombol "Kembali" (tidak kehilangan filter)
+- **Dot notifikasi 4 warna** per periode:
+  - 🔵 biru — periode berjalan, masih ada mesin belum selesai
+  - 🟠 oranye — periode sebelumnya masih ada tunggakan
+  - 🔴 merah — tunggakan lebih lama dari periode sebelumnya
+  - 🟢 hijau — tidak ada tunggakan
+- Periode di masa depan terkunci (tidak bisa diisi)
+- Statistik ringkasan (total mesin, selesai, sedang approval, perlu revisi)
+- **Ekspor XLSX** status mesin + **PDF** daftar mesin sesuai filter yang sedang aktif
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### 3. Pengisian Checklist PM
+- Checklist **di-generate otomatis dari template** sesuai jenis mesin
+- Bila record sudah ada, form diisi dari data sebelumnya (bukan template kosong)
+- Per item checklist:
+  - nilai aktual (`actual`)
+  - aksi: Bersihkan / Perbaiki / Lumasi / Ganti
+  - kondisi akhir + jumlah part yang diganti
+- Catatan umum per record
+- Validasi periode: periode terkunci/future tidak bisa diisi
+- Mendukung revisi setelah ditolak (revision counter & snapshot)
 
-### Premium Partners
+### 4. Rantai Tanda Tangan (3 Tahap)
+Satu endpoint untuk ketiga tahap (`POST /pm/{record}/sign`), tahap aktif dibaca dari `status` record sehingga rantai **tidak bisa dilompati atau diurutkan ulang**.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+| # | Tahap | Permission | Status setelah |
+|---|-------|-----------|----------------|
+| 1 | Tanda Tangan Teknisi/Pemeriksa | `pm.sign` | `submitted` |
+| 2 | Persetujuan User PIC | `pm.acknowledge` | `pic_approved` |
+| 3 | Persetujuan Atasan | `pm.approve` | `approved` |
 
-## Contributing
+- **Tanda tangan gambar** (canvas) — disimpan sebagai PNG di disk, disajikan lewat route ber-otorisasi
+- **Snapshot nama & peran** penanda tangan disimpan terpisah dari akun → jejak tetap terbaca meski akun dihapus
+- **Anti konflik kepentingan**: approver (tahap 2 & 3) tidak boleh orang yang sama dengan mengisi checklist
+- **Penolakan** hanya di tahap User PIC / Atasan → kembalikan ke teknisi (`rejected`) dengan alasan
+- Checklist **terkunci setelah ditandatangani** (`isEditable()`), tidak bisa diubah di belakang layar
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### 5. Halaman Persetujuan
+- Daftar record yang menunggu tindakan user **berdasarkan permission-nya**
+- Badge sidebar memakai **query yang sama** dengan daftar halaman → angka tidak pernah berbeda
+- Rantai approval ditampilkan sebagai stepper dengan centang per tahap
 
-## Code of Conduct
+### 6. Daftar Mesin
+- CRUD mesin (kode unik, nama, lokasi, kategori, sub-kategori, jenis, template, status aktif)
+- **Soft delete + restore**
+- **Impor massal dari CSV** (`machines:import`), idempoten
+- Pengelompokan minggu dari Sub-Category
+- Riwayat PM per mesin
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### 7. Template Checklist
+- Template per `machine_type`, dengan item (kategori, nama, spesifikasi, urutan)
+- Template default ditandai `is_default`
+- Hapus template (item ikut terhapus via cascade)
 
-## Security Vulnerabilities
+### 8. Manajemen Pengguna (role `admin`)
+- **CRUD pengguna penuh**: tambah, edit nama/email/role, hapus
+- **Ubah password login pengguna lain** (dengan konfirmasi password)
+- Daftar role diambil **dinamis dari tabel `roles`** → role baru langsung bisa dipilih
+- Pencarian pengguna di halaman
+- **Perlindungan akun sendiri**: admin tidak bisa mengubah role sendiri atau menghapus dirinya (UI nonaktif + guard di backend)
+- Audit `user.create` / `user.update` / `user.password` / `user.delete` — **password tidak pernah masuk log**
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### 9. Manajemen Role & Permission
+- CRUD role custom (5 role sistem tidak bisa dihapus)
+- Set permission per role via checkbox
+
+### 10. Laporan
+- **Kepatuhan per periode** (total, selesai, sedang approval, %)
+- **Top part yang paling sering diganti**
+- **Ringkasan aksi** (bersihkan/perbaiki/lumasi/ganti)
+- Filter tahun & periode
+- **Ekspor XLSX** (Maatwebsite Excel) dan **PDF** (DomPDF)
+
+### 11. Audit Log
+- Mencatat aksi penting: `machine.create`, `machine.update`, `machine.delete`, `machine.restore`, `pm.submit`, `pm.sign.{stage}`, `pm.reject`, `user.create`, `user.update`, `user.password`, `user.delete`
+- Menyimpan user pelaku, subject, perubahan (JSON), dan IP
+- 100 log terbaru per halaman
+
+### 12. UI / UX
+- Design system **Neumorphism** (`NeuCard`, `NeuButton`, `NeuInput`, `NeuPill`, `NeuRing`, `NeuToast`, `NeuTrack`, `NeuBars`, `NeuSignaturePad`)
+- Sidebar responsif (desktop + mobile)
+- Toast notifikasi untuk setiap aksi sukses/gagal
+- Tampilan dalam Bahasa Indonesia
+
+---
+
+## Teknologi
+
+| Lapisan | Teknologi |
+|---------|-----------|
+| Backend | Laravel `^11.31`, PHP `^8.2` (image `php:8.3-fpm-alpine`) |
+| Frontend | Inertia.js `^2.0`, React `^18.2`, Vite `^6.0` |
+| Styling | Tailwind CSS `^3.2` |
+| Auth & RBAC | Laravel Breeze, Spatie Laravel Permission `^6.25` |
+| Database | MySQL |
+| Export | Maatwebsite Excel (XLSX), Barryvdh DomPDF (PDF) |
+| Web server | Nginx `1.27-alpine` + PHP-FPM port 9000 |
+| Testing | PHPUnit 11, Playwright (verifikasi UI end-to-end) |
+
+---
+
+## Peran dan Permission
+
+Daftar permission originates dari `database/seeders/RoleSeeder.php`.
+
+| Permission | Admin | Manager | Technician | User | Viewer |
+|---|:---:|:---:|:---:|:---:|:---:|
+| `dashboard.view` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `pm.fill` | ✅ | — | ✅ | — | — |
+| `pm.sign` | ✅ | — | ✅ | — | — |
+| `pm.acknowledge` | ✅ | — | — | ✅ | — |
+| `pm.approve` | ✅ | ✅ | — | — | — |
+| `pm.history.view` | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `report.view` | ✅ | ✅ | ✅ | ✅ | — |
+| `report.export` | ✅ | ✅ | ✅ | — | ✅ |
+| `machine.manage` | ✅ | ✅ | — | — | — |
+| `template.manage` | ✅ | ✅ | — | — | — |
+| `user.manage` | ✅ | — | — | — | — |
+| `audit.view` | ✅ | ✅ | — | — | — |
+
+**Catatanatan penting:**
+- `pm.sign`, `pm.acknowledge`, `pm.approve` **dipisah per tahap** — bukan satu permission `pm.approve` generik, supaya peran tidak bisa melompat tahap.
+- Manager **tidak** bisa mengisi checklist lapangan (tidak punya `pm.fill`).
+- Halaman **Role** hanya untuk role `admin`; halaman **Pengguna** untuk siapa pun yang punya `user.manage` (hanya admin saat ini).
+- Otorisasi tetap ditegakkan di server lewat **Policy**, bukan hanya dengan menyembunyikan menu.
+
+---
+
+## Rantai Tanda Tangan PM
+
+```
+  draft ──sign(technician)──▶ submitted ──sign(pic)──▶ pic_approved ──sign(supervisor)──▶ approved
+    ▲                                                                                        │
+    └──────────────────── reject (pic / supervisor) ──────────────────────────────────────────┘
+                                        │
+                                     rejected ──sign(technician)──▶ submitted
+```
+
+- `draft` / `rejected` → menunggu tahap **Technician**
+- `submitted` → menunggu **User PIC**
+- `pic_approved` → menunggu **Supervisor**
+- `approved` → final, tidak bisa diubah lagi
+
+Aturan yang ditegakkan `app/Services/SignatureChain.php`:
+1. Tahap aktif dibaca dari `status` → rantai tidak bisa dilompati.
+2. Approver tidak boleh sama dengan teknisi pengisi checklist.
+3. Admin tetap boleh di semua tahap (ia tidak melakukan pekerjaan lapangan) dan menjadi pengecualian saat tidak ada orang lain.
+4. Penolakan hanya di tahap 2 dan 3.
+
+---
+
+## Setup / Instalasi
+
+### Prasyarat
+- Docker & Docker Compose
+- Node.js 20 & Composer 2 (hanya bila mau development lokal tanpa Docker)
+
+### Menjalankan dengan Docker
+
+```bash
+# 1. Siapkan environment
+cp .env.example .env
+php artisan key:generate
+
+# 2. Siapkan database (pastikan service MySQL sudah jalan & .env sudah diisi)
+php artisan migrate --seed
+
+# 3. Build & jalankan
+docker compose up -d --build
+```
+
+Aplikasi tersedia di **http://localhost:8082**.
+
+### Build ulang setelah ubah kode
+
+```bash
+docker compose build app
+docker compose up -d --force-recreate app
+```
+
+> **Penting:** `public/` di dalam image **tidak langsung dipakai** nginx karena `public` di-*mount* sebagai named volume. Setelah build, asset hasil Vite harus disalin ke volume tersebut (lihat [Catatan Deployment](#catatan-deployment)).
+
+### Development lokal tanpa Docker
+
+```bash
+composer install
+npm install
+cp .env.example .env && php artisan key:generate
+php artisan migrate --seed
+composer run dev     # server + queue + logs + vite
+```
+
+---
+
+## Akun Demo
+
+Dari `UserSeeder`, seluruh akun memakai password **`password`**.
+
+| Nama | Email | Role |
+|------|-------|------|
+| Admin Maintenance | `admin.maintenance@redbellgroup.com` | admin |
+| Manager Maintenance | `manager.maintenance@redbellgroup.com` | manager |
+| Teknisi Maintenance | `technician.maintenance@redbellgroup.com` | technician |
+| User Maintenance | `user.maintenance@redbellgroup.com` | user |
+| Viewer Maintenance | `viewer.maintenance@redbellgroup.com` | viewer |
+
+> Email `@example.test` juga tersedia sebagai akun uji. **Ganti password seluruh akun demo sebelum dipakai di lingkungan produksi.**
+
+---
+
+## Perintah Artisan
+
+| Perintah | Fungsi |
+|----------|--------|
+| `php artisan migrate --seed` | Siapkan skema + role + mesin + user demo |
+| `php artisan machines:import` | Impor mesin dari `references/data.csv` |
+| `php artisan machines:import --purge` | Impor + hapus permanen mesin yang tidak ada di CSV (**riwayat PM ikut terhapus**) |
+| `php artisan machines:import --purge --force` | Sama seperti di atas tanpa konfirmasi interaktif |
+| `php artisan test` | Jalankan test suite |
+
+**Perilaku impor CSV:** bersifat idempoten (aman dijalankan berulang), melewati baris sentinel spreadsheet, dan menentukan `type` dari kata kunci pada nama mesin serta `week_group` dari angka pada Sub-Category.
+
+---
+
+## Struktur Proyek
+
+```
+app/
+├── Actions/Pm/            SubmitPmRecord, SignPmRecord, RejectPmRecord
+├── Console/Commands/      ImportMachinesCommand
+├── Enums/                 PmStatus, SignatureStage, Period, Role, MachineType, PmDisplayStatus
+├── Exports/               MachineStatusExport, PmReportExport (XLSX)
+├── Http/
+│   ├── Controllers/       Dashboard, Machine, PmRecord, Approval, Report, Profile, Admin/*
+│   └── Requests/          Form Request untuk validasi
+├── Models/                User, Machine, PmRecord, PmRecordItem, PmRecordRevision,
+│                          PmSignature, ChecklistTemplate, ChecklistTemplateItem, AuditLog
+├── Policies/              UserPolicy, MachinePolicy, PmRecordPolicy, RolePolicy
+└── Services/              SignatureChain, SignatureStorage, AuditLogService,
+                           DashboardService, ReportService, PeriodService, MachineImportService
+
+database/
+├── migrations/            Skema tabel
+└── seeders/               RoleSeeder, MachineSeeder, UserSeeder
+
+references/                 Material desain awal (ARSIP — lihat catatan di bawah)
+├── data.csv               Sumber data mesin (121 baris) untuk `machines:import`
+├── PRD.md                 Spesifikasi desain awal — sudah digantikan PRD.md di root
+├── Architecture.md        Rancangan arsitektur awal — digantikan Architecture.md di root
+├── Agent.md               Catatan untuk AI agent
+└── PM Preventive – Preview Neumorphism.html   Pratinjau visual design system
+
+resources/
+├── js/
+│   ├── Components/        Design system Neu* + SignaturePad
+│   ├── Layouts/           AuthenticatedLayout (sidebar + navigasi)
+│   └── Pages/             Halaman per fitur (Inertia)
+└── views/reports/         Template Blade untuk ekspor PDF
+
+routes/web.php             Seluruh definisi route
+```
+
+---
+
+## Catatan Deployment
+
+1. **Named volume `app_public`** — `docker-compose.yml` me-mount `app_public:/var/www/html/public`. Nginx membaca volume yang sama secara read-only. Asset hasil `vite build` yang ada di dalam image **tidak** terlihat oleh nginx sampai disalin:
+
+   ```bash
+   rm -rf /tmp/build && mkdir -p /tmp/build
+   cid=$(docker create vip-maintenance-app:latest)
+   docker cp "$cid:/var/www/html/public/build/." /tmp/build/
+   docker rm "$cid" >/dev/null
+   docker exec vip_app sh -c 'rm -rf /var/www/html/public/build'
+   docker cp /tmp/build/. vip_app:/var/www/html/public/build
+   docker exec vip_app sh -c 'chown -R www-data:www-data /var/www/html/public/build'
+   ```
+
+2. **`storage/` di-bind mount** dari host, sehingga log, session, dan `storage/app/public/signatures` tetap ada saat container di-recreate.
+
+3. **Restart policy** `unless-stopped` pada kedua service.
+
+---
+
+## Dokumentasi Lain
+
+| Dokumen | Isi |
+|---------|-----|
+| [PRD.md](PRD.md) | Product Requirements Document — tujuan, persona, kebutuhan fungsional, aturan bisnis, kriteria penerimaan |
+| [Architecture.md](Architecture.md) | Arsitektur teknis — stack, layer, skema database, alur, keamanan, deployment |
+
+> **Catatan:** folder `references/` berisi dokumen **desain awal** sebelum aplikasi dibangun
+> (spesifikasi dari prototipe single-file HTML). Dokumen tersebut sudah **tidak sepenuhnya
+> sesuai implementasi** — misalnya masih menyebut 4 status PM, rencana PWA/offline,
+> `TemplateSeeder`, dan `pm:import`. Gunakan `PRD.md` dan `Architecture.md` di root sebagai
+> sumber kebenaran; `references/` disimpan sebagai arsip.`references/data.csv` tetap dipakai
+> oleh `php artisan machines:import`.
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Lisensi internal. Seluruh hak cipta dilindungi.
