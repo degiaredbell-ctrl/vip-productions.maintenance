@@ -236,7 +236,6 @@ class PmPicAssignmentTest extends TestCase
 
         $this->actingAs($this->pic)->post(route('pm.sign', $record), [
             'signature' => self::PNG,
-            'signer_name' => 'Siti Rahayu',
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $this->assertSame(PmStatus::PicApproved, $record->fresh()->status);
@@ -250,7 +249,6 @@ class PmPicAssignmentTest extends TestCase
 
         $this->actingAs($this->picLain)->post(route('pm.sign', $record), [
             'signature' => self::PNG,
-            'signer_name' => 'Orang Lain',
         ])->assertForbidden();
 
         $this->assertSame(PmStatus::Submitted, $record->fresh()->status);
@@ -295,7 +293,6 @@ class PmPicAssignmentTest extends TestCase
 
         $this->actingAs($this->pic)->post(route('pm.sign', $record), [
             'signature' => self::PNG,
-            'signer_name' => 'Siti Rahayu',
         ])->assertRedirect();
 
         $record->refresh();

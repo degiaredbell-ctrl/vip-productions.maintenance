@@ -21,8 +21,11 @@ use Tests\TestCase;
 /**
  * Aturan tahap 1: checklist teknisi hanya bisa ditutup lewat satu submit, dan
  * submit itu wajib membawa nama teknisi yang diketik manual + gambar tanda
- * tangan. Nama yang diketik inilah yang tersimpan sebagai identitas di dokumen,
- * bukan nama akun yang squeez-in.
+ * tangan. Nama yang diketik inilah yang tersimpan sebagai identitas di dokumen.
+ *
+ * Tahap 2 dan 3 (User PIC dan Atasan) berbeda: tidak ada field nama sama
+ * sekali. Nama approver diambil dari akun yang login, dan `signer_name` yang
+ * dikirim client diabaikan supaya nama di dokumen tidak bisa dipalsukan.
  *
  * Isolasi database dijamin `Tests\TestCase`: koneksi dipaksa ke sqlite
  * in-memory, jadi `migrate:fresh` dari RefreshDatabase tidak mungkin menyentuh
@@ -221,47 +224,62 @@ class PmTechnicianSignatureTest extends TestCase
         $this->assertSame('Budi Santoso', PmRecord::sole()->technician_name);
     }
 
-    public function test_tahap_user_pic_menuntut_nama_penanda_tangan(): void
+    public function test_tahap_user_pic_tidak_menuntut_nama_dan_memakai_nama_akun(): void
     {
         $record = $this->signedRecord();
 
+        // Tidak ada `signer_name` sama sekali: panel persetujuan di form PM
+        // tidak punya field nama, jadi payload frontend memang begitu.
         $this->actingAs($this->pic)
             ->post(route('pm.sign', $record), ['signature' => self::PNG, 'note' => null])
-            ->assertSessionHasErrors('signer_name');
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
 
-        $this->assertSame(PmStatus::Submitted, $record->fresh()->status);
+        $record->refresh();
+        $this->assertSame(PmStatus::PicApproved, $record->status);
+        $this->assertSame($this->pic->name, $record->signatureFor(SignatureStage::Pic)->signed_by_name);
     }
 
-    public function test_tahap_user_pic_menyimpan_nama_yang_diketik(): void
+    public function test_tahap_user_pic_mengabaikan_nama_yang_dikirim_client(): void
     {
         $record = $this->signedRecord();
 
+        // Nama approver bukan input user, jadi nilai yang dikirim client
+        // diabaikan: kalau tidak, dokumen bisa menyatakan nama orang lain.
         $this->actingAs($this->pic)
             ->post(route('pm.sign', $record), [
                 'signature' => self::PNG,
-                'signer_name' => 'Siti Rahayu',
+                'signer_name' => 'Orang Lain',
                 'note' => 'Sebagai diketahui',
             ])
             ->assertRedirect();
 
         $record->refresh();
         $this->assertSame(PmStatus::PicApproved, $record->status);
-        $this->assertSame('Siti Rahayu', $record->signatureFor(SignatureStage::Pic)->signed_by_name);
+        $this->assertSame($this->pic->name, $record->signatureFor(SignatureStage::Pic)->signed_by_name);
 
         // Nama tahap 2 tidak boleh menimpa nama teknisi di pm_records.
         $this->assertSame('Budi Santoso', $record->technician_name);
     }
 
-    public function test_tahap_atasan_menuntut_nama_penanda_tangan(): void
+    public function test_tahap_atasan_tidak_menuntut_nama_dan_memakai_nama_akun(): void
     {
         $record = $this->signedRecord();
         app(SignPmRecord::class)->handle($record, self::PNG, null, 'Siti Rahayu');
 
-        $this->actingAs($this->user('manager'))
-            ->post(route('pm.sign', $record->fresh()), ['signature' => self::PNG, 'signer_name' => ''])
-            ->assertSessionHasErrors('signer_name');
+        $manager = $this->user('manager');
 
-        $this->assertSame(PmStatus::PicApproved, $record->fresh()->status);
+        $this->actingAs($manager)
+            ->post(route('pm.sign', $record->fresh()), ['signature' => self::PNG])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $record->refresh();
+        $this->assertSame(PmStatus::Approved, $record->status);
+        $this->assertSame(
+            $manager->name,
+            $record->signatureFor(SignatureStage::Supervisor)->signed_by_name
+        );
     }
 
     public function test_rantai_penuh_sampai_disetujui(): void
@@ -271,17 +289,24 @@ class PmTechnicianSignatureTest extends TestCase
 
         $this->actingAs($this->pic)->post(route('pm.sign', $record), [
             'signature' => self::PNG,
-            'signer_name' => 'Siti Rahayu',
         ])->assertRedirect();
 
-        $this->actingAs($this->user('manager'))->post(route('pm.sign', $record->fresh()), [
+        $manager = $this->user('manager');
+
+        $this->actingAs($manager)->post(route('pm.sign', $record->fresh()), [
             'signature' => self::PNG,
-            'signer_name' => 'Andi Prasetyo',
         ])->assertRedirect();
 
         $record->refresh();
         $this->assertSame(PmStatus::Approved, $record->status);
-        $this->assertSame('Andi Prasetyo', $record->signatureFor(SignatureStage::Supervisor)->signed_by_name);
+
+        // Dua tahap persetujuan memakai nama akun masing-masing, tahap teknisi
+        // tetap memakai nama yang diketik teknisi di form checklist.
+        $this->assertSame(
+            $manager->name,
+            $record->signatureFor(SignatureStage::Supervisor)->signed_by_name
+        );
+        $this->assertSame($this->pic->name, $record->signatureFor(SignatureStage::Pic)->signed_by_name);
         $this->assertSame('Budi Santoso', $record->signatureFor(SignatureStage::Technician)->signed_by_name);
     }
 
@@ -366,20 +391,26 @@ class PmTechnicianSignatureTest extends TestCase
         $this->assertSame('Budi Santoso', $props['technician_name']);
     }
 
-    public function test_tanda_tangan_bisa_dilewati_langsung_dari_daftar_persetujuan(): void
+    public function test_tahap_pic_tetap_berjalan_kalau_endpoint_dipanggil_langsung(): void
     {
+        // Daftar Persetuian tidak punya kolom tanda tangan lagi, tapi endpointnya
+        // masih bisa dipanggil langsung, jadi penjaga backend tidak boleh ikut
+        // dilonggarkan: approve tetap butuh gambar tanda tangan.
         $record = $this->signedRecord();
 
         $this->actingAs($this->pic)
-            ->post(route('pm.sign', $record), [
-                'signature' => self::PNG,
-                'signer_name' => 'Siti Rahayu',
-            ])
+            ->post(route('pm.sign', $record), ['note' => 'Tanpa tanda tangan'])
+            ->assertSessionHasErrors('signature');
+
+        $this->assertSame(PmStatus::Submitted, $record->fresh()->status);
+
+        $this->actingAs($this->pic)
+            ->post(route('pm.sign', $record), ['signature' => self::PNG])
             ->assertRedirect();
 
         $record->refresh();
         $this->assertSame(PmStatus::PicApproved, $record->status);
-        $this->assertSame('Siti Rahayu', $record->signatureFor(SignatureStage::Pic)->signed_by_name);
+        $this->assertSame($this->pic->name, $record->signatureFor(SignatureStage::Pic)->signed_by_name);
     }
 
     public function test_daftar_persetujuan_menampilkan_tahap_atasan_bagi_manager(): void
@@ -439,6 +470,29 @@ class PmTechnicianSignatureTest extends TestCase
 
         $this->assertSame(PmStatus::Draft, $record->fresh()->status);
         $this->assertNull($record->signatureFor(SignatureStage::Technician));
+    }
+
+    public function test_tahap_teknisi_masih_menuntut_nama_yang_diketik(): void
+    {
+        // Kebalikan dari tahap PIC/Atasan: nama teknisi tetap wajib, karena
+        // yang menandatangani pekerjaannya sendiri dan nama di dokumen boleh
+        // berbeda dengan nama akunnya.
+        $technician = $this->user('technician');
+        $this->store($technician)->assertRedirect();
+        $record = PmRecord::sole();
+        $record->update(['status' => PmStatus::Draft]);
+
+        $this->actingAs($technician)
+            ->post(route('pm.sign', $record), [
+                'signature' => self::PNG,
+                'signer_name' => '',
+            ])
+            ->assertSessionHasErrors('signer_name');
+
+        // Request yang ditolak tidak boleh menambah tanda tangan kedua maupun
+        // melepas kunci: status masih draft.
+        $this->assertSame(PmStatus::Draft, $record->fresh()->status);
+        $this->assertSame(1, $record->fresh()->signatures()->count());
     }
 
     public function test_aksi_tanda_tangan_juga_menolak_checklist_tidak_lengkap(): void

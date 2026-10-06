@@ -11,26 +11,28 @@ import useSignatureActions from '@/Components/useSignatureActions';
  * form checklist supaya teknisi cukup satu kali submit. Backend tetap memvalidasi
  * tahap mana yang boleh dikerjakan.
  *
- * Antrean Persetujuan tidak memakai komponen ini — `Approvals/ApprovalRow`
- * memakai `useSignatureActions` yang sama supaya nama dan tanda tangannya bisa
- * berdiri sebagai kolom terpisah di tabel.
+ * Antrean Persetujuan tidak memakai komponen ini. Daftar itu hanya antrean:
+ * Persetujuan dilakukan di halaman ini, tempat checklist yang disetujui
+ * dibaca bersamaan dengan tanda tangannya.
+ *
+ * Tidak ada field nama. Approver sudah login atas namanya sendiri, jadi
+ * `signerName` datang dari akun dan backend memakainya apa adanya — nama yang
+ * dikirim client untuk tahap persetujuan diabaikan supaya tidak bisa dipalsukan.
  */
-export default function SignatureActions({ recordId, stage, canSign, canReject }) {
+export default function SignatureActions({ recordId, stage, canSign, canReject, signerName = '' }) {
     const {
         padRef,
-        name,
         note,
         hasSignature,
         busy,
         processing,
         message,
-        nameFilled,
-        onNameChange,
+        signerNameFilled,
         onNoteChange,
         onSignatureChange,
         handleSign,
         handleReject,
-    } = useSignatureActions({ recordId, canSign, canReject });
+    } = useSignatureActions({ recordId, canSign, canReject, signerName });
 
     if (!canSign && !canReject) return null;
 
@@ -39,32 +41,22 @@ export default function SignatureActions({ recordId, stage, canSign, canReject }
             <b className="text-sm block mb-0.5">{stage.label}</b>
             <p className="text-xs text-neu-sub mb-4">
                 {canSign
-                    ? 'Tanda tangan di bawah lalu tekan tombol untuk melanjutkan ke tahap berikutnya.'
+                    ? 'Periksa checklist di atas, lalu tanda tangani di bawah untuk melanjutkan ke tahap berikutnya.'
                     : 'Anda dapat menolak PM ini dengan menyertakan alasan.'}
             </p>
 
             {canSign && (
                 <div className="mb-4">
-                    <label htmlFor="signer-name" className="block text-xs text-neu-sub mb-1.5">
-                        Nama Penanda Tangan <span className="text-neu-bad">*</span>
-                    </label>
-                    <input
-                        id="signer-name"
-                        type="text"
-                        value={name}
-                        onChange={(e) => onNameChange(e.target.value)}
-                        placeholder={`Tulis nama lengkap ${stage.short_label}`}
-                        maxLength={100}
-                        autoComplete="off"
-                        disabled={busy}
-                        aria-invalid={message?.field === 'name'}
-                        aria-describedby={message ? 'signature-error' : undefined}
-                        className={`neu-input mb-4 ${
-                            message?.field === 'name'
-                                ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]'
-                                : ''
-                        }`}
-                    />
+                    {/*
+                        Nama diambil dari akun login, jadi ditampilkan sebagai
+                        teks, bukan input: tidak ada yang perlu diketik dan tidak
+                        ada yang bisa diisi dengan nama orang lain.
+                    */}
+                    <p className="text-xs text-neu-sub mb-3">
+                        Nama Penanda Tangan{' '}
+                        <span className="text-neu-bad">*</span>
+                        <b className="block text-sm text-neu-text mt-0.5">{signerName}</b>
+                    </p>
 
                     <NeuSignaturePad
                         ref={padRef}
@@ -101,7 +93,7 @@ export default function SignatureActions({ recordId, stage, canSign, canReject }
                         <NeuButton
                             variant="primary"
                             className="w-full !py-3.5"
-                            disabled={busy || !nameFilled || !hasSignature}
+                            disabled={busy || !signerNameFilled || !hasSignature}
                             onClick={handleSign}
                         >
                             {processing === 'sign'
@@ -111,16 +103,11 @@ export default function SignatureActions({ recordId, stage, canSign, canReject }
                                     : 'Tanda tangan & Setujui'}
                         </NeuButton>
 
-                        {/* Sama seperti tahap teknisi: tombol mati sampai nama
-                            dan tanda tangan terisi, jadi tidak ada approval
-                            tanpa identitas penandatanganannya. */}
-                        {!busy && (!nameFilled || !hasSignature) && (
+                        {/* Sama seperti tahap teknisi: tombol mati sampai tanda
+                            tangan ada, jadi tidak ada approval tanpa bukti. */}
+                        {!busy && !hasSignature && signerNameFilled && (
                             <p className="text-xs text-neu-sub text-center">
-                                {!nameFilled && !hasSignature
-                                    ? 'Nama penanda tangan dan tanda tangan wajib diisi.'
-                                    : !nameFilled
-                                        ? 'Nama penanda tangan wajib diisi.'
-                                        : 'Tanda tangan wajib digambar.'}
+                                Tanda tangan wajib digambar.
                             </p>
                         )}
                     </>

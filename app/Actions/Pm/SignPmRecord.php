@@ -18,6 +18,9 @@ use Illuminate\Support\Facades\DB;
  * PIC yang menandatangani, pic_approved berarti Atasan. Technician sering
  * menandatangani ulang setelah ditolak, jadi baris signature per tahap ditulis
  * ulang (updateOrCreate) dan file gambar lamanya dihapus.
+ *
+ * `$signerName` hanya dipakai pada tahap teknisi; tahap persetujuan memakai
+ * nama akun login. Lihat `resolveSignerName()`.
  */
 class SignPmRecord
 {
@@ -36,12 +39,7 @@ class SignPmRecord
             throw new \LogicException('Checklist PM belum lengkap.');
         }
 
-        // Nama yang diketik pemeriksa di form yang jadi nama pada dokumen.
-        // Nama akun login hanya cadangan, kalau request tanpa nama (misalnya
-        // dipanggil dari luar form PM).
-        $signedByName = is_string($signerName) && trim($signerName) !== ''
-            ? trim($signerName)
-            : (Auth::user()?->name ?? '-');
+        $signedByName = $this->resolveSignerName($stage, $signerName);
 
         return DB::transaction(function () use ($record, $stage, $dataUrl, $note, $signedByName) {
             // File lama dihapus setelah yang baru berhasil ditulis, supaya
@@ -79,6 +77,34 @@ class SignPmRecord
 
             return $signature;
         });
+    }
+
+    /**
+     * Nama yang tersimpan di dokumen untuk satu tahap.
+     *
+     * Dua sumbernya memang sengaja dibedakan:
+     *
+     * - Technician menandatangani pekerjaan yang ia kerjakan sendiri, dan
+     *   namanya diketik di form checklist. Account login tidak dipakai karena
+     *   tidak selalu sama dengan nama yang ingin dicantumkan di dokumen.
+     * - PIC/Atasan adalah approver yang sudah pasti login sebagai dirinya
+     *   sendiri, jadi nama akun yang dipakai dan `signerName` dari client
+     *   diabaikan. Kalau nama ikut dikirim, nilainya bisa dipalsukan agar
+     *   dokumen menyatakan someone yang tidak menandatangani.
+     */
+    private function resolveSignerName(SignatureStage $stage, ?string $typedName): string
+    {
+        $accountName = trim((string) (Auth::user()?->name ?? ''));
+
+        if ($stage !== SignatureStage::Technician && $accountName !== '') {
+            return $accountName;
+        }
+
+        if (is_string($typedName) && trim($typedName) !== '') {
+            return trim($typedName);
+        }
+
+        return $accountName !== '' ? $accountName : '-';
     }
 
     /**

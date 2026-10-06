@@ -2,45 +2,45 @@ import { useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
 /**
- * Logika approve/tolak satu PM: nama manual, gambar tanda tangan, catatan, dan
- * status request-nya.
+ * Logika approve/tolak satu PM: gambar tanda tangan, catatan, dan status
+ * request-nya.
  *
- * Dipisah dari tampilan karena satu tahap ini dirender di dua tempat dengan
- * bentuk berbeda: sebagai kartu utuh di `Pm/Form`, dan sebagai beberapa kolom
- * terpisah (Nama / Tanda Tangan / Catatan / Aksi) di baris tabel antrean
- * Persetujuan. Menyalin request ke dua tempat berisiko membuat satu jalur
- * validating mandatory dan jalur lain tidak.
+ * Dipisah dari tampilan supaya `SignatureActions` (kartu utuh di form PM) tidak
+ * bercampur dengan request-nya. Antrean Persetujuan tidak memakai hook ini
+ * lagi karena di sana tidak ada penandatanganan.
  *
- * Nama manual dan gambar tanda tangan keduanya wajib di semua tahap: backend
- * `SignPmRecordRequest` menolak request yang salah satunya kosong, jadi tombol
- * juga dimatikan di sini supaya frontend tidak menawarkan aksi yang pasti gagal.
+ * Nama penanda tangan tidak lagi diketik di sini: tahap persetujuan memakai
+ * nama akun login, jadi `signerName` diteruskan lewat props dan hanya dibaca.
+ * Field nama hanya dibutuhkan backend untuk tahap teknisi, dan tahap itu tidak
+ * memakai hook ini — teknisi menandatangani lewat submit form checklist.
+ *
+ * `signerName` tetap dikirim di payload sebagai nilai cadangan, dan
+ * `signerNameFilled` dipakai untuk mematikan tombol kalau nama akunnya kosong.
  */
-export default function useSignatureActions({ recordId, canSign = false, canReject = false }) {
+export default function useSignatureActions({ recordId, canSign = false, canReject = false, signerName = '' }) {
     const padRef = useRef(null);
     const [note, setNote] = useState('');
-    const [signerName, setSignerName] = useState('');
     const [hasSignature, setHasSignature] = useState(false);
     const [error, setError] = useState('');
     const [processing, setProcessing] = useState('');
 
-    const nameFilled = signerName.trim() !== '';
+    const signerNameFilled = signerName.trim() !== '';
     const busy = processing !== '';
 
     /**
-     * Pesan error dipisah dari penanda kolom, supaya input nama merah hanya
-     * kalau memang namanya yang kosong — bukan karena tanda tangannya belum
-     * digambar.
+     * Pesan error dipisah dari penanda kolom, supaya hanya bagian yang
+     * bermasalah yang diberi sorotan, bukan semua input sekaligus.
      */
     const message = error
         ? {
               text: error,
-              field: !nameFilled && canSign ? 'name' : !hasSignature && canSign ? 'signature' : null,
+              field: !signerNameFilled && canSign ? 'name' : !hasSignature && canSign ? 'signature' : null,
           }
         : null;
 
     const handleSign = () => {
-        if (!nameFilled) {
-            setError('Nama penanda tangan wajib diisi.');
+        if (!signerNameFilled) {
+            setError('Nama penanda tangan tidak tersedia. Periksa nama akun Anda.');
             return;
         }
 
@@ -66,7 +66,6 @@ export default function useSignatureActions({ recordId, canSign = false, canReje
                 onSuccess: () => {
                     setProcessing('');
                     setNote('');
-                    setSignerName('');
                     setHasSignature(false);
                     padRef.current?.clear();
                 },
@@ -102,17 +101,13 @@ export default function useSignatureActions({ recordId, canSign = false, canReje
 
     return {
         padRef,
-        name: signerName,
+        signerName,
         note,
         hasSignature,
         busy,
         processing,
         message,
-        nameFilled,
-        onNameChange: (value) => {
-            setSignerName(value);
-            if (error) setError('');
-        },
+        signerNameFilled,
         onNoteChange: (value) => {
             setNote(value);
             if (error) setError('');

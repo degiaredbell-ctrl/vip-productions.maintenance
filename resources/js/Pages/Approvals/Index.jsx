@@ -113,34 +113,29 @@ export default function Approvals({ auth, records, years, year, period, periods,
                             </NeuCard>
                         ) : (
                             /*
-                                Tabel, bukan kartu di layar lebar: nama penanda
-                                tangan dan gambar tanda tangannya harus berdiri
-                                sebagai kolom terpisah supaya jelas kolom mana nama
-                                dan kolom mana tanda tangan, dan supaya yang sudah
-                                lewat tahap bisa dibandingkan berdampingan dalam
-                                satu baris.
+                                Empat kolom ini muat di layar sempit, tapi tetap
+                                dirakit ulang jadi kartu di bawah 1024px oleh
+                                `.neu-table-wrap`: `thead` disembunyikan, tiap sel
+                                jadi blok penuh, dan nama kolomnya dipindahkan ke
+                                atas sel lewat `data-label`. Hasilnya halaman
+                                turun ke bawah dan tidak pernah melebar ke kanan.
 
-                                Di layar sempit `.neu-table-wrap` mengubah tabel ini
-                                jadi satu kartu per record yang menumpuk ke bawah,
-                                jadi tidak ada yang perlu digeser ke samping. Karena
-                                itu `thead` disembunyikan lewat CSS dan nama
-                                kolomnya dipindahkan ke atas tiap sel.
+                                Penandatanganan sengaja tidak ada di sini: daftar ini
+                                hanya memberi jalan masuk ke form checklist tempat
+                                approve/reject dilakukan.
                             */
                             <div className="neu-table-wrap">
                                 <table className="neu-table">
                                     <caption className="sr-only">
-                                        PM yang menunggu tindakan Anda. Isi kolom Nama
-                                        Penanda Tangan dan Tanda Tangan pada baris yang
-                                        akan disetujui.
+                                        PM yang menunggu tindakan Anda. Buka checklist
+                                        untuk memeriksa isinya lalu menyetujui atau
+                                        menolak dari sana.
                                     </caption>
                                     <thead>
                                         <tr>
                                             <th scope="col">Mesin</th>
                                             <th scope="col">Periode</th>
                                             <th scope="col">Status</th>
-                                            <th scope="col">Nama Penanda Tangan</th>
-                                            <th scope="col">Tanda Tangan</th>
-                                            <th scope="col">Catatan</th>
                                             <th scope="col">Aksi</th>
                                         </tr>
                                     </thead>

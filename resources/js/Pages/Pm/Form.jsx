@@ -464,6 +464,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                             stage={activeStage}
                             canSign={chain.canSign}
                             canReject={chain.canReject}
+                            signerName={auth.user.name}
                         />
                     )}
             </div>
