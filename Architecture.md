@@ -109,10 +109,11 @@ Ekstensi PHP yang diaktifkan di image: `pdo_mysql`, `mbstring`, `zip`, `gd`, `in
              └────────────┘
 ```
 
-**Catatan deployment penting:** asset hasil `vite build` di-*copy* ke dalam image pada tahap build,
-tetapi nginx membaca `public/` dari **named volume** yang sama dengan yang di-mount ke container app.
-Karena itu setelah rebuild, `public/build` harus disalin dari image ke volume sebelum perubahan frontend
-terlihat. Detail perintahnya ada di [README — Catatan Deployment](README.md#catatan-deployment).
+**Catatan deployment penting:** nginx membaca `public/` dari **named volume**, bukan dari image —
+dan volume hanya diisi dari image saat pertama kali dibuat. Hasil `vite build` karena itu ditaruh di
+`/var/www/html/public-image` (di luar volume) lalu disalin ke volume oleh `docker/app-entrypoint.sh`
+setiap container start. Akibatnya `docker compose up -d --build app` sudah cukup untuk perubahan
+frontend. Detailnya ada di [README — Catatan Deployment](README.md#catatan-deployment).
 
 ---
 
@@ -721,7 +722,7 @@ docker-compose.yml
 | Stage | Isi |
 |-------|-----|
 | `nodebuild` (`node:20-alpine`) | `npm ci` → `npm run build` → hasil di `public/build` |
-| `php:8.3-fpm-alpine` | Ekstensi PHP, Composer, `composer install --no-dev --optimize-autoloader`, copy `public/build` dari stage `nodebuild`, `chown www-data` |
+| `php:8.3-fpm-alpine` | Ekstensi PHP, Composer, `composer install --no-dev --optimize-autoloader`, copy hasil build ke `public-image/build`, `chown www-data`, `ENTRYPOINT app-entrypoint.sh` |
 
 ### Konfigurasi nginx
 
@@ -739,31 +740,43 @@ location ~ /\.(?!well-known).* { deny all; }
 
 `client_max_body_size 50M` memberi ruang untuk data URL tanda tangan; `deny all` menutup akses dotfile.
 
-### ⚠️ Isu named volume `app_public`
+### ⚠️ Named volume `app_public` menutupi `/public` di dalam image
 
-Nginx dan app berbagi named volume untuk `public/`. Akibatnya, `public/build` yang ada di dalam image
-**tidak terlihat** oleh nginx sampai disalin eksplisit ke volume. Rebuild tanpa langkah ini →
-frontend revert ke versi lama (atau halaman kosong bila volume masih kosong).
+Nginx dan app berbagi named volume untuk `public/`. Volume hanya diisi dari image
+saat **pertama kali dibuat** — sesudah itu isi `/public` di dalam image baru tidak
+pernah masuk ke volume. Akibatnya `docker compose up -d --build` saja tidak cukup:
+frontend diam-diam revert ke versi lama.
+
+Dua hal yang menutup celah itu:
+
+| Bagian | Peran |
+|--------|-------|
+| `Dockerfile`: `COPY --from=nodebuild /app/public/build ./public-image/build` | Hasil Vite ditaruh di `/var/www/html/public-image`, **di luar** `/public` yang tertutup volume |
+| `docker/app-entrypoint.sh` | `ENTRYPOINT` image: menyalin `public-image/build` → `public/build` di dalam volume tiap container start, lalu `chmod a+rX` agar nginx (user berbeda, mount `ro`) bisa membacanya |
+
+Hanya `build/` yang disentuh; `img/`, symlink `storage`, dan berkas lain di dalam
+volume milik instance itu dan tetap utuh.
 
 ```bash
-docker compose build app
-docker compose up -d --force-recreate app
+docker compose up -d --build app     # PHP + frontend, cukup satu perintah
 
-# sinkronkan asset frontend dari image ke volume
-rm -rf /tmp/build && mkdir -p /tmp/build
-cid=$(docker create vip-maintenance-app:latest)
-docker cp "$cid:/var/www/html/public/build/." /tmp/build/
-docker rm "$cid" >/dev/null
-docker exec vip_app sh -c 'rm -rf /var/www/html/public/build'
-docker cp /tmp/build/. vip_app:/var/www/html/public/build
-docker exec vip_app sh -c 'chown -R www-data:www-data /var/www/html/public/build'
+# verifikasi sync terjadi
+docker logs vip_app | grep 'menyinkronkan public/build'
+docker exec vip_app ls /var/www/html/public/build/assets | head
 ```
+
+Kalau baris `entrypoint: menyinkronkan ...` tidak muncul di log, image yang
+dijalankan bukan hasil build terbaru — periksa `docker compose build app` dulu.
+
+`.dockerignore` mengecualikan `storage` seluruhnya: folder itu di-bind mount saat
+runtime, dan menyertakannya membuat build context gagal di
+`storage/framework/testing` (izin 700) serta membocorkan berkas upload ke layer image.
 
 ### Volume & persistensi
 
 | Volume | Jenis | Isi |
 |--------|-------|-----|
-| `app_public` | named (shared app ↔ nginx) | build assets Vite |
+| `app_public` | named (shared app ↔ nginx) | build assets Vite + `img/` + symlink `storage` |
 | `./storage` | bind mount host | logs, sessions, cache, `app/public/signatures` |
 
 `storage/` di-bind mount agar log dan tanda tangan tetap ada setelah container di-recreate.
@@ -771,7 +784,7 @@ docker exec vip_app sh -c 'chown -R www-data:www-data /var/www/html/public/build
 ### Operasional
 
 ```bash
-docker compose up -d --build         # deploy
+docker compose up -d --build app     # deploy (PHP + aset frontend)
 docker compose logs -f app           # log
 docker compose restart app           # restart
 docker compose exec app php artisan migrate --force

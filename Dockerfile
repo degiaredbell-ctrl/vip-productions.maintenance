@@ -18,7 +18,16 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 COPY . .
-COPY --from=nodebuild /app/public/build ./public/build
+
+# Hasil Vite ditaruh di /var/www/html/public-image, BUKAN ./public/build.
+# /var/www/html/public ditutupi named volume `app_public` (lihat docker-compose.yml)
+# dan volume hanya diisi dari image saat pertama kali dibuat. Kalau build ditaruh
+# di ./public/build, ia tertimpa volume dan tidak akan pernah sampai ke nginx.
+# app-entrypoint.sh menyalin folder ini ke volume tiap container start.
+COPY --from=nodebuild /app/public/build ./public-image/build
+
+COPY docker/app-entrypoint.sh /usr/local/bin/app-entrypoint.sh
+RUN chmod +x /usr/local/bin/app-entrypoint.sh
 
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
  && composer install --no-dev --optimize-autoloader --no-interaction \
@@ -26,4 +35,5 @@ RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framewor
  && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 9000
+ENTRYPOINT ["app-entrypoint.sh"]
 CMD ["php-fpm"]

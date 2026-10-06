@@ -2,8 +2,12 @@ vendor
 node_modules
 .git
 .env
-storage/logs/*
-storage/framework/cache/*
-storage/framework/sessions/*
-storage/framework/views/*
+
+# `storage` di-bind mount ke container saat runtime (lihat docker-compose.yml),
+# jadi tidak perlu ikut ke dalam build context. Selain mempercepat build, ini
+# juga mencegah berkas tes yang tidak bisa dibaca (storage/framework/testing)
+# menggagalkan pengiriman context, dan menjaga agar berkas upload pengguna
+# tidak pernah tersalin ke dalam layer image.
+storage
+
 bootstrap/cache/*.php

@@ -26,6 +26,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         revision_reason: '',
         note: '',
         items: formItems,
+        signature: '',
     });
 
     const updateItem = (index, field, value) => {
@@ -67,9 +68,20 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
         setError('');
         setSubmitError('');
+
+        /*
+            `post` ini berasal dari useForm, jadi payload-nya hanya berisi state
+            form. Opsi `data: { signature }` pada post() dibaca sebagai opsi
+            request Inertia, bukan isi payload, dan dibuang tanpa jejak —
+            backend lalu membalas "Tanda tangan wajib digambar." meski canvas
+            sudah berisi tinta. Jadi data URL-nya harus masuk ke state form dulu;
+            commitData() memperbarui dataRef secara sinkron, jadi nilai ini sudah
+            terbaca oleh post() di bawah pada tick yang sama.
+        */
+        setData('signature', signature);
+
         post(route('machines.pm.store', { machine: machine.id }), {
             preserveScroll: true,
-            data: { signature },
             onError: (formErrors) => {
                 setSubmitError(Object.values(formErrors)[0] ?? 'Gagal menyimpan checklist.');
             },

@@ -91,9 +91,27 @@
         @apply outline-none ring-2 ring-neu-accent/40;
     }
 
+/*
+        Chip aktif harus terbaca sekilas, bukan hanya berbeda dari chip lain
+        karena teksnya sedikit lebih gelap. Kalau aktif cuma `shadow-neu-in` +
+        teks accent, kontrasnya nyaris sama dengan keadaan tidak aktif —
+        terutama untuk chip "Semua" yang jadi pilihan bawaan, sehingga terlihat
+        seperti tidak ada apa pun yang dipilih. Karena itu aktif memakai latar
+        accent penuh + teks putih, setingkat tombol primer.
+    */
     .neu-chip-active,
     .neu-chip-active:hover:not(:disabled) {
-        @apply shadow-neu-in text-neu-accent;
+        @apply bg-neu-accent text-white shadow-neu-in;
+    }
+
+    /* Ring fokus accent tidak kelihatan di atas latar accent. */
+    .neu-chip-active:focus-visible {
+        @apply ring-white/70;
+    }
+
+    /* Chip terkunci tetap boleh jadi pilihan, jadi teksnya jangan ikut gelap. */
+    .neu-chip-active.neu-chip-locked:hover {
+        @apply text-white shadow-neu-in;
     }
 
     .neu-chip:disabled {
@@ -133,6 +151,15 @@
         @apply ring-2 ring-neu-bg;
     }
 
+    /*
+        Di chip aktif, latar sudah accent. Dot hijau (menyelesai) nyaris
+        sebelas dengan latar itu dan hilang, jadi butuh cincin putih agar
+        semua warna status tetap terpisah dari chip.
+    */
+    .neu-chip-active .neu-dot {
+        @apply ring-2 ring-white/70;
+    }
+
     .neu-chip-locked {
         @apply opacity-45 cursor-not-allowed;
     }
@@ -144,6 +171,11 @@
     /* Periode berjalan diberi tanda supaya mudah dibedakan dari riwayat */
     .neu-chip-current {
         @apply ring-1 ring-inset ring-neu-accent/30;
+    }
+
+    /* Ring accent tidak kontras di atas latar accent, jadi dipakai putih. */
+    .neu-chip-active.neu-chip-current {
+        @apply ring-white/40;
     }
 
     /* Menu navigasi */

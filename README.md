@@ -229,11 +229,13 @@ Aplikasi tersedia di **http://localhost:8082**.
 ### Build ulang setelah ubah kode
 
 ```bash
-docker compose build app
-docker compose up -d --force-recreate app
+docker compose up -d --build app
 ```
 
-> **Penting:** `public/` di dalam image **tidak langsung dipakai** nginx karena `public` di-*mount* sebagai named volume. Setelah build, asset hasil Vite harus disalin ke volume tersebut (lihat [Catatan Deployment](#catatan-deployment)).
+Satu perintah itu sudah cukup untuk perubahan PHP **dan** frontend. Asset hasil
+`vite build` otomatis disalin dari image ke named volume `app_public` oleh
+`docker/app-entrypoint.sh` setiap container start — tidak ada langkah `docker cp`
+manual lagi (lihat [Catatan Deployment](#catatan-deployment)).
 
 ### Development lokal tanpa Docker
 
@@ -326,16 +328,26 @@ routes/web.php             Seluruh definisi route
 
 ## Catatan Deployment
 
-1. **Named volume `app_public`** — `docker-compose.yml` me-mount `app_public:/var/www/html/public`. Nginx membaca volume yang sama secara read-only. Asset hasil `vite build` yang ada di dalam image **tidak** terlihat oleh nginx sampai disalin:
+1. **Named volume `app_public` menutupi `/public` di dalam image.**
+   `docker-compose.yml` me-mount `app_public:/var/www/html/public`, dan nginx
+   membaca volume yang sama secara read-only. Volume hanya diisi dari image saat
+   **pertama kali dibuat** — sesudah itu `npm run build` pada image baru tidak
+   pernah masuk ke volume, sehingga nginx terus menyajikan aset lama meski
+   `docker compose up -d --build` sudah dijalankan.
+
+   Dua hal mencegah masalah ini:
+
+   - Hasil `vite build` ditaruh di `/var/www/html/public-image/build` di dalam
+     image, yaitu **di luar** `/public` yang tertutup volume.
+   - `docker/app-entrypoint.sh` menyalin folder itu ke
+     `/var/www/html/public/build` setiap container start, lalu `chmod a+rX`
+     supaya nginx (user berbeda, mount read-only) tetap bisa membacanya.
+
+   Kalau suatu saat aset di layar tidak sesuai dengan kode, cek hasil sync-nya:
 
    ```bash
-   rm -rf /tmp/build && mkdir -p /tmp/build
-   cid=$(docker create vip-maintenance-app:latest)
-   docker cp "$cid:/var/www/html/public/build/." /tmp/build/
-   docker rm "$cid" >/dev/null
-   docker exec vip_app sh -c 'rm -rf /var/www/html/public/build'
-   docker cp /tmp/build/. vip_app:/var/www/html/public/build
-   docker exec vip_app sh -c 'chown -R www-data:www-data /var/www/html/public/build'
+   docker logs vip_app | grep 'menyinkronkan public/build'
+   docker exec vip_app ls /var/www/html/public/build/assets | head
    ```
 
 2. **`storage/` di-bind mount** dari host, sehingga log, session, dan `storage/app/public/signatures` tetap ada saat container di-recreate.

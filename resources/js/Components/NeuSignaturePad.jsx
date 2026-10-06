@@ -111,8 +111,6 @@ const NeuSignaturePad = forwardRef(function NeuSignaturePad(
         canvasRef.current?.setPointerCapture?.(event.pointerId);
         drawing.current = true;
         last.current = pointFromEvent(event);
-        hasInk.current = true;
-        setEmpty(false);
     };
 
     const handlePointerMove = (event) => {
@@ -130,6 +128,18 @@ const NeuSignaturePad = forwardRef(function NeuSignaturePad(
         ctx.stroke();
 
         last.current = point;
+
+        // Tinta baru dihitung ada setelah benar-benar ada goresan, bukan saat
+        // pointer ditekan. Selain agar `getDataUrl()` tidak mengembalikan PNG
+        // kosong, ini juga yang memberi tahu parent lewat `onChange` supaya
+        // tombol submit bisa hidup. `onChange` WAJIB dipanggil di sini: kalau
+        // hanya dipanggil saat dikosongkan, parent tidak pernah tahu bahwa
+        // tanda tangan sudah digambar dan tombolnya tetap mati selamanya.
+        if (!hasInk.current) {
+            hasInk.current = true;
+            setEmpty(false);
+            onChange?.(true);
+        }
     };
 
     const stopDrawing = (event) => {
