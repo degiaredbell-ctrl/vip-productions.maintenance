@@ -83,8 +83,18 @@
         @apply inline-flex items-center gap-1.5 rounded-neu-sm px-3.5 py-2 text-sm font-semibold text-neu-sub shadow-neu-up-sm transition-all duration-150 whitespace-nowrap min-h-[44px];
     }
 
+    /*
+        Hover dibalik dari tombol "Tanda tangan & Setujui": tombol itu hijau
+        penuh + teks putih, sementara hover chip memakai kebalikannya — permukaan
+        neumorfis putih yang terangkat + teks hijau. Tanpa latar putih, hover cuma
+        mengganti warna teks dan tidak terasa seperti permukaan yang bisa disentuh.
+        Chip yang sedang aktif tidak ikut memakai aturan ini:
+        `.neu-chip-active:hover` punya spesifisitas lebih tinggi dan menyetel
+        latarnya sendiri, sehingga chip terpilih tidak berubah jadi putih ketika
+        kursor lewat di atasnya.
+    */
     .neu-chip:hover:not(:disabled) {
-        @apply text-neu-accent shadow-neu-up;
+        @apply bg-white text-neu-accent shadow-neu-up;
     }
 
     .neu-chip:focus-visible {
