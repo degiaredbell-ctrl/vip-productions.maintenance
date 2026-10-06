@@ -13,6 +13,7 @@ use App\Http\Requests\StorePmRecordRequest;
 use App\Models\Machine;
 use App\Models\PmRecord;
 use App\Services\PeriodService;
+use App\Services\SignatureChain;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -25,7 +26,7 @@ class PmRecordController extends Controller
         $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
         $year = (int) $request->query('year', now()->year);
 
-        $existing = PmRecord::with(['items', 'signatures'])
+        $existing = PmRecord::with(['items', 'signatures', 'picUser'])
             ->where('machine_id', $machine->id)
             ->where('year', $year)
             ->where('period', $period->value)
@@ -99,6 +100,9 @@ class PmRecordController extends Controller
                 'status_label' => $existing->status->label(),
                 'revision_count' => $existing->revision_count,
                 'general_note' => $existing->general_note,
+                // User PIC yang sudah ditunjuk pada simpan sebelumnya, supaya
+                // revisi tidak diam-diam mengganti orang yang menunggu.
+                'pic_user_id' => $existing->pic_user_id,
             ] : null,
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
             'canFill' => $user->can('pm.fill') && (! $existing || $user->can('update', $existing)),
@@ -106,6 +110,18 @@ class PmRecordController extends Controller
             // teknisi, jadi izinnya ikut dikirim supaya tombol submit bisa
             // dinonaktifkan dari awal bila memang tidak boleh.
             'canSignTechnician' => $user->can('pm.sign'),
+            // User PIC yang bisa dipilih teknisi untuk tahap 2. Daftarnya diambil
+            // dari SignatureChain, sama dengan sumber yang dipakai untuk
+            // memvalidasi request, supaya pilihan di form tidak pernah
+            // menampilkan orang yang lalu ditolak backend.
+            'picCandidates' => SignatureChain::picCandidates()
+                ->get(['id', 'name'])
+                ->map(fn ($pic) => [
+                    'id' => $pic->id,
+                    'name' => $pic->name,
+                ])
+                ->values()
+                ->all(),
             'chain' => $this->chainProps($existing, $user),
         ]);
     }
@@ -196,6 +212,12 @@ class PmRecordController extends Controller
             'status_label' => $status?->label(),
             'awaiting' => $status?->awaiting()?->value,
             'awaiting_label' => $status?->awaiting()?->label(),
+            // Siapa yang ditunjuk teknisi untuk tahap User PIC, supaya stepper
+            // bisa menyebutkan orangnya, bukan hanya nama tahapnya.
+            'assigned_pic' => $record?->picUser ? [
+                'id' => $record->picUser->id,
+                'name' => $record->picUser->name,
+            ] : null,
             'canSign' => $record !== null && $user->can('sign', $record),
             'canReject' => $record !== null && $user->can('reject', $record),
         ];

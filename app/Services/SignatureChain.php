@@ -53,6 +53,43 @@ class SignatureChain
     }
 
     /**
+     * User yang boleh dipilih teknisi sebagai User PIC tahap berikutnya.
+     *
+     * Dipakai permission tahap PIC sebagai patokan, bukan nama role hard-coded,
+     * supaya kalau hak akses PIC berubah daftar pilihan ikut berubah tanpa perlu
+     * menyentuh kueri. User yang sedang mengisi checklist tidak mungkin masuk
+     * daftar ini karena role-nya berbeda, dan `canSign` juga tetap menolak
+     * teknisi menandatangani tahapnya sendiri.
+     *
+     * @return Builder<User>
+     */
+    public static function picCandidates(): Builder
+    {
+        return User::query()
+            ->role(Role::User->value)
+            ->orderBy('name');
+    }
+
+    /**
+     * Status pm_records yang tahapnya menunggu User PIC.
+     *
+     * Dipisah supaya penyaringan antrean tidak menuliskan nama status secara
+     * manual; menambah tahap baru cukup menambah enum, bukan kueri.
+     *
+     * @return array<int, string>
+     */
+    public static function picPendingStatuses(): array
+    {
+        return array_values(array_map(
+            fn (PmStatus $status) => $status->value,
+            array_filter(
+                PmStatus::cases(),
+                fn (PmStatus $status) => $status->awaiting() === SignatureStage::Pic
+            )
+        ));
+    }
+
+    /**
      * Query record yang benar-benar menunggu tindakan user ini.
      *
      * Badge sidebar dan daftar di halaman Persetujuan memakai query yang sama;
@@ -65,6 +102,7 @@ class SignatureChain
     {
         $stages = self::stagesFor($user);
         $statuses = self::pendingStatusesFor($user);
+        $isAdmin = $user !== null && $user->hasRole(Role::Admin->value);
 
         return PmRecord::query()
             ->whereIn('status', $statuses)
@@ -72,12 +110,24 @@ class SignatureChain
                 // Record tahap teknisi hanya relevan untuk teknisi yang
                 // mengisinya. Admin melihat semuanya karena boleh menandatangani
                 // tahap mana pun.
-                in_array(SignatureStage::Technician, $stages, true) && ! $user->hasRole(Role::Admin->value),
+                in_array(SignatureStage::Technician, $stages, true) && ! $isAdmin,
                 fn (Builder $q) => $q->where(
                     fn (Builder $inner) => $inner
                         ->whereNull('technician_id')
                         ->orWhere('technician_id', $user->id)
                 )
+            )
+            ->when(
+                // Penugasan User PIC oleh teknisi membatasi siapa yang boleh
+                // menyetujui tahap 2. Record lama yang belum ditugaskan tetap
+                // terbuka untuk semua User PIC supaya tidak ada antrean lama
+                // yang mandek tanpa jalan keluar.
+                in_array(SignatureStage::Pic, $stages, true) && ! $isAdmin,
+                fn (Builder $q) => $q->where(function (Builder $inner) use ($user) {
+                    $inner->whereNotIn('status', self::picPendingStatuses())
+                        ->orWhereNull('pic_user_id')
+                        ->orWhere('pic_user_id', $user->id);
+                })
             );
     }
 
@@ -123,6 +173,12 @@ class SignatureChain
                 || $record->technician_id === $user->id;
         }
 
+        // Penugasan User PIC oleh teknisi membatasi siapa yang boleh menyetujui
+        // tahap 2. Record lama yang belum ditugaskan tidak dibatasi.
+        if ($stage === SignatureStage::Pic && $record->hasAssignedPic() && ! self::isAssignedPic($user, $record)) {
+            return false;
+        }
+
         return $record->technician_id === null || $record->technician_id !== $user->id;
     }
 
@@ -141,6 +197,23 @@ class SignatureChain
 
         if (!$user->can($stage->permission())) return false;
 
+        if ($stage === SignatureStage::Pic && $record->hasAssignedPic() && ! self::isAssignedPic($user, $record)) {
+            return false;
+        }
+
         return $record->technician_id === null || $record->technician_id !== $user->id;
+    }
+
+    /**
+     * Apakah user ini User PIC yang dipilih teknisi untuk record ini.
+     *
+     * Admin tetap dianggap benar supaya menjadi cadangan ketika User PIC yang
+     * dipilih sedang tidak bisa menandatangani. Tanpa pengecualian ini, satu
+     * orang yang salah pilih akan mengunci antrean tanpa ada yang bisa
+     * membukanya.
+     */
+    private static function isAssignedPic(User $user, PmRecord $record): bool
+    {
+        return $user->hasRole(Role::Admin->value) || $record->pic_user_id === $user->id;
     }
 }

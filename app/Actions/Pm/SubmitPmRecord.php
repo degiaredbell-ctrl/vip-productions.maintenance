@@ -36,6 +36,11 @@ class SubmitPmRecord
                 [
                     'technician_id' => Auth::id(),
                     'technician_name' => $data['technician_name'],
+                    // User PIC pilihan teknisi untuk tahap 2. Disimpan bersama
+                    // checklist yang ditandatangani, jadi saat approval dibuka
+                    // sudah jelas siapa yang ditunjuk, bukan baru ditanya saat
+                    // itu juga.
+                    'pic_user_id' => $data['pic_user_id'],
                     'status' => PmStatus::Draft,
                     'general_note' => $data['general_note'] ?? null,
                     'submitted_at' => null,

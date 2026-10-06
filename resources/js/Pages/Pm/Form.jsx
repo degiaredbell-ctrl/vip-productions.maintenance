@@ -10,7 +10,7 @@ import SignatureActions from '@/Components/SignatureActions';
 import SignatureChain from '@/Components/SignatureChain';
 import { useRef, useState } from 'react';
 
-export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, chain }) {
+export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain }) {
     const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
@@ -27,6 +27,10 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         note: '',
         items: formItems,
         signature: '',
+        // User PIC yang menunggu tahap 2. Saat revisi, penugasan sebelumnya
+        // sudah terpilih supaya tidak diam-diam berganti orang; teknisi tetap
+        // bisa mengubahnya sebelum submit ulang.
+        pic_user_id: existing?.pic_user_id ? String(existing.pic_user_id) : '',
     });
 
     const updateItem = (index, field, value) => {
@@ -46,6 +50,29 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
     const progress = Math.round(formItems.filter(item => item.actual).length / formItems.length * 100);
 
     const nameFilled = data.technician_name.trim() !== '';
+    // Value dari <select> selalu string, jadi id "0" tidak mungkin terjadi di
+    // sini; kosong berarti belum ada yang dipilih.
+    const picChosen = data.pic_user_id !== '';
+    const picChosenName = (picCandidates ?? []).find(
+        (pic) => String(pic.id) === String(data.pic_user_id),
+    )?.name;
+
+    /*
+        Satu kalimat yang menjelaskan apa yang masih kurang. Disusun berurutan dari
+        field paling atas supaya teknisi tahu harus mengisi apa berikutnya, bukan
+        hanya melihat tombol yang tiba-tiba mati.
+    */
+    const submitHint = !nameFilled && !hasSignature && !picChosen
+        ? 'Nama teknisi, User PIC, dan tanda tangan wajib diisi sebelum submit.'
+        : !nameFilled
+            ? 'Nama teknisi wajib diisi sebelum submit.'
+            : !picChosen
+                ? 'Pilih User PIC yang akan menyetujui sebelum submit.'
+                : !hasSignature
+                    ? 'Tanda tangan wajib digambar sebelum submit.'
+                    : picChosenName
+                        ? `Setelah submit, checklist menunggu persetujuan ${picChosenName}.`
+                        : 'Setelah submit, checklist langsung diteruskan ke User PIC.';
 
     const handleSubmit = (e) => {
         e.preventDefault();
@@ -57,6 +84,11 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
         if (!nameFilled) {
             setError('Nama teknisi wajib diisi.');
+            return;
+        }
+
+        if (!picChosen) {
+            setError('Pilih User PIC yang akan menyetujui berikutnya.');
             return;
         }
 
@@ -282,6 +314,41 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                         onChange={(value) => setHasSignature(Boolean(value))}
                                     />
 
+                                    {/*
+                                        Teknisi menunjuk siapa yang menyetujui
+                                        berikutnya, jadi tahap 2 tidak terbuka
+                                        untuk semua orang dan antrean tidak
+                                        menumpuk di satu akun PIC saja.
+                                    */}
+                                    <label htmlFor="pic_user_id" className="block text-xs text-neu-sub mt-4 mb-1.5">
+                                        User PIC yang akan menyetujui{' '}
+                                        <span className="text-neu-bad">*</span>
+                                    </label>
+                                    <select
+                                        id="pic_user_id"
+                                        value={data.pic_user_id}
+                                        onChange={(e) => {
+                                            setData('pic_user_id', e.target.value);
+                                            if (error) setError('');
+                                        }}
+                                        disabled={processing}
+                                        aria-describedby="pic_user_id-hint"
+                                        aria-invalid={Boolean(error) && !picChosen}
+                                        className={`neu-input mb-1.5 ${error && !picChosen ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]' : ''}`}
+                                    >
+                                        <option value="">— Pilih User PIC —</option>
+                                        {(picCandidates ?? []).map((pic) => (
+                                            <option key={pic.id} value={pic.id}>
+                                                {pic.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <p id="pic_user_id-hint" className="text-xs text-neu-sub">
+                                        {picCandidates.length === 0
+                                            ? 'Belum ada akun User PIC. Minta admin menambahkannya sebelum checklist dikirim.'
+                                            : 'Hanya User PIC yang dipilih di sini yang bisa menyetujui tahap ini.'}
+                                    </p>
+
                                     <label htmlFor="pm-note" className="block text-xs text-neu-sub mt-4 mb-1.5">
                                         Catatan (opsional)
                                     </label>
@@ -305,7 +372,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                 type="submit"
                                 variant="primary"
                                 className="w-full !py-4 text-base"
-                                disabled={processing || !nameFilled || !hasSignature}
+                                disabled={processing || !nameFilled || !hasSignature || !picChosen}
                             >
                                 {processing
                                     ? 'Menyimpan...'
@@ -317,15 +384,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                 kosong supaya tidak ada PM terkirim tanpa bukti
                                 siapa yang mengerjakan dan menyetujuinya.
                             */}
-                            <p className="text-xs text-neu-sub text-center mt-2.5">
-                                {!nameFilled && !hasSignature
-                                    ? 'Nama teknisi dan tanda tangan wajib diisi sebelum submit.'
-                                    : !nameFilled
-                                        ? 'Nama teknisi wajib diisi sebelum submit.'
-                                        : !hasSignature
-                                            ? 'Tanda tangan wajib digambar sebelum submit.'
-                                            : 'Setelah submit, checklist langsung diteruskan ke User PIC.'}
-                            </p>
+                            <p className="text-xs text-neu-sub text-center mt-2.5">{submitHint}</p>
                         </>
                     )}
 

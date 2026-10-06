@@ -5,6 +5,7 @@ namespace App\Http\Requests;
 use App\Enums\Period;
 use App\Models\PmRecord;
 use App\Services\PeriodService;
+use App\Services\SignatureChain;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,6 +44,15 @@ class StorePmRecordRequest extends FormRequest
             // dokumen, bukan nama akun yang squeez-in. Identitas akun disimpan
             // terpisah di technician_id untuk keperluan hak akses.
             'technician_name' => ['required', 'string', 'max:100'],
+            // Teknisi menunjuk User PIC yang akan menandatangani tahap 2.
+            // Daftar yang boleh dipilih diambil dari sumber yang sama dengan
+            // dropdown di form, jadi request yang mengarang id user lain
+            // (misalnya teknisi atau admin) ditolak di sini, bukan hanya
+            // disembunyikan di tampilan.
+            'pic_user_id' => [
+                'required',
+                Rule::in(SignatureChain::picCandidates()->pluck('id')->all()),
+            ],
             // Data URL PNG dari canvas, bukan upload multipart, supaya tidak
             // butuh storage:link dan tidak ada file sementara di server.
             'signature' => ['required', 'string', 'regex:/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/'],
@@ -80,6 +90,8 @@ class StorePmRecordRequest extends FormRequest
             'items.*.actual.required' => 'Nilai aktual wajib diisi.',
             'items.required' => 'Minimal satu item checklist.',
             'technician_name.required' => 'Nama teknisi wajib diisi.',
+            'pic_user_id.required' => 'Pilih User PIC yang akan menyetujui berikutnya.',
+            'pic_user_id.in' => 'User PIC yang dipilih tidak tersedia sebagai penyetuju.',
             'signature.required' => 'Tanda tangan wajib digambar.',
             'signature.regex' => 'Tanda tangan tidak valid. Silakan gambar ulang.',
         ];

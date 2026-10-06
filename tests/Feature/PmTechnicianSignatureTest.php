@@ -36,6 +36,8 @@ class PmTechnicianSignatureTest extends TestCase
     private const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
     private Machine $machine;
+    private User $pic;
+    private User $picLain;
 
     protected function setUp(): void
     {
@@ -47,6 +49,11 @@ class PmTechnicianSignatureTest extends TestCase
         // Berkas tanda tangan test ditulis ke folder fake, tidak pernah bercampur
         // dengan tanda tangan PM yang sudah tersimpan.
         Storage::fake('public');
+
+        // User PIC yang jadi pilihan bawaan di payload().PIC kedua
+        // dipakai test yang memastikan User PIC lain tidak ikut bisa menyetujui.
+        $this->pic = User::factory()->create()->assignRole('user');
+        $this->picLain = User::factory()->create()->assignRole('user');
 
         $this->machine = Machine::create([
             'code' => 'TST-001',
@@ -80,6 +87,7 @@ class PmTechnicianSignatureTest extends TestCase
             'year' => now()->year,
             'period' => Period::current()->value,
             'technician_name' => 'Budi Santoso',
+            'pic_user_id' => $this->pic->id,
             'signature' => self::PNG,
             'general_note' => null,
             'items' => [
@@ -159,7 +167,7 @@ class PmTechnicianSignatureTest extends TestCase
     {
         $this->store($this->user('technician'));
 
-        $response = $this->actingAs($this->user('user'))
+        $response = $this->actingAs($this->pic)
             ->withHeaders([
                 'X-Inertia' => 'true',
                 'X-Inertia-Version' => Inertia::getVersion(),
@@ -217,7 +225,7 @@ class PmTechnicianSignatureTest extends TestCase
     {
         $record = $this->signedRecord();
 
-        $this->actingAs($this->user('user'))
+        $this->actingAs($this->pic)
             ->post(route('pm.sign', $record), ['signature' => self::PNG, 'note' => null])
             ->assertSessionHasErrors('signer_name');
 
@@ -228,7 +236,7 @@ class PmTechnicianSignatureTest extends TestCase
     {
         $record = $this->signedRecord();
 
-        $this->actingAs($this->user('user'))
+        $this->actingAs($this->pic)
             ->post(route('pm.sign', $record), [
                 'signature' => self::PNG,
                 'signer_name' => 'Siti Rahayu',
@@ -261,7 +269,7 @@ class PmTechnicianSignatureTest extends TestCase
         $this->store($this->user('technician'));
         $record = PmRecord::sole();
 
-        $this->actingAs($this->user('user'))->post(route('pm.sign', $record), [
+        $this->actingAs($this->pic)->post(route('pm.sign', $record), [
             'signature' => self::PNG,
             'signer_name' => 'Siti Rahayu',
         ])->assertRedirect();
@@ -316,7 +324,7 @@ class PmTechnicianSignatureTest extends TestCase
     {
         $this->store($this->user('technician'));
 
-        $props = $this->actingAs($this->user('user'))
+        $props = $this->actingAs($this->pic)
             ->withHeaders([
                 'X-Inertia' => 'true',
                 'X-Inertia-Version' => Inertia::getVersion(),
@@ -335,7 +343,7 @@ class PmTechnicianSignatureTest extends TestCase
     {
         $record = $this->signedRecord();
 
-        $props = $this->actingAs($this->user('user'))
+        $props = $this->actingAs($this->pic)
             ->withHeaders([
                 'X-Inertia' => 'true',
                 'X-Inertia-Version' => Inertia::getVersion(),
@@ -362,7 +370,7 @@ class PmTechnicianSignatureTest extends TestCase
     {
         $record = $this->signedRecord();
 
-        $this->actingAs($this->user('user'))
+        $this->actingAs($this->pic)
             ->post(route('pm.sign', $record), [
                 'signature' => self::PNG,
                 'signer_name' => 'Siti Rahayu',

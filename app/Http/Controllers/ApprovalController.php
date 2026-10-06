@@ -33,7 +33,7 @@ class ApprovalController extends Controller
         $stages = SignatureChain::stagesFor($user);
 
         $records = SignatureChain::pendingQuery($user)
-            ->with(['machine', 'technician', 'signatures', 'items'])
+            ->with(['machine', 'technician', 'picUser', 'signatures', 'items'])
             ->where('year', $year)
             ->withCount('items')
             ->when($period !== 'all' && $this->isValidPeriod($period, $year), fn ($q) => $q->where('period', $period))
@@ -97,6 +97,14 @@ class ApprovalController extends Controller
             'status_label' => $display->label(),
             'status_detail' => $record->status->label(),
             'technician_name' => $record->technicianName(),
+            // User PIC yang ditunjuk teknisi, ditampilkan supaya jelas
+            // baris ini menunggu siapa. Pembatasan siapa yang boleh
+            // menyetujui sudah ditegakkan di SignatureChain, jadi User PIC lain
+            // tidak menerima record ini sama sekali.
+            'assigned_pic' => $record->picUser ? [
+                'id' => $record->picUser->id,
+                'name' => $record->picUser->name,
+            ] : null,
             'awaiting' => $awaiting?->value,
             'awaiting_label' => $awaiting?->shortLabel(),
             // Bentuk tahap untuk panel tanda tangan inline. Label tahap dikirim

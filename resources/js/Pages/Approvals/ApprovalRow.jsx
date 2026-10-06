@@ -73,6 +73,17 @@ export default function ApprovalRow({ record }) {
                 <span className="block text-xs text-neu-sub truncate max-w-[14rem]">
                     {record.technician_name ?? 'Tanpa teknisi'}
                 </span>
+                {/*
+                    Technician menunjuk User PIC sebelum submit. Ditampilkan di
+                    bawah nama teknisi karena dua-duanya pertanyaan yang sama:
+                    "siapa yang sudah menangani, siapa yang menunggu".
+                */}
+                <span className="block text-xs text-neu-sub truncate max-w-[14rem]">
+                    PIC:{' '}
+                    <span className={record.assigned_pic ? 'text-neu-accent font-semibold' : ''}>
+                        {record.assigned_pic?.name ?? 'belum ditunjuk'}
+                    </span>
+                </span>
             </td>
 
             <td>
