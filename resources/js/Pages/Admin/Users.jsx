@@ -42,7 +42,7 @@ export default function AdminUsers({ auth, users, roles }) {
     const [busyId, setBusyId] = useState(null);
     const [q, setQ] = useState('');
 
-    const editForm = useForm({ name: '', email: '', role: 'user' });
+    const editForm = useForm({ role: 'user' });
     const passForm = useForm({ password: '', password_confirmation: '' });
 
     const roleOptions = roles ?? [];
@@ -62,7 +62,7 @@ export default function AdminUsers({ auth, users, roles }) {
         setPasswordId(null);
         setConfirmingId(null);
         editForm.clearErrors();
-        editForm.setData({ name: user.name, email: user.email, role: user.role });
+        editForm.setData({ role: user.role });
         setEditingId(user.id);
     };
 
@@ -236,31 +236,17 @@ export default function AdminUsers({ auth, users, roles }) {
                                                 <label className="block text-xs text-neu-sub mb-1" htmlFor={`name-${user.id}`}>
                                                     Nama
                                                 </label>
-                                                <input
-                                                    id={`name-${user.id}`}
-                                                    type="text"
-                                                    value={editForm.data.name}
-                                                    onChange={(e) => editForm.setData('name', e.target.value)}
-                                                    className="neu-input"
-                                                    aria-invalid={Boolean(editForm.errors.name)}
-                                                    required
-                                                />
-                                                {fieldError(editForm, 'name')}
+                                                <p className="neu-inset px-4 py-3 text-neu-text" id={`name-${user.id}`}>
+                                                    {user.name}
+                                                </p>
                                             </div>
                                             <div className="sm:col-span-2">
                                                 <label className="block text-xs text-neu-sub mb-1" htmlFor={`email-${user.id}`}>
                                                     Email
                                                 </label>
-                                                <input
-                                                    id={`email-${user.id}`}
-                                                    type="email"
-                                                    value={editForm.data.email}
-                                                    onChange={(e) => editForm.setData('email', e.target.value)}
-                                                    className="neu-input"
-                                                    aria-invalid={Boolean(editForm.errors.email)}
-                                                    required
-                                                />
-                                                {fieldError(editForm, 'email')}
+                                                <p className="neu-inset px-4 py-3 text-neu-text break-all" id={`email-${user.id}`}>
+                                                    {user.email}
+                                                </p>
                                             </div>
                                             <div className="sm:col-span-2">
                                                 <label className="block text-xs text-neu-sub mb-1" htmlFor={`role-${user.id}`}>
@@ -289,9 +275,13 @@ export default function AdminUsers({ auth, users, roles }) {
                                                 {fieldError(editForm, 'role')}
                                             </div>
                                         </div>
+                                        <p className="text-xs text-neu-sub mt-3.5">
+                                            Nama dan email hanya bisa diubah lewat seeder akun, bukan dari
+                                            halaman ini.
+                                        </p>
                                         <div className="flex gap-2.5 flex-wrap mt-3.5">
                                             <NeuButton type="submit" variant="primary" disabled={editForm.processing}>
-                                                {editForm.processing ? 'Menyimpan...' : 'Simpan'}
+                                                {editForm.processing ? 'Menyimpan...' : 'Simpan Role'}
                                             </NeuButton>
                                             <NeuButton onClick={cancelEdit}>Batal</NeuButton>
                                         </div>

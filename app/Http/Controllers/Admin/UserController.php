@@ -14,11 +14,6 @@ use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
 {
-    /**
-     * Field yang boleh diubah admin lewat form Edit.
-     */
-    private const MANAGED_FIELDS = ['name', 'email'];
-
     public function index(Request $request): Response
     {
         $users = User::with('roles')->orderBy('name')->get()->map(function (User $u) use ($request) {
@@ -71,9 +66,13 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
 
+        /*
+         * Nama dan email tidak bisa diubah lewat halaman ini: daftar akun
+         * dikunci oleh UserSeeder (satu-satunya sumber kebenaran), dan nama
+         * dipakai ulang untuk tanda tangan tanpa si pengguna mengetik nama
+         * mereka sendiri. Yang boleh diubah di sini hanya role.
+         */
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['required', Rule::exists('roles', 'name')],
         ]);
 
@@ -89,34 +88,14 @@ class UserController extends Controller
             return back()->with('error', 'Tidak dapat mengubah role akun Anda sendiri.');
         }
 
-        $before = [
-            ...$user->only(self::MANAGED_FIELDS),
-            'role' => $user->roles->first()?->name,
-        ];
-
-        $user->update([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-        ]);
+        $beforeRole = $user->roles->first()?->name;
 
         $user->syncRoles([$validated['role']]);
 
-        $after = [
-            ...$user->only(self::MANAGED_FIELDS),
-            'role' => $validated['role'],
-        ];
-
-        $changes = [];
-        foreach ($after as $key => $value) {
-            if ((string) ($before[$key] ?? '') !== (string) $value) {
-                $changes[$key] = ['dari' => $before[$key] ?? null, 'ke' => $value];
-            }
-        }
-
-        if ($changes !== []) {
+        if ($beforeRole !== $validated['role']) {
             AuditLogService::record('user.update', User::class, $user->id, [
                 'name' => $user->name,
-                'changed' => $changes,
+                'role' => ['dari' => $beforeRole, 'ke' => $validated['role']],
             ]);
         }
 
