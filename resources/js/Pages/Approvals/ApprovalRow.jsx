@@ -18,6 +18,13 @@ const STATUS_VARIANTS = { todo: 'todo', progress: 'progress', done: 'done', issu
  * Hooknya dipanggil di komponen ini, bukan di `Index` — state nama, canvas, dan
  * processing harus milik satu baris saja. Kalau state-nya diletakkan di
  * `Index`, mengetik di satu baris akan mengisi nama di semua baris.
+ *
+ * Setiap `<td>` punya `data-label` karena di layar sempit tabel ini dirakit
+ * ulang jadi kartu: `thead` disembunyikan, tiap sel jadi blok penuh dengan
+ * nama kolomnya di atas. `label` di dalam sel ikut disembunyikan di ponsel
+ * (`sr-only`) supaya nama kolom tidak tampil dua kali, tapi tetap menempel ke
+ * inputnya untuk pembaca layar. Lebar minimum juga hanya berlaku di `lg` ke
+ * atas — di bawah itu ia yang membuat halaman melebar ke kanan.
  */
 export default function ApprovalRow({ record }) {
     const actionable = record.can_sign || record.can_reject;
@@ -51,14 +58,14 @@ export default function ApprovalRow({ record }) {
 
     return (
         <tr>
-            <td>
+            <td className="neu-cell-lead">
                 <div className="flex items-start gap-3">
                     <span className="neu-inset w-11 h-11 flex-none grid place-items-center font-bold text-[11px] text-neu-accent">
                         {record.sub_category ?? '—'}
                     </span>
                     <div className="min-w-0">
-                        <b className="block text-sm truncate">{record.name}</b>
-                        <span className="block text-xs text-neu-sub truncate">
+                        <b className="block text-sm break-words">{record.name}</b>
+                        <span className="block text-xs text-neu-sub break-words">
                             {record.code}
                             {record.location && ` · ${record.location}`}
                         </span>
@@ -66,11 +73,11 @@ export default function ApprovalRow({ record }) {
                 </div>
             </td>
 
-            <td>
-                <span className="block text-xs whitespace-nowrap">
+            <td data-label="Periode & Teknisi">
+                <span className="block text-xs">
                     {record.period_label} {record.year}
                 </span>
-                <span className="block text-xs text-neu-sub truncate max-w-[14rem]">
+                <span className="block text-xs text-neu-sub break-words">
                     {record.technician_name ?? 'Tanpa teknisi'}
                 </span>
                 {/*
@@ -78,7 +85,7 @@ export default function ApprovalRow({ record }) {
                     bawah nama teknisi karena dua-duanya pertanyaan yang sama:
                     "siapa yang sudah menangani, siapa yang menunggu".
                 */}
-                <span className="block text-xs text-neu-sub truncate max-w-[14rem]">
+                <span className="block text-xs text-neu-sub break-words">
                     PIC:{' '}
                     <span className={record.assigned_pic ? 'text-neu-accent font-semibold' : ''}>
                         {record.assigned_pic?.name ?? 'belum ditunjuk'}
@@ -86,29 +93,29 @@ export default function ApprovalRow({ record }) {
                 </span>
             </td>
 
-            <td>
+            <td data-label="Status">
                 <NeuPill variant={STATUS_VARIANTS[record.status] ?? 'todo'}>
                     {record.status_label}
                 </NeuPill>
-                <span className="block text-xs text-neu-sub mt-1.5 whitespace-nowrap">
+                <span className="block text-xs text-neu-sub mt-1.5">
                     Menunggu {record.awaiting_label}
                 </span>
-                <span className="block text-xs text-neu-sub whitespace-nowrap">
+                <span className="block text-xs text-neu-sub">
                     {record.filled_percent}% terisi
                     {record.revision_count > 0 && ` · Revisi ${record.revision_count}×`}
                 </span>
             </td>
 
             {!actionable ? (
-                <td colSpan={3}>
+                <td colSpan={3} className="neu-cell-lead">
                     <span className="text-xs text-neu-sub">
                         Tidak perlu tindakan Anda pada tahap ini.
                     </span>
                 </td>
             ) : (
                 <>
-                    <td>
-                        <label htmlFor={nameId} className="block text-xs text-neu-sub mb-1.5">
+                    <td data-label="Nama Penanda Tangan">
+                        <label htmlFor={nameId} className="sr-only lg:not-sr-only block text-xs text-neu-sub mb-1.5">
                             Nama Penanda Tangan <span className="text-neu-bad">*</span>
                         </label>
                         <NeuInput
@@ -123,7 +130,7 @@ export default function ApprovalRow({ record }) {
                             aria-required="true"
                             aria-invalid={message?.field === 'name'}
                             aria-describedby={message ? `${nameId}-error` : undefined}
-                            className={`min-w-[13rem] ${
+                            className={`lg:min-w-[13rem] ${
                                 message?.field === 'name'
                                     ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]'
                                     : ''
@@ -131,13 +138,14 @@ export default function ApprovalRow({ record }) {
                         />
                     </td>
 
-                    <td>
+                    <td data-label="Tanda Tangan">
                         {/*
                             Kanvas `w-full` di dalam sel tabel akan ikut menyusut
-                            ke lebar kolom, jadi lebar minimum-nya dipasang di sini
-                            supaya ada ruang yang cukup untuk menandatangani.
+                            ke lebar kolom, jadi lebar minimumnya dipasang hanya
+                            di layar lebar. Di ponsel kanvasnya mengikuti lebar
+                            kartu supaya halaman tidak perlu digeser ke samping.
                         */}
-                        <div className="min-w-[17rem]">
+                        <div className="lg:min-w-[17rem]">
                             <NeuSignaturePad
                                 ref={padRef}
                                 id={padId}
@@ -149,8 +157,8 @@ export default function ApprovalRow({ record }) {
                         </div>
                     </td>
 
-                    <td>
-                        <label htmlFor={noteId} className="block text-xs text-neu-sub mb-1.5">
+                    <td data-label="Catatan">
+                        <label htmlFor={noteId} className="sr-only lg:not-sr-only block text-xs text-neu-sub mb-1.5">
                             {record.can_reject ? 'Catatan' : 'Catatan (opsional)'}
                         </label>
                         <textarea
@@ -161,14 +169,14 @@ export default function ApprovalRow({ record }) {
                             maxLength={500}
                             disabled={busy}
                             placeholder={record.can_reject ? 'Alasan penolakan' : 'Opsional'}
-                            className="neu-input min-h-[64px] resize-y min-w-[12rem]"
+                            className="neu-input min-h-[64px] resize-y lg:min-w-[12rem]"
                         />
                     </td>
                 </>
             )}
 
-            <td>
-                <div className="flex flex-col gap-2.5 min-w-[12rem]">
+            <td data-label="Aksi">
+                <div className="flex flex-col gap-2.5 lg:min-w-[12rem]">
                     {record.can_sign && (
                         <NeuButton
                             variant="primary"

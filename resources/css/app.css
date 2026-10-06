@@ -55,6 +55,50 @@
         @apply bg-neu-light/40;
     }
 
+    /* Layar sempit: antrean berubah jadi satu kartu per record.
+       Tujuh kolom yang berdampingan tidak muat di ponsel, dan akibatnya tabel
+       harus digeser ke kanan hanya untuk membaca kolom "Tanda Tangan" yang
+       paling penting. Di bawah 1024px tiap sel ditumpuk ke bawah dan nama kolomnya
+       muncul di atas isinya lewat `data-label`, jadi halaman turun ke bawah
+       dan tidak pernah melebar melewati layar. */
+    @media (max-width: 1023px) {
+        .neu-table-wrap {
+            @apply overflow-x-visible p-0 bg-transparent rounded-none shadow-none;
+        }
+
+        .neu-table thead {
+            display: none;
+        }
+
+        .neu-table tbody tr {
+            @apply block bg-neu-bg rounded-neu shadow-neu-up p-4 mb-4;
+        }
+
+        .neu-table tbody tr:last-child {
+            @apply mb-0;
+        }
+
+        .neu-table tbody td {
+            @apply block border-t-0 px-0 py-0 mb-4;
+        }
+
+        .neu-table tbody td:last-child {
+            @apply mb-0;
+        }
+
+        .neu-table tbody td::before {
+            content: attr(data-label);
+            @apply block text-[11px] font-bold uppercase tracking-wider text-neu-sub mb-1.5;
+        }
+
+        /* Sel yang namanya sudah jelas dari isinya sendiri — nama mesin — tidak
+           perlu label ulang, dan sel "tidak perlu tindakan" tanpa label tidak
+           boleh menyisakan baris kosong. */
+        .neu-table tbody td.neu-cell-lead::before {
+            content: none;
+        }
+    }
+
     .neu-btn {
         @apply inline-flex items-center justify-center gap-2 rounded-neu-sm px-4 py-2.5 font-semibold text-neu-accent shadow-neu-up-sm transition-all duration-150 active:shadow-neu-in disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
     }

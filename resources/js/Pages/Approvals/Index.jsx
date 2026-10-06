@@ -53,7 +53,7 @@ export default function Approvals({ auth, records, years, year, period, periods,
                         </NeuCard>
 
                         <div
-                            className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-2"
+                            className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-2 lg:flex-nowrap lg:overflow-x-auto"
                             role="group"
                             aria-label="Filter tahun"
                         >
@@ -73,7 +73,7 @@ export default function Approvals({ auth, records, years, year, period, periods,
                         </div>
 
                         <div
-                            className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-4"
+                            className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-4 lg:flex-nowrap lg:overflow-x-auto"
                             role="group"
                             aria-label="Filter periode"
                         >
@@ -113,11 +113,18 @@ export default function Approvals({ auth, records, years, year, period, periods,
                             </NeuCard>
                         ) : (
                             /*
-                                Tabel, bukan kartu: nama penanda tangan dan gambar
-                                tanda tangannya harus berdiri sebagai kolom terpisah
-                                supaya jelas kolom mana nama dan kolom mana tanda
-                                tangan, dan supaya yang sudah lewat tahap bisa
-                                dibandingkan berdampingan dalam satu baris.
+                                Tabel, bukan kartu di layar lebar: nama penanda
+                                tangan dan gambar tanda tangannya harus berdiri
+                                sebagai kolom terpisah supaya jelas kolom mana nama
+                                dan kolom mana tanda tangan, dan supaya yang sudah
+                                lewat tahap bisa dibandingkan berdampingan dalam
+                                satu baris.
+
+                                Di layar sempit `.neu-table-wrap` mengubah tabel ini
+                                jadi satu kartu per record yang menumpuk ke bawah,
+                                jadi tidak ada yang perlu digeser ke samping. Karena
+                                itu `thead` disembunyikan lewat CSS dan nama
+                                kolomnya dipindahkan ke atas tiap sel.
                             */
                             <div className="neu-table-wrap">
                                 <table className="neu-table">
