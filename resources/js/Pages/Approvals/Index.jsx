@@ -4,10 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
-import NeuButton from '@/Components/NeuButton';
-import SignatureActions from '@/Components/SignatureActions';
-
-const STATUS_VARIANTS = { todo: 'todo', progress: 'progress', done: 'done', issue: 'issue' };
+import ApprovalRow from '@/Pages/Approvals/ApprovalRow';
 
 export default function Approvals({ auth, records, years, year, period, periods, myStages, hasStages }) {
     const [selectedYear, setSelectedYear] = useState(year);
@@ -115,72 +112,37 @@ export default function Approvals({ auth, records, years, year, period, periods,
                                 </p>
                             </NeuCard>
                         ) : (
-                            <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-4 xl:grid-cols-3 xl:gap-x-5">
-                                {records.map((record) => (
-                                    <NeuCard key={record.id} className="mb-4">
-                                        <div className="flex items-start gap-3.5 mb-3">
-                                            <span className="neu-inset w-12 h-12 flex-none grid place-items-center font-bold text-sm text-neu-accent">
-                                                {record.sub_category ?? '—'}
-                                            </span>
-                                            <div className="min-w-0 flex-1">
-                                                <b className="block text-sm truncate">{record.name}</b>
-                                                <span className="block text-xs text-neu-sub truncate">
-                                                    {record.code}
-                                                    {record.location && ` · ${record.location}`}
-                                                </span>
-                                                <span className="block text-xs text-neu-sub mt-0.5">
-                                                    {record.period_label} {record.year} · {record.technician_name ?? 'Tanpa teknisi'}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center justify-between gap-2 mb-3">
-                                            <NeuPill variant={STATUS_VARIANTS[record.status] ?? 'todo'}>
-                                                {record.status_label}
-                                            </NeuPill>
-                                            {record.revision_count > 0 && (
-                                                <span className="text-[11px] text-neu-sub">
-                                                    Revisi {record.revision_count}×
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        <p className="text-xs text-neu-sub mb-3">
-                                            Menunggu <b className="text-neu-text">{record.awaiting_label}</b>
-                                            {' · '}
-                                            {record.filled_percent}% checklist terisi
-                                        </p>
-
-                                        {/*
-                                            Tanda tangan bisa diselesaikan langsung
-                                            dari antrean ini: nama penanda tangan
-                                            dan gambar tanda tangan diletakkan
-                                            berdampingan di dalam kartu yang sama,
-                                            dan keduanya wajib diisi.
-                                        */}
-                                        {record.can_sign && record.awaiting_stage && (
-                                            <SignatureActions
-                                                embedded
-                                                idPrefix={`pm-${record.id}-`}
-                                                recordId={record.id}
-                                                stage={record.awaiting_stage}
-                                                canSign={record.can_sign}
-                                                canReject={record.can_reject}
-                                            />
-                                        )}
-
-                                        <NeuButton
-                                            href={route('machines.pm.create', {
-                                                machine: record.machine_id,
-                                                year: record.year,
-                                                period: record.period,
-                                            })}
-                                            className="w-full mt-4"
-                                        >
-                                            Buka Checklist
-                                        </NeuButton>
-                                    </NeuCard>
-                                ))}
+                            /*
+                                Tabel, bukan kartu: nama penanda tangan dan gambar
+                                tanda tangannya harus berdiri sebagai kolom terpisah
+                                supaya jelas kolom mana nama dan kolom mana tanda
+                                tangan, dan supaya yang sudah lewat tahap bisa
+                                dibandingkan berdampingan dalam satu baris.
+                            */
+                            <div className="neu-table-wrap">
+                                <table className="neu-table">
+                                    <caption className="sr-only">
+                                        PM yang menunggu tindakan Anda. Isi kolom Nama
+                                        Penanda Tangan dan Tanda Tangan pada baris yang
+                                        akan disetujui.
+                                    </caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Mesin</th>
+                                            <th scope="col">Periode</th>
+                                            <th scope="col">Status</th>
+                                            <th scope="col">Nama Penanda Tangan</th>
+                                            <th scope="col">Tanda Tangan</th>
+                                            <th scope="col">Catatan</th>
+                                            <th scope="col">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {records.map((record) => (
+                                            <ApprovalRow key={record.id} record={record} />
+                                        ))}
+                                    </tbody>
+                                </table>
                             </div>
                         )}
                     </>

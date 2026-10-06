@@ -253,10 +253,13 @@ Tahap 1 — React ──POST /machines/{machine}/pm
            └▶ kalau penyimpanan tanda tangan gagal: flash error, PM tetap di draft
 
 Tahap 2 & 3 — React ──POST /pm/{record}/sign (signature=dataURL PNG, signer_name, note)
-  Sumber formnya dua: Pm/Form dan kartu di /approvals. Badge sidebar memakai
-  pendingQuery yang sama dengan daftar /approvals, jadi daftar ikut memuat record
-  draft/rejected milik teknisi sendiri; karena itu SignatureActions dipasang
-  embedded untuk tahap apa pun yang sedang menunggu, bukan hanya PIC/Atasan.
+  Sumber formnya dua: Pm/Form dan baris tabel di /approvals. Badge sidebar
+  memakai pendingQuery yang sama dengan daftar /approvals, jadi daftar ikut
+  memuat record draft/rejected milik teknisi sendiri; karena itu kolom Nama +
+  Tanda Tangan dirender untuk tahap apa pun yang sedang menunggu, bukan hanya
+  PIC/Atasan. /approvals memakai useSignatureActions per baris (bukan
+  SignatureActions) supaya nama dan tanda tangan bisa berdiri sebagai kolom
+  terpisah; hook yang sama dipakai Pm/Form lewat SignatureActions.
   └▶ SignPmRecordRequest (validasi: signer_name WAJIB, PNG sungguhan, ≤2 MB;
                            stage=technician → PmRecord::isChecklistComplete() WAJIB,
                            supaya PM kosong tidak bisa diteruskan dari antrean)

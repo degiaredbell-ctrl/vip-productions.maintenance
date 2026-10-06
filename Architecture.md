@@ -563,7 +563,9 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `NeuBars` | Bar chart sederhana |
 | `NeuToast` | Notifikasi aksi |
 | `NeuSignaturePad` | Canvas tanda tangan |
-| `SignatureActions` | Panel tanda tangan: nama wajib + canvas + tombol sign/reject. Dipakai di `Pm/Form` (tahap teknisi) dan `embedded` di dalam kartu `Approvals/Index`, jadi approve bisa diselesaikan dari antrean |
+| `SignatureActions` | Panel tanda tangan sebagai kartu utuh, dipakai di `Pm/Form` untuk tahap PIC/Atasan |
+| `useSignatureActions` | Logika approve/tolak (nama manual, canvas, catatan, request). Dipakai bersama oleh `SignatureActions` dan `Approvals/ApprovalRow` supaya tidak ada jalur validating mandatory yang berbeda |
+| `Approvals/ApprovalRow` | Satu baris tabel antrean: kolom Nama Penanda Tangan dan Tanda Tangan terpisah |
 | `MachineFields` | Form input mesin (dipakai bersama create/edit) |
 
 ### Layout
@@ -582,7 +584,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | Path | Halaman | Ringkas |
 |------|---------|---------|
 | `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ekspor |
-| `/approvals` | `Approvals/Index` | Antrean per permission, stepper, nama+signature inline per kartu |
+| `/approvals` | `Approvals/Index` | Antrean per permission, stepper, tabel nama + signature per baris |
 | `/reports` | `Reports/Index` | Kepatuhan, top part, ringkasan aksi, ekspor |
 | `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore |
 | `/machines/{machine}/history` | `Machines/History` | Riwayat PM mesin |

@@ -80,12 +80,13 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - Daftar record yang menunggu tindakan user **berdasarkan permission-nya**
 - Badge sidebar memakai **query yang sama** dengan daftar halaman → angka tidak pernah berbeda
 - Rantai approval ditampilkan sebagai stepper dengan centang per tahap
-- **Tanda tangan bisa diselesaikan langsung dari daftar**: setiap record yang
-  awaiting punya kolom **Nama Penanda Tangan** (input manual, wajib) di sebelah
-  canvas **Signature** di dalam kartunya. Tombol approve mati selama salah satu
-  kosong, jadi tidak ada approval tanpa identitas penandatanganannya. Panel ini
-  ditambahkan untuk tahap apa pun yang sedang menunggu user tersebut, termasuk
-  `rejected` milik teknisi sendiri
+- **Dibiarkan sebagai tabel** dengan kolom **Nama Penanda Tangan** (input manual,
+  wajib) dan kolom **Tanda Tangan** (canvas) berdiri sendiri — bukan ditumpuk di
+  dalam kartu, supaya jelas kolom mana nama dan kolom mana tanda tangan
+- **Tanda tangan bisa diselesaikan langsung dari daftar**: tombol Setujui mati
+  selama nama atau tanda tangan kosong, jadi tidak ada approval tanpa identitas
+  penandatanganannya. Baris ini muncul untuk tahap apa pun yang sedang menunggu
+  user tersebut, termasuk `rejected` milik teknisi sendiri
 - Tombol **Buka Checklist** tetap ada supaya PM bisa dibaca dulu sebelum diteken
 - Record yang checklist-nya belum lengkap tidak bisa ditutup dari antrean —
   tahap teknisi hanya naik status setelah semua nilai Aktual terisi

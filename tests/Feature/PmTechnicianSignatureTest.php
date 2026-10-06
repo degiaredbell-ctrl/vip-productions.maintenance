@@ -331,6 +331,33 @@ class PmTechnicianSignatureTest extends TestCase
         $this->assertTrue($props['can_sign']);
     }
 
+    public function test_halaman_persetujuan_menampilkan_data_kolom_nama_dan_tanda_tangan(): void
+    {
+        $record = $this->signedRecord();
+
+        $props = $this->actingAs($this->user('user'))
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => Inertia::getVersion(),
+            ])
+            ->get(route('approvals.index'))
+            ->json('props.records.0');
+
+        // Antrean dirender sebagai tabel: kolom "Nama Penanda Tangan" dan
+        // "Tanda Tangan" berdiri sendiri, jadi frontend butuh id unik per record
+        // untuk input nama dan canvas-nya. Tanpa `id` yang unik, label di semua
+        // baris akan menempel ke baris pertama saja.
+        $this->assertSame($record->id, $props['id']);
+        $this->assertTrue($props['can_sign']);
+        $this->assertTrue($props['can_reject']);
+        $this->assertSame('User PIC', $props['awaiting_stage']['short_label']);
+        $this->assertSame('Persetujuan User PIC', $props['awaiting_stage']['label']);
+
+        // Nama teknisi manual harus ikut tampil supaya yang sudah mengisi
+        // checklist bisa dibandingkan dengan nama yang akan menandatangani.
+        $this->assertSame('Budi Santoso', $props['technician_name']);
+    }
+
     public function test_tanda_tangan_bisa_dilewati_langsung_dari_daftar_persetujuan(): void
     {
         $record = $this->signedRecord();

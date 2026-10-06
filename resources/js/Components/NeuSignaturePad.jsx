@@ -4,8 +4,8 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
  * Pad tanda tangan tulisan tangan di atas <canvas>.
  *
  * Pakai Pointer Events (bukan onMouseDown) supaya mouse, sentuhan, dan stylus
- * bisa dipakai dengan satu jalur kode, dan supaya pena tidak who'd_scroll halaman
- * saat dipakai menggambar di layar sentuh.
+ * bisa dipakai dengan satu jalur kode, dan supaya pena tidak menggulir halaman
+ * sendiri saat dipakai menggambar di layar sentuh.
  *
  * Parent memakai ref untuk mengambil gambar lewat getDataUrl() ketika tombol
  * submit ditekan.

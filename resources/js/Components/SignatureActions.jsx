@@ -1,158 +1,98 @@
-import { useRef, useState } from 'react';
-import { router } from '@inertiajs/react';
 import NeuButton from '@/Components/NeuButton';
 import NeuCard from '@/Components/NeuCard';
 import NeuSignaturePad from '@/Components/NeuSignaturePad';
+import useSignatureActions from '@/Components/useSignatureActions';
 
 /**
- * Panel aksi tanda tangan untuk tahap User PIC dan Atasan.
+ * Panel aksi tanda tangan sebagai satu kartu utuh, untuk tahap User PIC dan
+ * Atasan di halaman form PM.
  *
- * Tahap 1 (teknisi) tidak memakai komponen ini: penandatanganannya ada di
- * akhir form checklist supaya teknisi cukup satu kali submit. Backend tetap
- * memvalidasi tahap mana yang boleh dikerjakan.
+ * Tahap 1 (teknisi) tidak memakai komponen ini: penandatanganannya ada di akhir
+ * form checklist supaya teknisi cukup satu kali submit. Backend tetap memvalidasi
+ * tahap mana yang boleh dikerjakan.
  *
- * `embedded` memasang panel ini di dalam kartu yang sudah ada (dipakai di
- * daftar Persetujuan), jadi kartu dan judulnya tidak digambar dua kali.
- * `idPrefix` wajib saat dipasang di daftar: halaman Persetujuan memuat banyak
- * panel sekaligus dan tanpa itu semua `id` input akan sama.
+ * Antrean Persetujuan tidak memakai komponen ini — `Approvals/ApprovalRow`
+ * memakai `useSignatureActions` yang sama supaya nama dan tanda tangannya bisa
+ * berdiri sebagai kolom terpisah di tabel.
  */
-export default function SignatureActions({ recordId, stage, canSign, canReject, embedded = false, idPrefix = '' }) {
-    const nameId = `${idPrefix}signer-name`;
-    const noteId = `${idPrefix}sign-note`;
-    const padId = `${idPrefix}signature-pad`;
-
-    const padRef = useRef(null);
-    const [note, setNote] = useState('');
-    const [signerName, setSignerName] = useState('');
-    const [hasSignature, setHasSignature] = useState(false);
-    const [error, setError] = useState('');
-    const [processing, setProcessing] = useState('');
-
-    const nameFilled = signerName.trim() !== '';
-
-    const handleSign = () => {
-        if (!nameFilled) {
-            setError('Nama penanda tangan wajib diisi.');
-            return;
-        }
-
-        const dataUrl = padRef.current?.getDataUrl();
-
-        if (!dataUrl) {
-            setError('Tanda tangan wajib digambar sebelum melanjutkan.');
-            return;
-        }
-
-        setError('');
-        setProcessing('sign');
-
-        router.post(route('pm.sign', recordId), { signature: dataUrl, signer_name: signerName.trim(), note }, {
-            preserveScroll: true,
-            onError: (errors) => {
-                setProcessing('');
-                setError(Object.values(errors)[0] ?? 'Gagal menyimpan tanda tangan.');
-            },
-            onSuccess: () => {
-                setProcessing('');
-                setNote('');
-                setSignerName('');
-                setHasSignature(false);
-                padRef.current?.clear();
-            },
-        });
-    };
-
-    const handleReject = () => {
-        if (!note.trim()) {
-            setError('Alasan penolakan wajib diisi agar teknisi tahu apa yang diperbaiki.');
-            return;
-        }
-
-        setError('');
-        setProcessing('reject');
-
-        router.post(route('pm.reject', recordId), { note }, {
-            preserveScroll: true,
-            onError: (errors) => {
-                setProcessing('');
-                setError(Object.values(errors)[0] ?? 'Gagal menolak PM.');
-            },
-            onSuccess: () => {
-                setProcessing('');
-                setNote('');
-                padRef.current?.clear();
-            },
-        });
-    };
+export default function SignatureActions({ recordId, stage, canSign, canReject }) {
+    const {
+        padRef,
+        name,
+        note,
+        hasSignature,
+        busy,
+        processing,
+        message,
+        nameFilled,
+        onNameChange,
+        onNoteChange,
+        onSignatureChange,
+        handleSign,
+        handleReject,
+    } = useSignatureActions({ recordId, canSign, canReject });
 
     if (!canSign && !canReject) return null;
 
-    const heading = embedded ? null : (
-        <>
+    return (
+        <NeuCard className="mb-4">
             <b className="text-sm block mb-0.5">{stage.label}</b>
             <p className="text-xs text-neu-sub mb-4">
                 {canSign
                     ? 'Tanda tangan di bawah lalu tekan tombol untuk melanjutkan ke tahap berikutnya.'
                     : 'Anda dapat menolak PM ini dengan menyertakan alasan.'}
             </p>
-        </>
-    );
-
-    return (
-        <NeuCard className={embedded ? 'mt-4 !shadow-neu-in' : 'mb-4'}>
-            {heading}
 
             {canSign && (
                 <div className="mb-4">
-                    <label htmlFor={nameId} className="block text-xs text-neu-sub mb-1.5">
+                    <label htmlFor="signer-name" className="block text-xs text-neu-sub mb-1.5">
                         Nama Penanda Tangan <span className="text-neu-bad">*</span>
                     </label>
                     <input
-                        id={nameId}
+                        id="signer-name"
                         type="text"
-                        value={signerName}
-                        onChange={(e) => {
-                            setSignerName(e.target.value);
-                            if (error) setError('');
-                        }}
+                        value={name}
+                        onChange={(e) => onNameChange(e.target.value)}
                         placeholder={`Tulis nama lengkap ${stage.short_label}`}
                         maxLength={100}
                         autoComplete="off"
-                        disabled={processing !== ''}
-                        className={`neu-input mb-4 ${error && !nameFilled ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]' : ''}`}
+                        disabled={busy}
+                        aria-invalid={message?.field === 'name'}
+                        aria-describedby={message ? 'signature-error' : undefined}
+                        className={`neu-input mb-4 ${
+                            message?.field === 'name'
+                                ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]'
+                                : ''
+                        }`}
                     />
 
                     <NeuSignaturePad
                         ref={padRef}
-                        id={padId}
-                        disabled={processing !== ''}
-                        error={Boolean(error) && !hasSignature}
-                        onChange={(value) => {
-                            setHasSignature(Boolean(value));
-                            if (value && error) setError('');
-                        }}
+                        disabled={busy}
+                        error={message?.field === 'signature'}
+                        onChange={onSignatureChange}
                     />
                 </div>
             )}
 
-            <label htmlFor={noteId} className="block text-xs text-neu-sub mb-1.5">
+            <label htmlFor="sign-note" className="block text-xs text-neu-sub mb-1.5">
                 {canReject ? 'Catatan' : 'Catatan (opsional)'}
             </label>
             <textarea
-                id={noteId}
+                id="sign-note"
                 value={note}
-                onChange={(e) => {
-                    setNote(e.target.value);
-                    if (error) setError('');
-                }}
+                onChange={(e) => onNoteChange(e.target.value)}
                 rows={2}
                 maxLength={500}
+                disabled={busy}
                 placeholder={canReject ? 'Tuliskan alasan penolakan' : 'Catatan tambahan (opsional)'}
                 className="neu-input min-h-[64px] resize-y"
             />
 
-            {error && (
-                <p role="alert" className="text-sm text-neu-bad font-semibold mt-3">{error}</p>
+            {message && (
+                <p id="signature-error" role="alert" className="text-sm text-neu-bad font-semibold mt-3">
+                    {message.text}
+                </p>
             )}
 
             <div className="flex flex-col gap-2.5 mt-4">
@@ -161,7 +101,7 @@ export default function SignatureActions({ recordId, stage, canSign, canReject, 
                         <NeuButton
                             variant="primary"
                             className="w-full !py-3.5"
-                            disabled={processing !== '' || !nameFilled || !hasSignature}
+                            disabled={busy || !nameFilled || !hasSignature}
                             onClick={handleSign}
                         >
                             {processing === 'sign'
@@ -174,7 +114,7 @@ export default function SignatureActions({ recordId, stage, canSign, canReject, 
                         {/* Sama seperti tahap teknisi: tombol mati sampai nama
                             dan tanda tangan terisi, jadi tidak ada approval
                             tanpa identitas penandatanganannya. */}
-                        {processing === '' && (!nameFilled || !hasSignature) && (
+                        {!busy && (!nameFilled || !hasSignature) && (
                             <p className="text-xs text-neu-sub text-center">
                                 {!nameFilled && !hasSignature
                                     ? 'Nama penanda tangan dan tanda tangan wajib diisi.'
@@ -189,7 +129,7 @@ export default function SignatureActions({ recordId, stage, canSign, canReject, 
                 {canReject && (
                     <NeuButton
                         className="w-full !py-3.5 text-neu-bad"
-                        disabled={processing !== ''}
+                        disabled={busy}
                         onClick={handleReject}
                     >
                         {processing === 'reject' ? 'Mengirim…' : 'Tolak & Kembalikan ke Teknisi'}
