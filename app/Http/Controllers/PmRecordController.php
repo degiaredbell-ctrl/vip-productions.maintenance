@@ -79,6 +79,10 @@ class PmRecordController extends Controller
 
         $user = $request->user();
 
+        // Penolakan terakhir dibaca sekali di sini supaya form tidak perlu
+        // melakukan query audit log sendiri.
+        $rejection = $this->lastRejectionProps($existing);
+
         return Inertia::render('Pm/Form', [
             'machine' => [
                 'id' => $machine->id,
@@ -100,9 +104,18 @@ class PmRecordController extends Controller
                 'status_label' => $existing->status->label(),
                 'revision_count' => $existing->revision_count,
                 'general_note' => $existing->general_note,
+                // Nama teknisi ikut diteruskan supaya revisi tidak memaksa
+                // teknisi mengetik ulang namanya dari nol.
+                'technician_name' => $existing->technician_name,
                 // User PIC yang sudah ditunjuk pada simpan sebelumnya, supaya
-                // revisi tidak diam-diam mengganti orang yang menunggu.
+                // revisi tidak diam-diam mengganti orang yang menunggu. Teknisi
+                // tetap bebas memilih PIC lain di kolom ini.
                 'pic_user_id' => $existing->pic_user_id,
+                // Catatan penolakan terakhir. Tanpa ini teknisi hanya melihat
+                // status "Perlu Revisi" tanpa tahu apa yang harus diperbaiki.
+                'rejected_by' => $rejection['by'],
+                'rejected_at' => $rejection['at'],
+                'reject_reason' => $rejection['reason'],
             ] : null,
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
             'canFill' => $user->can('pm.fill') && (! $existing || $user->can('update', $existing)),
@@ -184,6 +197,32 @@ class PmRecordController extends Controller
         app(RejectPmRecord::class)->handle($record, $request->validated('note'));
 
         return redirect()->back()->with('success', 'PM ditolak dan dikembalikan ke teknisi untuk revisi.');
+    }
+
+    /**
+     * Ringkasan penolakan terakhir untuk ditampilkan di form revisi.
+     *
+     * Hanya diisi ketika record benar-benar ditolak; record yang belum pernah
+     * ditolak atau sudah selesai tidak menampilkan apa pun.
+     *
+     * @return array{by: ?string, at: ?string, reason: ?string}
+     */
+    private function lastRejectionProps(?PmRecord $record): array
+    {
+        $log = $record?->lastRejection();
+
+        if ($log === null) {
+            return ['by' => null, 'at' => null, 'reason' => null];
+        }
+
+        $changes = $log->getAttribute('changes');
+        $reason = is_array($changes) ? ($changes['reason'] ?? null) : null;
+
+        return [
+            'by' => $log->user?->name,
+            'at' => $log->created_at?->translatedFormat('d M Y H:i'),
+            'reason' => is_string($reason) && $reason !== '' ? $reason : null,
+        ];
     }
 
     /**

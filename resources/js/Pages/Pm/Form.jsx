@@ -21,7 +21,9 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         machine_id: machine.id,
         year: year,
         period: period,
-        technician_name: '',
+        // Nama teknisi dari submit sebelumnya ikut terbawa. Revisi karena PIC
+        // menolak seharusnya tidak memaksa teknisi mengetik ulang namanya.
+        technician_name: existing?.technician_name || '',
         general_note: existing?.general_note || '',
         revision_reason: '',
         note: '',
@@ -161,6 +163,38 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                         <p className="text-xs text-neu-sub">Periode {period} {year}</p>
                     </div>
                 </div>
+
+                {/*
+                    Catatan penolakan PIC/Atasan. Letakkan tepat di bawah header
+                    supaya teknisi tahu apa yang harus diperbaiki sebelum mulai
+                    menyentuh checklist, dan supaya jelas bahwa form yang terbuka
+                    adalah revisi, bukan checklist baru.
+                */}
+                {existing?.reject_reason && (
+                    <NeuCard className="mb-4 !bg-[#FCEFEC]">
+                        <div className="flex items-start gap-3">
+                            <span className="neu-inset w-9 h-9 flex-none grid place-items-center text-neu-bad font-bold">
+                                !
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-neu-bad">
+                                    Checklist ditolak, mohon diperbaiki
+                                </p>
+                                <p className="text-xs text-neu-sub mt-0.5">
+                                    Ditolak oleh {existing.rejected_by ?? 'reviewer'}
+                                    {existing.rejected_at ? ` · ${existing.rejected_at}` : ''}
+                                </p>
+                                <p className="text-sm mt-2 whitespace-pre-wrap">
+                                    {existing.reject_reason}
+                                </p>
+                                <p className="text-xs text-neu-sub mt-2.5">
+                                    Semua isian di bawah tetap ada dan bisa diubah, termasuk User PIC.
+                                    Setelah diubah, submit ulang untuk mengulang tahap persetujuan.
+                                </p>
+                            </div>
+                        </div>
+                    </NeuCard>
+                )}
 
                 {/* Progress */}
                 <NeuCard className="mb-4">

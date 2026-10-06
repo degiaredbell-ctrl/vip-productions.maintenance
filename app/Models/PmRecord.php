@@ -120,7 +120,8 @@ class PmRecord extends Model
     }
 
     /**
-     * Alasan penolakan terakhir dari audit log.
+     * Baris audit penolakan terakhir, atau null kalau record belum pernah
+     * ditolak.
      *
      * Alasan tidak disimpan di pm_records karena penolakan bisa berulang dan
      * riwayatnya memang sudah tercatat di audit_logs.
@@ -131,16 +132,22 @@ class PmRecord extends Model
      * itu secara langsung dan `__get()` tidak pernah terpanggil. Hasilnya
      * array kosong, bukan kolom `changes` milik AuditLog.
      */
-    public function rejectReason(): ?string
+    public function lastRejection(): ?AuditLog
     {
-        $log = AuditLog::query()
+        return AuditLog::query()
+            ->with('user')
             ->where('action', 'pm.reject')
             ->where('subject_type', self::class)
             ->where('subject_id', $this->id)
             ->latest('created_at')
+            ->latest('id')
             ->first();
+    }
 
-        $changes = $log?->getAttribute('changes');
+    /** Alasan penolakan terakhir, untuk tampilan ringkas. */
+    public function rejectReason(): ?string
+    {
+        $changes = $this->lastRejection()?->getAttribute('changes');
         $reason = is_array($changes) ? ($changes['reason'] ?? null) : null;
 
         return is_string($reason) && $reason !== '' ? $reason : null;
