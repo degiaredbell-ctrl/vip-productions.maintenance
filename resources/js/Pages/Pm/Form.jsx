@@ -15,6 +15,9 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [hasSignature, setHasSignature] = useState(false);
+    // Detail stempel waktu dokumen: tertutup sebagai default supaya checklist
+    // tetap yang pertama terlihat, dan hanya bisa dibuka dari barisnya.
+    const [showHistory, setShowHistory] = useState(false);
     const padRef = useRef(null);
 
     const { data, setData, post, processing } = useForm({
@@ -193,6 +196,75 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                 </p>
                             </div>
                         </div>
+                    </NeuCard>
+                )}
+
+                {/*
+                    Riwayat dokumen: kapan dibuat dan terakhir diubah.
+
+                    Bentuknya toggle, bukan teks yang selalu terbuka, supaya
+                    tidak menggeser checklist turun setiap kali form dibuka.
+                    Card-nya bergaya notifikasi (inset + ikon, bukan warna merah
+                    seperti banner penolakan) karena ini pemberitahuan biasa,
+                    bukan peringatan.
+
+                    `created_at` null kalau record belum pernah submit, jadi
+                    draft yang isinya masih mentah tidak menampilkan baris ini
+                    sama sekali.
+                */}
+                {existing?.created_at && (
+                    <NeuCard className="mb-4 !shadow-neu-in">
+                        <button
+                            type="button"
+                            onClick={() => setShowHistory((open) => !open)}
+                            aria-expanded={showHistory}
+                            aria-controls="pm-document-history"
+                            className="flex w-full items-center gap-3 text-left rounded-neu-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-neu-accent/40"
+                        >
+                            <span
+                                className="neu-inset w-9 h-9 flex-none grid place-items-center text-neu-accent font-bold"
+                                aria-hidden="true"
+                            >
+                                i
+                            </span>
+                            <span className="min-w-0 flex-1">
+                                <b className="block text-sm">Riwayat dokumen</b>
+                                <span className="block text-xs text-neu-sub truncate">
+                                    Dibuat {existing.created_at} · Diubah {existing.updated_at}
+                                </span>
+                            </span>
+                            <svg
+                                className={`w-4 h-4 flex-none text-neu-sub transition-transform duration-150 ${
+                                    showHistory ? 'rotate-180' : ''
+                                }`}
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fillRule="evenodd"
+                                    d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                                    clipRule="evenodd"
+                                />
+                            </svg>
+                        </button>
+
+                        {showHistory && (
+                            <dl id="pm-document-history" className="mt-3 pt-3 border-t border-neu-sub/15 space-y-2">
+                                <div className="flex items-baseline justify-between gap-4">
+                                    <dt className="text-xs text-neu-sub">Tanggal dibuat</dt>
+                                    <dd className="text-xs font-semibold">{existing.created_at}</dd>
+                                </div>
+                                <div className="flex items-baseline justify-between gap-4">
+                                    <dt className="text-xs text-neu-sub">Terakhir diubah</dt>
+                                    <dd className="text-xs font-semibold">{existing.updated_at}</dd>
+                                </div>
+                                <p className="text-[11px] text-neu-sub pt-1">
+                                    Waktu “diubah” ikut berubah setiap kali checklist disimpan ulang atau
+                                    status persetujuannya bergerak.
+                                </p>
+                            </dl>
+                        )}
                     </NeuCard>
                 )}
 

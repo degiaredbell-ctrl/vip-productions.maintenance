@@ -141,6 +141,45 @@ class PmRejectionRevisionTest extends TestCase
     }
 
     // ------------------------------------------------------------------
+    // Stempel waktu dokumen (toggle "Riwayat dokumen" di form)
+    // ------------------------------------------------------------------
+
+    public function test_riwayat_dokumen_tidak_muncul_sebelum_pernah_submit(): void
+    {
+        // Record draft: pernah dibuka formnya, tapi belum pernah dikirim.
+        // props `created_at`/`updated_at` harus null supaya baris riwayat
+        // tidak dirender sama sekali.
+        PmRecord::create([
+            'machine_id' => $this->machine->id,
+            'year' => now()->year,
+            'period' => Period::current()->value,
+            'technician_id' => $this->teknisi->id,
+            'status' => PmStatus::Draft,
+        ]);
+
+        $existing = $this->openForm()['existing'];
+
+        $this->assertNotNull($existing, 'Draft tetap terbuka sebagai existing di form.');
+        $this->assertNull($existing['created_at']);
+        $this->assertNull($existing['updated_at']);
+    }
+
+    public function test_riwayat_dokumen_muncul_setelah_submit(): void
+    {
+        $this->submit()->assertRedirect();
+
+        $existing = $this->openForm()['existing'];
+
+        $this->assertNotNull($existing['created_at']);
+        $this->assertNotNull($existing['updated_at']);
+        $this->assertMatchesRegularExpression(
+            '/\d{2} \w{3} \d{4} \d{2}:\d{2}/',
+            $existing['created_at'],
+            'Waktu harus terbaca sebagai "d M Y H:i".'
+        );
+    }
+
+    // ------------------------------------------------------------------
     // PIC yang dipilih memang berhak menolak
     // ------------------------------------------------------------------
 

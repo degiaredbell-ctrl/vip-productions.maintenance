@@ -116,6 +116,17 @@ class PmRecordController extends Controller
                 'rejected_by' => $rejection['by'],
                 'rejected_at' => $rejection['at'],
                 'reject_reason' => $rejection['reason'],
+                // Stempel waktu dokumen, hanya untuk record yang sudah pernah
+                // submit (`submitted_at`). Draft yang belum pernah dikirim
+                // dikirim sebagai null, dan form tidak merender apapun —
+                // "dibuat" tanpa "pernah dikirim" hanya menambah kebisingan di
+                // form yang isinya masih mentah.
+                'created_at' => $existing->submitted_at
+                    ? $existing->created_at?->translatedFormat('d M Y H:i')
+                    : null,
+                'updated_at' => $existing->submitted_at
+                    ? $existing->updated_at?->translatedFormat('d M Y H:i')
+                    : null,
             ] : null,
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
             'canFill' => $user->can('pm.fill') && (! $existing || $user->can('update', $existing)),
