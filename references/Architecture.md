@@ -213,7 +213,13 @@ terlewati.
 ## 7b. Rantai Persetujuan 3 Tahap (Tanda Tangan)
 
 ```
-Checklist selesai ──▶ [1] Teknisi tanda tangan ──▶ [2] User PIC "sebagai diketahui"
+Isi checklist + Nama Teknisi + tanda tangan ──▶ SATU SUBMIT
+                                                        │
+                                                        ▼
+                        [1] Teknisi (selesai di submit yang sama)
+                                                        │
+                                                        ▼
+                                    [2] User PIC "sebagai diketahui"
                                                         │
                                                         ▼
                                                     [3] Atasan
@@ -238,8 +244,22 @@ selesai oleh dot notifikasi maupun laporan; `ReportService::complianceByPeriod`
 mendapat kolom `approving` untuk memisahkannya dari `completed`.
 
 ```
-React ──POST /pm/{record}/sign (signature=dataURL PNG, note)
-  └▶ SignPmRecordRequest (validasi: PNG sungguhan, ≤2 MB, bukan data URL mencurigakan)
+Tahap 1 — React ──POST /machines/{machine}/pm
+            (items, technician_name, signature=dataURL PNG, note)
+  └▶ StorePmRecordRequest (validasi: pm.fill + pm.sign, technician_name & signature WAJIB,
+                           PNG sungguhan, record existing harus belum terkunci)
+     └▶ SubmitPmRecord (simpan record + items, technician_name, status=draft)
+        └▶ SignPmRecord (stage=Technician) → status=submitted
+           └▶ kalau penyimpanan tanda tangan gagal: flash error, PM tetap di draft
+
+Tahap 2 & 3 — React ──POST /pm/{record}/sign (signature=dataURL PNG, signer_name, note)
+  Sumber formnya dua: Pm/Form dan kartu di /approvals. Badge sidebar memakai
+  pendingQuery yang sama dengan daftar /approvals, jadi daftar ikut memuat record
+  draft/rejected milik teknisi sendiri; karena itu SignatureActions dipasang
+  embedded untuk tahap apa pun yang sedang menunggu, bukan hanya PIC/Atasan.
+  └▶ SignPmRecordRequest (validasi: signer_name WAJIB, PNG sungguhan, ≤2 MB;
+                           stage=technician → PmRecord::isChecklistComplete() WAJIB,
+                           supaya PM kosong tidak bisa diteruskan dari antrean)
      └▶ PmRecordPolicy@sign  → SignatureChain::canSign($record, $user)
         └▶ SignPmRecord (DB::transaction)
              ├ SignatureStorage::put() → storage/app/public/signatures/...
@@ -248,8 +268,16 @@ React ──POST /pm/{record}/sign (signature=dataURL PNG, note)
              └ AuditLog::record('pm.sign.{stage}')
 ```
 
-- **Satu endpoint untuk ketiga tahap.** Tahap aktif dibaca dari status record, jadi
+- **Satu endpoint untuk tahap 2 & 3.** Tahap aktif dibaca dari status record, jadi
   rantai tidak bisa dilompati atau diurutkan ulang; tidak ada endpoint terpisah per tahap.
+  Tahap 1 memang berbeda: menyatu dengan penyimpanan checklist lewat
+  `POST /machines/{machine}/pm` supaya teknisi cukup sekali submit.
+- **Nama penanda tangan diketik manual di tiap tahap**, bukan diambil dari akun login,
+  dan disimpan terpisah dari `technician_id` (yang tetap `Auth::id()` untuk kepemilikan
+  dan anti konflik kepentingan). Tahap 1 menyimpannya di `pm_records.technician_name`
+  sekaligus `pm_signatures.signed_by_name`; tahap 2 & 3 hanya di `signed_by_name`.
+  Pembacaan untuk daftar/riwayat/ekspor lewat `PmRecord::technicianName()`, yang
+  mendahulukan nama manual dan memakai nama akun sebagai cadangan untuk record lama.
 - **SignatureStorage** memvalidasi data URL, memastikan magic bytes PNG, menulis ke
   disk, dan menghapus berkas lama saat tahap ditandatangani ulang. Dilayani lewat
   route ber-otorisasi `PmSignatureController@show` (bukan `storage:link`) supaya path
@@ -367,15 +395,25 @@ Skenario yang wajib dijaga dalam uji alur persetujuan:
 
 | Skenario | Ekspektasi |
 |---|---|
-| Simpan checklist | status `draft`, checklist masih bisa diedit |
-| Simpan checklist setelah ditandatangani | tanda tangan lama dibuang, kembali ke `draft` |
-| Tanda tangan kosong / bukan PNG | ditolak, status tidak berubah |
+| Submit tanpa nama teknisi | 422 `technician_name`, tidak ada record tersimpan |
+| Submit tanpa tanda tangan | 422 `signature`, tidak ada record tersimpan |
+| Submit lengkap | checklist tersimpan **dan** tahap teknisi lewat → `submitted` |
+| Nama teknisi di form vs akun login | yang tersimpan adalah nama yang diketik (`technician_name`) |
+| Tanda tangan bukan PNG | 422, tidak ada record tersimpan |
+| Simpan ulang checklist yang sedang di-approval | 403 (record terkunci) |
+| Manager/`pm.fill` tanpa `pm.sign` | 403 (tutup checklist butuh izin tanda tangan) |
+| Tahap 2/3 tanpa nama penanda tangan | 422 `signer_name`, status tidak berubah |
+| Nama tahap 2/3 | tersimpan di `signed_by_name`, **tidak** menimpa `technician_name` |
 | Salah tahap | 403 (PIC/Atasan tidak bisa menandatangani tahap teknisi) |
 | Tollar tahap 2/3 oleh orang yang mengisi checklist | 403 |
 | Penolakan | status `rejected`, semua tanda tangan hilang, alasan tercatat di history |
 | Penolakan tanpa alasan | ditolak |
 | Rantai penuh | `draft → submitted → pic_approved → approved`, tiap tahap 1 tanda tangan |
 | Setelah `approved` | checklist terkunci, tidak bisa tanda tangan/tolak lagi |
+
+Matrix di atas dijaga oleh `tests/Feature/PmTechnicianSignatureTest.php`. Semua test berjalan
+di sqlite in-memory karena `tests/TestCase.php` memaksa koneksinya — `RefreshDatabase` dari
+test bawaan Breeze memakai `migrate:fresh`, jadi tanpa itu ia akan menghapus database produksi.
 
 ## 13. Migrasi dari Prototipe
 

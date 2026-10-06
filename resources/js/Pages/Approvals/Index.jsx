@@ -5,6 +5,7 @@ import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import NeuButton from '@/Components/NeuButton';
+import SignatureActions from '@/Components/SignatureActions';
 
 const STATUS_VARIANTS = { todo: 'todo', progress: 'progress', done: 'done', issue: 'issue' };
 
@@ -150,15 +151,33 @@ export default function Approvals({ auth, records, years, year, period, periods,
                                             {record.filled_percent}% checklist terisi
                                         </p>
 
+                                        {/*
+                                            Tanda tangan bisa diselesaikan langsung
+                                            dari antrean ini: nama penanda tangan
+                                            dan gambar tanda tangan diletakkan
+                                            berdampingan di dalam kartu yang sama,
+                                            dan keduanya wajib diisi.
+                                        */}
+                                        {record.can_sign && record.awaiting_stage && (
+                                            <SignatureActions
+                                                embedded
+                                                idPrefix={`pm-${record.id}-`}
+                                                recordId={record.id}
+                                                stage={record.awaiting_stage}
+                                                canSign={record.can_sign}
+                                                canReject={record.can_reject}
+                                            />
+                                        )}
+
                                         <NeuButton
                                             href={route('machines.pm.create', {
                                                 machine: record.machine_id,
                                                 year: record.year,
                                                 period: record.period,
                                             })}
-                                            className="w-full"
+                                            className="w-full mt-4"
                                         >
-                                            Buka & Proses
+                                            Buka Checklist
                                         </NeuButton>
                                     </NeuCard>
                                 ))}

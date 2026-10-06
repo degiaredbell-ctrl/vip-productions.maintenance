@@ -11,16 +11,13 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         $users = [
-            ['name' => 'Admin Maintenance', 'email' => 'admin.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'admin'],
+            ['name' => 'Administrator', 'email' => 'admin@redbellgroup.com', 'password' => 'password', 'role' => 'admin'],
             ['name' => 'Manager Maintenance', 'email' => 'manager.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'manager'],
-            ['name' => 'Teknisi Maintenance', 'email' => 'technician.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'technician'],
-            ['name' => 'User Maintenance', 'email' => 'user.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'user'],
-            ['name' => 'Viewer Maintenance', 'email' => 'viewer.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'viewer'],
-            ['name' => 'Admin', 'email' => 'admin@example.test', 'password' => 'password', 'role' => 'admin'],
-            ['name' => 'Manager', 'email' => 'manager@example.test', 'password' => 'password', 'role' => 'manager'],
-            ['name' => 'Teknisi', 'email' => 'tech@example.test', 'password' => 'password', 'role' => 'technician'],
-            ['name' => 'User', 'email' => 'user@example.test', 'password' => 'password', 'role' => 'user'],
-            ['name' => 'Viewer', 'email' => 'viewer@example.test', 'password' => 'password', 'role' => 'viewer'],
+            ['name' => 'Teknisi M1', 'email' => 'teknisi1.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'technician'],
+            ['name' => 'Teknisi M2', 'email' => 'teknisi2.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'technician'],
+            ['name' => 'User 1', 'email' => 'user1@redbellgroup.com', 'password' => 'password', 'role' => 'user'],
+            ['name' => 'User 2', 'email' => 'user2@redbellgroup.com', 'password' => 'password', 'role' => 'user'],
+            ['name' => 'Viewer Maintenance', 'email' => 'viewer.maintenance@redbellgroup.com', 'password' => 'password', 'role' => 'viewer']
         ];
 
         foreach ($users as $u) {

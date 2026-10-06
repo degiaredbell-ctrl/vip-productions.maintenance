@@ -14,9 +14,10 @@ use Illuminate\Support\Facades\DB;
 /**
  * Menyimpan checklist PM oleh teknisi/pemeriksa.
  *
- * Menyimpan checklist tidak lagi langsung mengirim ke approval: statusnya tetap
- * Draft supaya teknisi masih bisa memperbaiki. Yang melepas kunci dan
- * menaikkan status ke Submitted adalah signature tangannya (SignPmRecord).
+ * Penyimpanan ini sekaligus menutup tahap 1: checklist yang tersimpan langsung
+ * ikut ditandatangani pemeriksa (lihat SignPmRecord), sehingga statusnya naik
+ * dari Draft ke Submitted dan tidak ada lagi langkah "simpan dulu, tandatangani
+ * nanti" yang bisa meninggalkan checklist menggantung.
  *
  * Setiap penyimpanan membatalkan signature yang sudah ada, karena isinya yang
  * direview approval harus sama persis dengan checklist yang tersimpan.
@@ -34,6 +35,7 @@ class SubmitPmRecord
                 ],
                 [
                     'technician_id' => Auth::id(),
+                    'technician_name' => $data['technician_name'],
                     'status' => PmStatus::Draft,
                     'general_note' => $data['general_note'] ?? null,
                     'submitted_at' => null,

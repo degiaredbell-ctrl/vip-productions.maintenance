@@ -9,9 +9,13 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
  *
  * Parent memakai ref untuk mengambil gambar lewat getDataUrl() ketika tombol
  * submit ditekan.
+ *
+ * `id` harus unik per halaman: daftar Persetujuan bisa memuat banyak pad dalam
+ * satu layar, dan `htmlFor` yang semuanya menunjuk ke satu id membuat label
+ * hanya menempel ke pad pertama.
  */
 const NeuSignaturePad = forwardRef(function NeuSignaturePad(
-    { disabled = false, label = 'Tanda Tangan', onChange, error = false },
+    { disabled = false, label = 'Tanda Tangan', id = 'signature-pad', onChange, error = false },
     ref,
 ) {
     const canvasRef = useRef(null);
@@ -147,7 +151,7 @@ const NeuSignaturePad = forwardRef(function NeuSignaturePad(
     return (
         <div>
             <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="signature-pad" className="block text-xs text-neu-sub">
+                <label htmlFor={id} className="block text-xs text-neu-sub">
                     {label} <span className="text-neu-bad">*</span>
                 </label>
                 <button
@@ -162,7 +166,7 @@ const NeuSignaturePad = forwardRef(function NeuSignaturePad(
 
             <div className={`neu-inset relative ${error ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]' : ''}`}>
                 <canvas
-                    id="signature-pad"
+                    id={id}
                     ref={canvasRef}
                     onPointerDown={handlePointerDown}
                     onPointerMove={handlePointerMove}

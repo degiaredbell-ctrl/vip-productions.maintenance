@@ -5,21 +5,26 @@ import NeuChip from '@/Components/NeuChip';
 import NeuButton from '@/Components/NeuButton';
 import NeuPill from '@/Components/NeuPill';
 import NeuTrack from '@/Components/NeuTrack';
+import NeuSignaturePad from '@/Components/NeuSignaturePad';
 import SignatureActions from '@/Components/SignatureActions';
 import SignatureChain from '@/Components/SignatureChain';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
-export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, chain }) {
+export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, chain }) {
     const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
+    const [hasSignature, setHasSignature] = useState(false);
+    const padRef = useRef(null);
 
     const { data, setData, post, processing } = useForm({
         machine_id: machine.id,
         year: year,
         period: period,
+        technician_name: '',
         general_note: existing?.general_note || '',
         revision_reason: '',
+        note: '',
         items: formItems,
     });
 
@@ -39,6 +44,8 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
     const progress = Math.round(formItems.filter(item => item.actual).length / formItems.length * 100);
 
+    const nameFilled = data.technician_name.trim() !== '';
+
     const handleSubmit = (e) => {
         e.preventDefault();
         const incomplete = formItems.some(item => !item.actual);
@@ -46,10 +53,23 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
             setError('Lengkapi semua nilai Aktual');
             return;
         }
+
+        if (!nameFilled) {
+            setError('Nama teknisi wajib diisi.');
+            return;
+        }
+
+        const signature = padRef.current?.getDataUrl();
+        if (!signature) {
+            setError('Tanda tangan wajib digambar sebelum melanjutkan.');
+            return;
+        }
+
         setError('');
         setSubmitError('');
         post(route('machines.pm.store', { machine: machine.id }), {
             preserveScroll: true,
+            data: { signature },
             onError: (formErrors) => {
                 setSubmitError(Object.values(formErrors)[0] ?? 'Gagal menyimpan checklist.');
             },
@@ -68,6 +88,15 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
     // Tahap yang sedang menunggu ditandatangani, untuk judul panel aksi.
     const activeStage = chain?.stages?.find((stage) => stage.value === chain.awaiting) ?? null;
     const approvalDone = chain?.status === 'approved';
+
+    /*
+        Technician menutup checklistnya sendiri di akhir form ini, jadi panel
+        tanda tangan tahap 1 ikut masuk ke dalam <form>. Record yang belum pernah
+        dibuat belum punya tahap aktif dari server, jadi tahap teknisi dianggap
+        aktif selama form masih boleh diisi.
+    */
+    const atTechnicianStage = existing ? activeStage?.value === 'technician' : true;
+    const showTechnicianPanel = !readOnly && atTechnicianStage;
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -203,26 +232,87 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                         </p>
                     )}
 
-                    {!readOnly && (
+                    {showTechnicianPanel && (
+                        <NeuCard className="mb-4">
+                            <b className="text-sm block mb-0.5">Tanda Tangan Teknisi/Pemeriksa</b>
+                            <p className="text-xs text-neu-sub mb-4">
+                                Checklist ditutup dengan satu submit: isi nama dan tanda tangan, lalu kirim untuk approval.
+                            </p>
+
+                            {!canSignTechnician ? (
+                                <p className="text-sm text-neu-sub">
+                                    Akun Anda belum punya izin menandatangani tahap teknisi, jadi checklist ini belum bisa
+                                    dikirim untuk approval. Hubungi admin untuk membuka izin tersebut.
+                                </p>
+                            ) : (
+                                <>
+                                    <label htmlFor="technician_name" className="block text-xs text-neu-sub mb-1.5">
+                                        Nama Teknisi <span className="text-neu-bad">*</span>
+                                    </label>
+                                    <input
+                                        id="technician_name"
+                                        type="text"
+                                        value={data.technician_name}
+                                        onChange={(e) => {
+                                            setData('technician_name', e.target.value);
+                                            if (error) setError('');
+                                        }}
+                                        placeholder="Tulis nama lengkap teknisi/pemeriksa"
+                                        maxLength={100}
+                                        autoComplete="off"
+                                        className={`neu-input mb-4 ${error && !nameFilled ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]' : ''}`}
+                                    />
+
+                                    <NeuSignaturePad
+                                        ref={padRef}
+                                        disabled={processing}
+                                        error={Boolean(error) && !hasSignature}
+                                        onChange={(value) => setHasSignature(Boolean(value))}
+                                    />
+
+                                    <label htmlFor="pm-note" className="block text-xs text-neu-sub mt-4 mb-1.5">
+                                        Catatan (opsional)
+                                    </label>
+                                    <textarea
+                                        id="pm-note"
+                                        value={data.note}
+                                        onChange={(e) => setData('note', e.target.value)}
+                                        rows={2}
+                                        maxLength={500}
+                                        placeholder="Catatan tambahan (opsional)"
+                                        className="neu-input min-h-[64px] resize-y"
+                                    />
+                                </>
+                            )}
+                        </NeuCard>
+                    )}
+
+                    {showTechnicianPanel && canSignTechnician && (
                         <>
                             <NeuButton
                                 type="submit"
                                 variant="primary"
                                 className="w-full !py-4 text-base"
-                                disabled={processing}
+                                disabled={processing || !nameFilled || !hasSignature}
                             >
-                                {processing ? 'Menyimpan...' : existing ? 'Simpan Revisi' : 'Simpan Checklist'}
+                                {processing
+                                    ? 'Menyimpan...'
+                                    : existing ? 'Submit & Tanda tangan' : 'Submit Checklist'}
                             </NeuButton>
 
                             {/*
-                                Checklist tersimpan belum berarti selesai. Tanda tangan
-                                teknisi adalah langkah terpisah, jadi setelah menyimpan
-                                PM masuk tahap approval — bukan langsung "Selesai".
+                                Tombol sengaja mati selama nama atau tanda tangan
+                                kosong supaya tidak ada PM terkirim tanpa bukti
+                                siapa yang mengerjakan dan menyetujuinya.
                             */}
                             <p className="text-xs text-neu-sub text-center mt-2.5">
-                                {activeStage?.value === 'technician'
-                                    ? 'Setelah checklist tersimpan, lanjutkan dengan tanda tangan di bawah.'
-                                    : 'Simpan checklist sebelum menandatangani.'}
+                                {!nameFilled && !hasSignature
+                                    ? 'Nama teknisi dan tanda tangan wajib diisi sebelum submit.'
+                                    : !nameFilled
+                                        ? 'Nama teknisi wajib diisi sebelum submit.'
+                                        : !hasSignature
+                                            ? 'Tanda tangan wajib digambar sebelum submit.'
+                                            : 'Setelah submit, checklist langsung diteruskan ke User PIC.'}
                             </p>
                         </>
                     )}
@@ -254,18 +344,23 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                 )}
 
                 {/*
-                    Panel tanda tangan sengaja diletakkan di luar <form> checklist,
-                    supaya Inertia tidak ikut mengirim ulang payload checklist yang
-                    sudah terkunci.
+                    Panel tahap PIC/Atasan tetap di luar <form> checklist, supaya
+                    Inertia tidak ikut mengirim ulang payload checklist yang
+                    sudah terkunci. Tahap teknisi tidak muncul di sini karena
+                    panelnya sudah menyatu dengan form di atas.
                 */}
-                {activeStage && !approvalDone && !isFuturePeriod && (
-                    <SignatureActions
-                        recordId={existing?.id}
-                        stage={activeStage}
-                        canSign={chain.canSign}
-                        canReject={chain.canReject}
-                    />
-                )}
+                {activeStage
+                    && activeStage.value !== 'technician'
+                    && !approvalDone
+                    && !isFuturePeriod
+                    && (
+                        <SignatureActions
+                            recordId={existing?.id}
+                            stage={activeStage}
+                            canSign={chain.canSign}
+                            canReject={chain.canReject}
+                        />
+                    )}
             </div>
         </AuthenticatedLayout>
     );

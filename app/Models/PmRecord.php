@@ -14,7 +14,7 @@ class PmRecord extends Model
     use HasFactory;
 
     protected $fillable = [
-        'machine_id', 'year', 'period', 'technician_id', 'status',
+        'machine_id', 'year', 'period', 'technician_id', 'technician_name', 'status',
         'general_note', 'revision_count', 'submitted_at', 'approved_by', 'approved_at',
     ];
 
@@ -54,6 +54,47 @@ class PmRecord extends Model
     public function signatureFor(SignatureStage $stage): ?PmSignature
     {
         return $this->signatures->firstWhere('stage', $stage);
+    }
+
+    /**
+     * Nama teknisi yang dipakai di daftar persetujuan, riwayat, dan ekspor.
+     *
+     * Nama yang diketik manual di form didahulukan karena itulah yang jadi
+     * rujukan dokumen; `technician_name` dipakai sebagai cadangan untuk record
+     * lama yang disimpan sebelum kolom ini ada.
+     */
+    public function technicianName(): ?string
+    {
+        $manual = $this->technician_name;
+
+        if (is_string($manual) && trim($manual) !== '') {
+            return trim($manual);
+        }
+
+        return $this->technician?->name;
+    }
+
+    /**
+     * Apakah seluruh item checklist sudah punya nilai aktual.
+     *
+     * Dipakai sebelum tanda tangan tahap teknisi dicatat. Tanpa pemeriksaan ini
+     * checklist kosong bisa ditandatangani dari mana saja (misalnya langsung
+     * dari daftar Persetujuan) sehingga approver di hilir menerima PM yang
+     * tidak pernah dikerjakan.
+     */
+    public function isChecklistComplete(): bool
+    {
+        if ($this->items->isEmpty()) {
+            return false;
+        }
+
+        foreach ($this->items as $item) {
+            if (! filled($item->actual)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -58,7 +58,7 @@ Dibangun dengan **Laravel 11 + Inertia.js v2 + React 18 + Tailwind CSS**, didepl
 - Mendukung revisi setelah ditolak (revision counter & snapshot)
 
 ### 4. Rantai Tanda Tangan (3 Tahap)
-Satu endpoint untuk ketiga tahap (`POST /pm/{record}/sign`), tahap aktif dibaca dari `status` record sehingga rantai **tidak bisa dilompati atau diurutkan ulang**.
+Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk tahap 2 & 3 (`POST /pm/{record}/sign`). Tahap aktif dibaca dari `status` record sehingga rantai **tidak bisa dilompati atau diurutkan ulang**.
 
 | # | Tahap | Permission | Status setelah |
 |---|-------|-----------|----------------|
@@ -66,16 +66,29 @@ Satu endpoint untuk ketiga tahap (`POST /pm/{record}/sign`), tahap aktif dibaca 
 | 2 | Persetujuan User PIC | `pm.acknowledge` | `pic_approved` |
 | 3 | Persetujuan Atasan | `pm.approve` | `approved` |
 
+- **Tahap 1 menyatu dengan pengisian checklist**: teknisi isi Aktual → nama → tanda tangan → sekali submit, checklist langsung naik ke `submitted`. Tidak ada lagi PM nyangkut di `draft`.
+- **Nama teknisi wajib diketik manual** (`technician_name`), bukan diambil dari nama akun login — di lapangan orang yang mengisi checklist tidak selalu orang yang squeez-in-nya. Nama itu juga dipakai sebagai nama pada dokumen bertanda tangan.
+- **Nama penanda tangan wajib diisi manual di ketiga tahap** (`signer_name` / kolom `technician_name`), dan tombol submit **mati** selama nama atau tanda tangan kosong.
 - **Tanda tangan gambar** (canvas) — disimpan sebagai PNG di disk, disajikan lewat route ber-otorisasi
 - **Snapshot nama & peran** penanda tangan disimpan terpisah dari akun → jejak tetap terbaca meski akun dihapus
 - **Anti konflik kepentingan**: approver (tahap 2 & 3) tidak boleh orang yang sama dengan mengisi checklist
 - **Penolakan** hanya di tahap User PIC / Atasan → kembalikan ke teknisi (`rejected`) dengan alasan
-- Checklist **terkunci setelah ditandatangani** (`isEditable()`), tidak bisa diubah di belakang layar
+- Checklist **terkunci setelah ditandatangani** (`isEditable()`), tidak bisa diubah di belakang layar — `POST /machines/{machine}/pm` juga menolak record yang sedang berjalan di rantai approval
+- Kalau gambar tanda tangannya gagal ditulis setelah checklist tersimpan, PM dibiarkan di `draft` dengan pesan error, bukan hilang tanpa jejak
 
 ### 5. Halaman Persetujuan
 - Daftar record yang menunggu tindakan user **berdasarkan permission-nya**
 - Badge sidebar memakai **query yang sama** dengan daftar halaman → angka tidak pernah berbeda
 - Rantai approval ditampilkan sebagai stepper dengan centang per tahap
+- **Tanda tangan bisa diselesaikan langsung dari daftar**: setiap record yang
+  awaiting punya kolom **Nama Penanda Tangan** (input manual, wajib) di sebelah
+  canvas **Signature** di dalam kartunya. Tombol approve mati selama salah satu
+  kosong, jadi tidak ada approval tanpa identitas penandatanganannya. Panel ini
+  ditambahkan untuk tahap apa pun yang sedang menunggu user tersebut, termasuk
+  `rejected` milik teknisi sendiri
+- Tombol **Buka Checklist** tetap ada supaya PM bisa dibaca dulu sebelum diteken
+- Record yang checklist-nya belum lengkap tidak bisa ditutup dari antrean —
+  tahap teknisi hanya naik status setelah semua nilai Aktual terisi
 
 ### 6. Daftar Mesin
 - CRUD mesin (kode unik, nama, lokasi, kategori, sub-kategori, jenis, template, status aktif)
@@ -166,11 +179,14 @@ Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 ## Rantai Tanda Tangan PM
 
 ```
+  isi checklist + nama + tanda tangan
+                │
+                ▼
   draft ──sign(technician)──▶ submitted ──sign(pic)──▶ pic_approved ──sign(supervisor)──▶ approved
     ▲                                                                                        │
     └──────────────────── reject (pic / supervisor) ──────────────────────────────────────────┘
                                         │
-                                     rejected ──sign(technician)──▶ submitted
+                                     rejected ──isi + sign(technician)──▶ submitted
 ```
 
 - `draft` / `rejected` → menunggu tahap **Technician**
@@ -183,6 +199,7 @@ Aturan yang ditegakkan `app/Services/SignatureChain.php`:
 2. Approver tidak boleh sama dengan teknisi pengisi checklist.
 3. Admin tetap boleh di semua tahap (ia tidak melakukan pekerjaan lapangan) dan menjadi pengecualian saat tidak ada orang lain.
 4. Penolakan hanya di tahap 2 dan 3.
+5. Tahap 1 hanya bisa ditutup lewat `POST /machines/{machine}/pm`, yang mewajibkan `technician_name` + `signature`. Akses `pm.fill` saja tidak cukup — `pm.sign` ikut diperiksa, jadi form yang sengaja disembunyikan tidak bisa dipanggil langsung.
 
 ---
 
@@ -254,6 +271,13 @@ Dari `UserSeeder`, seluruh akun memakai password **`password`**.
 | `php artisan machines:import --purge` | Impor + hapus permanen mesin yang tidak ada di CSV (**riwayat PM ikut terhapus**) |
 | `php artisan machines:import --purge --force` | Sama seperti di atas tanpa konfirmasi interaktif |
 | `php artisan test` | Jalankan test suite |
+
+> **Catatan test suite.** Database test **dipaksa ke sqlite in-memory** oleh
+> `tests/TestCase.php`, bukan dibaca dari `.env`. Ini wajib: test bawaan memakai
+> `RefreshDatabase` yang menjalankan `migrate:fresh`, dan tanpaIsolation tersebut
+> seluruh data produksi (akun, mesin, riwayat PM) terhapus setiap kali test suite
+> dijalankan. Variabel `DB_*` di shell maupun `.env` tidak bisa menembusnya.
+> Butuh ekstensi PHP `pdo_sqlite` (sudah ada di image Docker).
 
 **Perilaku impor CSV:** bersifat idempoten (aman dijalankan berulang), melewati baris sentinel spreadsheet, dan menentukan `type` dari kata kunci pada nama mesin serta `week_group` dari angka pada Sub-Category.
 

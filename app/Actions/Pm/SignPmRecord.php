@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
  */
 class SignPmRecord
 {
-    public function handle(PmRecord $record, string $dataUrl, ?string $note = null): PmSignature
+    public function handle(PmRecord $record, string $dataUrl, ?string $note = null, ?string $signerName = null): PmSignature
     {
         $stage = $record->status->awaiting();
 
@@ -29,7 +29,21 @@ class SignPmRecord
             throw new \LogicException('Persetujuan PM ini sudah lengkap.');
         }
 
-        return DB::transaction(function () use ($record, $stage, $dataUrl, $note) {
+        // Penjaga kedua untuk kelengkapan checklist (yang pertama ada di
+        // SignPmRecordRequest). Tanpa ini PM kosong bisa diteken dari pemanggil
+        // lain dan diteruskan ke PIC.
+        if ($stage === SignatureStage::Technician && ! $record->isChecklistComplete()) {
+            throw new \LogicException('Checklist PM belum lengkap.');
+        }
+
+        // Nama yang diketik pemeriksa di form yang jadi nama pada dokumen.
+        // Nama akun login hanya cadangan, kalau request tanpa nama (misalnya
+        // dipanggil dari luar form PM).
+        $signedByName = is_string($signerName) && trim($signerName) !== ''
+            ? trim($signerName)
+            : (Auth::user()?->name ?? '-');
+
+        return DB::transaction(function () use ($record, $stage, $dataUrl, $note, $signedByName) {
             // File lama dihapus setelah yang baru berhasil ditulis, supaya
             // kegagalan saat menulis tidak menghilangkan tanda tangan lama.
             $previousPath = $record->signatures()
@@ -42,7 +56,7 @@ class SignPmRecord
                 ['pm_record_id' => $record->id, 'stage' => $stage->value],
                 [
                     'signed_by' => Auth::id(),
-                    'signed_by_name' => Auth::user()?->name ?? '-',
+                    'signed_by_name' => $signedByName,
                     'signed_by_role' => Auth::user()?->roleLabel(),
                     'image_path' => $path,
                     'note' => $note,

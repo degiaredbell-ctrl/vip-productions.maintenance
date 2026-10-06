@@ -188,7 +188,7 @@ class MachineController extends Controller
                     'period' => $r->period,
                     'status' => $r->status->value,
                     'status_label' => $r->status->label(),
-                    'technician_name' => $r->technician?->name,
+                    'technician_name' => $r->technicianName(),
                     'revision_count' => $r->revision_count,
                     'submitted_at' => $r->submitted_at?->format('d M Y'),
                     'approved_at' => $r->approved_at?->format('d M Y'),

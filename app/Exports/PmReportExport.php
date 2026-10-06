@@ -43,7 +43,7 @@ class PmReportExport implements FromCollection, WithHeadings, WithMapping
             Period::tryFrom($record->period)?->label() ?? $record->period,
             $record->year,
             $record->status->label(),
-            $record->technician?->name,
+            $record->technicianName(),
             $record->submitted_at?->format('d/m/Y'),
             $record->approved_at?->format('d/m/Y'),
             $record->revision_count,

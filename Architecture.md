@@ -215,6 +215,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
                     │  year, period         │   │  subject_* │
                     │  status               │   │  changes   │
                     │  technician_id        │   │  ip        │
+                    │  technician_name ★    │   │  ip        │
                     │  approved_by (null)   │   └────────────┘
                     │  revision_count       │
                     │  submitted_at/approved_at
@@ -260,7 +261,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 | Relasi | Perilaku | Alasan |
 |--------|----------|--------|
 | `pm_records.machine_id` | `cascade` | Record PM tidak bermakna tanpa mesinnya |
-| `pm_records.technician_id` | **`nullOnDelete`** | History tetap harus terbaca meski teknisi akunnya dihapus |
+| `pm_records.technician_id` | **`nullOnDelete`** | History tetap harus terbaca meski teknisi akunnya dihapus (nama dokumen ada di `technician_name`) |
 | `pm_records.approved_by` | **`nullOnDelete`** | Sama seperti `technician_id` — jejak persetujuan tidak boleh ikut hilang |
 | `pm_record_items/revisions/signatures.pm_record_id` | `cascade` | Data turunan dari record |
 | `machines.template_id` | `nullOnDelete` | Hapus template tidak boleh menghapus mesin |
@@ -312,28 +313,52 @@ client bisa memilih tahap sendiri; percobaan melewati tahap harus ditolak oleh s
 ### Alur signing
 
 ```
-Teknisi isi checklist ──▶ POST /machines/{machine}/pm  (status=draft)
-                                    │
-                                    ▼
+Teknisi isi checklist + nama teknisi + tanda tangan
+        │
+        ▼
+POST /machines/{machine}/pm   (technician_name + signature WAJIB)
+        │
+        ├─▶ SubmitPmRecord  → simpan record + items (status=draft)
+        │
+        ▼
                          SignPmRecord (stage=Technician)
                                     │  guard: canSign()
                                     ▼
                             status = submitted
                                     │
                                     ▼
-                         SignPmRecord (stage=PIC)
+                         SignPmRecord (stage=PIC)      ← PIC juga wajib isi nama
                                     │  guard: canSign() + anti self-approval
                                     ▼
                             status = pic_approved
                                     │
                                     ▼
-                         SignPmRecord (stage=Supervisor)
+                         SignPmRecord (stage=Supervisor)  ← Atasan juga wajib isi nama
                                     │  guard: canSign() + anti self-approval
                                     ▼
                             status = approved  (final)
 ```
 
 `POST /pm/{record}/reject` (PIC/Supervisor) → `status = rejected`, `revision_count++`, simpan snapshot.
+
+### Nama penanda tangan
+
+Nama di dokumen **diketik manual**, bukan diambil dari akun yang squeez-in, karena di
+lapangan orang yang mengisi checklist tidak selalu orang yang masuk ke aplikasinya.
+Tiap tahap punya sumber kolom yang berbeda:
+
+| Authentikasi | Frontend | Disimpan di |
+|--------------|----------|-------------|
+| Nama Teknisi | `Pm/Form` | `pm_records.technician_name` **dan** `pm_signatures.signed_by_name` (stage `technician`) |
+| Nama Penanda Tangan | `SignatureActions` (form PM & kartu Persetujuan) | `pm_signatures.signed_by_name` (stage `pic` / `supervisor`) |
+
+`technician_name` sengaja tidak ditimpa tahap 2/3 — yang menandatangani tahap 2
+adalah User PIC, bukan teknisi. Pembacaan nama teknisi untuk daftar persetujuan,
+riwayat, dan ekspor lewat `PmRecord::technicianName()`: kolom manual didahulukan,
+nama akun jadi cadangan untuk record lama.
+
+`pm_records.technician_id` tetap diisi `Auth::id()` karena itu yang dipakai untuk
+kepemilikan checklist dan anti konflik kepentingan — bukan untuk identitas di dokumen.
 
 ### `SignatureChain` sebagai sumber kebenaran
 
@@ -457,17 +482,20 @@ GET  /machines/{machine}/pm?period=&year=
 
 POST /machines/{machine}/pm
    ├─ FormRequest: validasi item[], actual, aksi, parts_replaced
-   ├─ Policy: create → pm.fill
+   ├─ FormRequest: technician_name WAJIB + signature WAJIB (data URL PNG)
+   ├─ authorize: pm.fill DAN pm.sign
+   │    └─ record existing harus lolos Policy::update (belum terkunci)
    ├─ tolak bila periode future/terkunci
    ├─ Fail: 422 / redirect dengan flash error
-   └─ SubmitPmRecord → simpan record + items → flash sukses
+   ├─ SubmitPmRecord → simpan record + items (status=draft)
+   └─ SignPmRecord → tanda tangan tahap Technician (status=submitted)
 ```
 
 ### Menandatangani
 
 ```
 POST /pm/{record}/sign
-   ├─ FormRequest: image (data URL PNG), note opsional
+   ├─ FormRequest: signature (data URL PNG) + signer_name WAJIB, note opsional
    ├─ Policy::sign → SignatureChain::canSign()
    │    ├─ tahap aktif = $record->status->awaiting()
    │    ├─ user harus punya permission tahap
@@ -487,7 +515,7 @@ POST /pm/{record}/sign
 | `/profile` | GET/PUT/DELETE | `ProfileController` | — |
 | `/approvals` | GET | `ApprovalController@index` | — |
 | `/machines/{machine}/pm` | GET | `PmRecordController@create` | `can:dashboard.view` |
-| `/machines/{machine}/pm` | POST | `PmRecordController@store` | `can:pm.fill` |
+| `/machines/{machine}/pm` | POST | `PmRecordController@store` | `can:pm.fill` + `pm.sign` (dalam FormRequest) |
 | `/pm/{record}/sign` | POST | `PmRecordController@sign` | Policy::sign |
 | `/pm/{record}/reject` | POST | `PmRecordController@reject` | Policy::reject |
 | `/pm/{record}/signature/{stage}` | GET | `PmSignatureController@show` | Policy |
@@ -535,7 +563,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `NeuBars` | Bar chart sederhana |
 | `NeuToast` | Notifikasi aksi |
 | `NeuSignaturePad` | Canvas tanda tangan |
-| `SignatureActions` | Stepper 3 tahap + tombol sign/reject |
+| `SignatureActions` | Panel tanda tangan: nama wajib + canvas + tombol sign/reject. Dipakai di `Pm/Form` (tahap teknisi) dan `embedded` di dalam kartu `Approvals/Index`, jadi approve bisa diselesaikan dari antrean |
 | `MachineFields` | Form input mesin (dipakai bersama create/edit) |
 
 ### Layout
@@ -544,7 +572,9 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 
 - Item menu didefinisikan sekali dengan flag `show` berdasarkan `auth.can`.
 - Badge antrean "Persetujuan" memakai `SignatureChain::pendingCountFor()` yang dikirim backend,
-  sehingga angka pada badge selalu sama dengan daftar.
+  sehingga angka pada badge selalu sama dengan daftar. Karena badge memakai query itu
+  juga, daftar memuat record `draft`/`rejected` milik teknisi — jadi panel tanda tangan
+  di halaman ini dipasang untuk tahap apa pun yang sedang menunggu, bukan hanya PIC/Atasan.
 - Sidebar responsif: rail vertikal (desktop) dan drawer (mobile).
 
 ### Halaman
@@ -552,7 +582,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | Path | Halaman | Ringkas |
 |------|---------|---------|
 | `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ekspor |
-| `/approvals` | `Approvals/Index` | Antrean per permission, stepper, sign/reject |
+| `/approvals` | `Approvals/Index` | Antrean per permission, stepper, nama+signature inline per kartu |
 | `/reports` | `Reports/Index` | Kepatuhan, top part, ringkasan aksi, ekspor |
 | `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore |
 | `/machines/{machine}/history` | `Machines/History` | Riwayat PM mesin |
@@ -651,6 +681,9 @@ Halaman audit log menampilkan **100 log terbaru** dengan urutan `created_at` des
 | Otorisasi | `can:` / `role:` middleware **dan** Policy pada setiap aksi |
 | Anti self-lock | Guard di `UserController` (role sendiri, hapus diri sendiri) |
 | Anti self-approval | `SignatureChain` untuk tahap 2 & 3 |
+| Nama & tanda tangan wajib | `technician_name` + `signature` di `StorePmRecordRequest`, `signer_name` + `signature` di `SignPmRecordRequest` |
+| Checklist lengkap sebelum tahap teknisi | `PmRecord::isChecklistComplete()`, dicek di `SignPmRecordRequest::withValidator()` dan di `SignPmRecord` |
+| Tombol submit nonaktif | `disabled` bila nama kosong atau canvas kosong — dicek lagi di server, bukan hanya di UI |
 | Kunci setelah tanda tangan | `PmRecordPolicy::update()` menolak record non-editable |
 | Upload tanda tangan | Validasi prefix data URL + PNG magic bytes + batas 2 MB di `SignatureStorage` |
 | Akses gambar tanda tangan | Disajikan lewat route ber-otorisasi, bukan path mentah |

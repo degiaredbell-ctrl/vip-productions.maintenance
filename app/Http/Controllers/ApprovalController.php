@@ -96,9 +96,17 @@ class ApprovalController extends Controller
             'status' => $display->value,
             'status_label' => $display->label(),
             'status_detail' => $record->status->label(),
-            'technician_name' => $record->technician?->name,
+            'technician_name' => $record->technicianName(),
             'awaiting' => $awaiting?->value,
             'awaiting_label' => $awaiting?->shortLabel(),
+            // Bentuk tahap untuk panel tanda tangan inline. Label tahap dikirim
+            // utuh supaya nama mandatory di tiap kartu menyebut orang yang
+            // seharusnya menandatangani, bukan "Nama Penanda Tangan" generik.
+            'awaiting_stage' => $awaiting === null ? null : [
+                'value' => $awaiting->value,
+                'label' => $awaiting->label(),
+                'short_label' => $awaiting->shortLabel(),
+            ],
             'revision_count' => $record->revision_count,
             'updated_at' => $record->updated_at?->translatedFormat('d M Y H:i'),
             'filled' => $record->items_count,

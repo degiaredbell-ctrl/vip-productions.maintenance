@@ -102,6 +102,10 @@ class PmRecordController extends Controller
             ] : null,
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
             'canFill' => $user->can('pm.fill') && (! $existing || $user->can('update', $existing)),
+            // Menyimpan lewat form ini selalu sekaligus menandatangani tahap
+            // teknisi, jadi izinnya ikut dikirim supaya tombol submit bisa
+            // dinonaktifkan dari awal bila memang tidak boleh.
+            'canSignTechnician' => $user->can('pm.sign'),
             'chain' => $this->chainProps($existing, $user),
         ]);
     }
@@ -109,14 +113,31 @@ class PmRecordController extends Controller
     public function store(StorePmRecordRequest $request): RedirectResponse
     {
         $data = $request->validated();
+
+        // Satu tombol submit menutup dua hal sekaligus: checklist tersimpan
+        // dan tahap teknisi sudah ditandatangani. Kalau signing gagal,
+        // checklist tetap dikembalikan ke Beranda dengan status draft supaya
+        // tidak ada data yang hilang tanpa jejak.
         $record = app(SubmitPmRecord::class)->handle($data);
 
-        // Kembali ke Beranda dengan filter yang tadi sedang aktif.
+        try {
+            app(SignPmRecord::class)->handle(
+                $record,
+                $data['signature'],
+                $data['note'] ?? null,
+                $data['technician_name'],
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return redirect()
+                ->to($request->session()->pull('pm_dashboard_url', route('dashboard')))
+                ->with('error', 'Checklist PM tersimpan, tetapi tanda tangan gagal disimpan. Buka kembali PM untuk menandatangani.');
+        }
+
         return redirect()
             ->to($request->session()->pull('pm_dashboard_url', route('dashboard')))
-            ->with('success', $record->wasRecentlyCreated
-                ? 'Checklist PM berhasil disimpan. Lanjutkan dengan tanda tangan.'
-                : 'Checklist PM berhasil disimpan. Tanda tangan sebelumnya dibatalkan karena checklist berubah.');
+            ->with('success', 'Checklist PM tersimpan dan sudah ditandatangani. Menunggu persetujuan User PIC.');
     }
 
     /**
@@ -127,7 +148,12 @@ class PmRecordController extends Controller
     {
         $stage = $record->status->awaiting();
 
-        app(SignPmRecord::class)->handle($record, $request->validated('signature'), $request->validated('note'));
+        app(SignPmRecord::class)->handle(
+            $record,
+            $request->validated('signature'),
+            $request->validated('note'),
+            $request->validated('signer_name'),
+        );
 
         return redirect()->back()->with('success', match ($stage) {
             SignatureStage::Technician => 'Tanda tangan dicatat. Menunggu persetujuan User PIC.',
