@@ -287,6 +287,28 @@ class PmPicAssignmentTest extends TestCase
         $this->assertSame(0, SignatureChain::pendingCountFor($this->picLain));
     }
 
+    public function test_dot_jumlah_antrean_muncul_dihalaman_manapun(): void
+    {
+        // Angka yang mengisi dot di bottom bar berasal dari shared prop
+        // HandleInertiaRequests, jadi harus sama dengan query daftarnya dan
+        // harus dikirim di halaman mana pun, bukan hanya di halaman antrean.
+        $this->signedRecord();
+
+        $forAssigned = $this->actingAs($this->pic)
+            ->withHeaders($this->inertiaHeaders())
+            ->get(route('dashboard'))
+            ->json('props.pendingApprovals');
+
+        $forOther = $this->actingAs($this->picLain)
+            ->withHeaders($this->inertiaHeaders())
+            ->get(route('dashboard'))
+            ->json('props.pendingApprovals');
+
+        $this->assertSame(1, $forAssigned);
+        $this->assertSame(0, $forOther, 'User yang tidak ditunjuk tidak boleh dapat dot.');
+        $this->assertSame(SignatureChain::pendingCountFor($this->pic), $forAssigned);
+    }
+
     public function test_tahap_atasan_tidak_terkunci_penugasan_pic(): void
     {
         $record = $this->signedRecord();

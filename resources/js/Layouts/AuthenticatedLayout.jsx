@@ -160,9 +160,16 @@ export default function Authenticated({ user: userProp, header, children }) {
                         className="neu-nav-raised flex-1 flex flex-col items-center gap-1 py-2 text-[11px] font-semibold relative"
                     >
                         {item.name}
+                        {/*
+                            Dot jumlah antrean diletakkan persis di pojok kanan
+                            atas tombol, bukan di atas ikonnya. Jaraknya cuma 4px
+                            dari tepi tombol dan dari bar di atasnya supaya tetap
+                            terbaca jadi lencana tanpa melintasi batas antar
+                            tombol (jarak antar tombol cuma 4px).
+                        */}
                         {item.badge > 0 && (
                             <span
-                                className="absolute top-1 right-1/4 min-w-[16px] h-4 px-1 grid place-items-center rounded-full bg-neu-info text-white text-[9px] font-bold"
+                                className="absolute top-1 right-1 min-w-[16px] h-4 px-1 grid place-items-center rounded-full bg-neu-info text-white text-[9px] font-bold"
                                 aria-label={`${item.badge} menunggu`}
                             >
                                 {item.badge > 99 ? '99+' : item.badge}
