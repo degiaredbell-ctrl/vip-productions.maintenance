@@ -1,0 +1,57 @@
+# unit_code	machine_name	group	components...
+UW.3-ROUTL-101-U023	RO	U	Pilot Lamp 3 Phase	Power Input	Neutral-Ground	pH Controler	Conductitivity / Resitansi Monitor	Panel Listrik	Konektor/Kabel	Relay/Fuse	Timer	Thermal Circuit Breaker	Kontaktor	Push Button/Potentiometer/Switch	Kondisi Baut	Pompa	Selenoid Driven Metering Pump	Pressure gauge	Filter	Radar Pelampung Automatis
+UW.3-GENST-101-U024	GENSET	U	Baterai/Aki	Terminasi kutub + & -	Oli	Bahan Bakar	Air Radiator	Filter Udara	Kipas Radiator	Kabel/Baut	Layar Indikator	Visual	Suara	Status Genset
+UW.4-COOLT-101-U025	COOLING TOWER	U	Power Input	Neutral-Ground	Konektor/kabel	Kontaktor	Lampu Indikator Level Air	Motor	Baling-baling	Sprinkler	Kondisi Visual	Sambungan Pipa	Pompa Boster
+UW.4-CHIAR-101-U026	CHILLER ARBURG	U	Power Input	Neutral-Ground	Layar indikator	Kontaktor	Baut/Kabel	Panel	Pressure gauge	Pompa 	Kompressor	Kipas	Filter	Refrigerant Pressure	Kondensor
+UW.4-CHIIB-101-U027	CHILLER INJECT BLOW	U	Power Input	Neutral-Ground	Layar indikator	Kontaktor	Baut/Kabel	Panel	Pressure gauge	Pompa 	Kompressor	Kipas	Filter	Refrigerant Pressure	Kondensor
+UW.4-HOBAR-101-U028	HOIS BARANG	U	Power Input	Neutral-Ground	Kontaktor	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Tali Seling	Grease	Limit Switch Roller
+UW.4-ROLDP-101-U029	ROLLING DOOR PACKING 1	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.4-ROLDP-102-U030	ROLLING DOOR PACKING 2	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.4-ROLDP-103-U031	ROLLING DOOR PACKING 3	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.4-ROLDP-104-U032	ROLLING DOOR PACKING 4	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.4-ROLDP-105-U033	ROLLING DOOR PACKING 5	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.5-ROLHB-101-U034	ROLLING DOOR HOIS BAWAH	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.5-ROLHA-101-U035	ROLLING DOOR HOIS ATAS	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.5-ROLLG-101-U036	ROLLING DOOR LORONG GUDANG	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease / Pelumasan
+UW.5-ROLLD-101-U037	ROLLING DOOR LOADING DOCK 1	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease / Pelumasan
+UW.5-ROLLD-102-U038	ROLLING DOOR LOADING DOCK 2	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease / Pelumasan
+UW.5-ROLLD-103-U039	ROLLING DOOR LOADING DOCK 3	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease / Pelumasan
+UW.5-ROLRP-101-U040	ROLLING DOOR RUANG PRODUKSI	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.5-ROLGP-101-U041	ROLLING DOOR GUDANG PRODUKSI	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.5-ROLBA-101-U042	ROLLING DOOR BALKON ATAS	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease / Pelumasan
+UW.6-ROLMX-101-U043	ROLLING DOOR MIXER 1 & 2	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.6-ROLMX-102-U044	ROLLING DOOR MIXER 3 & 4	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.6-ROLGA-101-U045	ROLLING DOOR GAULIN APV	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.6-ROLGS-101-U046	ROLLING DOOR GAULIN SPX	U	Power Input	Neutral-Ground	Panel Listrik	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Sensor Kaki	Sensor Safety	Inverter
+UW.6-DRYER-101-U047	DRYER 1	U	Power Input	Neutral-Ground	MCCB	Panel Listrik	Pessure Gauge	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Auto Drain	Kipas	Kondensor	Visual
+UW.6-DRYER-102-U048	DRYER 2	U	Power Input	Neutral-Ground	MCCB	Panel Listrik	Pessure Gauge	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Auto Drain	Kipas	Kondensor	Visual
+UW.6-MOTGK-101-U049	MOTOR GERBANG KECIL	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.6-MOTGB-101-U050	MOTOR GERBANG BESAR	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.6-POMPM-101-U052	POMPA MCK 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal
+UW.7-POMPM-102-U053	POMPA MCK 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal
+UW.7-POMPM-103-U054	POMPA MCK 3	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal
+UW.7-POMPA-101-U055	POMPA PARALELL ALTERNATE 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal
+UW.7-POMPA-102-U056	POMPA PARALELL ALTERNATE 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal
+UW.7-POMPD-101-U057	POMPA DISTRIBUSI RO	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal
+UW.7-POMAB-101-U058	POMPA AERATOR BIOTECH 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal membran
+UW.7-POMAB-102-U059	POMPA AERATOR BIOTECH 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal membran
+UW.7-POMDC-101-U060	POMPA DISTRIBUSI COOLING TOWER	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Gasket/Seal
+UW.7-WHEAP-101-U061	WATER HEATER PACKING 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.8-WHEAP-102-U062	WATER HEATER PACKING 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.8-WHEAP-103-U063	WATER HEATER PRODUKSI 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.8-WHEAP-104-U064	WATER HEATER PRODUKSI 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.8-LOADCK-101-U065	LOADING DOCK 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.8-LOADCK-102-U066	LOADING DOCK 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.8-LOADCK-103-U067	LOADING DOCK 3	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Grease	Limit Switch
+UW.8-IPALO-101-U068	IPAL (OZONE 1 & OZONE 2)	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Cooling Fan	Limit Switch	Compressor 	Kapasitor	Pompa Sirkulasi Air
+UW.8-IPALO-102-U139	IPAL (OZONE 1 & OZONE 2)	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Rellay	Pilot Lamp	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Cooling Fan	Limit Switch	Compressor 	Kapasitor	Pompa Sirkulasi Air
+UW.8-BLOWP-101-U129	BLOWER PRODUKSI 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara	Selang Fleksibel
+UW.8-BLOWP-102-U130	BLOWER PRODUKSI 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara	Selang Fleksibel
+UW.9-BLOWP-103-U131	BLOWER PRODUKSI 3	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara	Selang Fleksibel
+UW.9-EXHPR-101-U132	EXHAUST PRODUKSI 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara	Selang Fleksibel
+UW.9-EXHPR-102-U133	EXHAUST PRODUKSI 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara	Selang Fleksibel
+UW.9-EXHLB-101-U134	EXHAUST LAB	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara
+UW.9-BLOWG-101-U135	BLOWER GUDANG 1	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara
+UW.9-BLOWG-102-U136	BLOWER GUDANG 2	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara
+UW.9-BLOWG-103-U137	BLOWER GUDANG 3	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara
+UW.9-EXHTP-101-U138	EXHAUST TOILET PACKING	U	Power Input	Neutral-Ground	MCB	Panel Listrik	Filter 	Push Button/Potentiometer/Switch	Kondisi Baut	Konektor/Kabel	Bearing	Noise/Suara	Selang Fleksibel

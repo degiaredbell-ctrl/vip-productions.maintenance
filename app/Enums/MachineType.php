@@ -12,6 +12,7 @@ enum MachineType: string
     case Timbangan = 'timbangan';
     case Coding = 'coding';
     case Vehicle = 'vehicle';
+    case Utility = 'utility';
     case Generic = 'generic';
 
     public function label(): string
@@ -25,6 +26,7 @@ enum MachineType: string
             self::Timbangan => 'Timbangan',
             self::Coding => 'Coding',
             self::Vehicle => 'Kendaraan',
+            self::Utility => 'Utility',
             self::Generic => 'Umum',
         };
     }

@@ -28,6 +28,9 @@ class DashboardService
             $q->where('year', $year)->where('period', $period->value);
         }])
             ->where('is_active', true)
+            // Utility dikelola lewat halaman khusus, bukan Beranda, jadi tidak
+            // ikut dihitung pada daftar maupun statistik PM.
+            ->where('type', '!=', MachineType::Utility->value)
             ->orderBy('sort_no')
             ->get()
             ->map(function (Machine $machine) {
@@ -78,6 +81,7 @@ class DashboardService
     public static function subCategories(): Collection
     {
         return Machine::where('is_active', true)
+            ->where('type', '!=', MachineType::Utility->value)
             ->whereNotNull('sub_category')
             ->distinct()
             ->orderBy('sub_category')
@@ -100,8 +104,7 @@ class DashboardService
         return $machines
             ->when($subCategory !== 'all', fn ($c) => $c->where('sub_category', $subCategory))
             ->when($status !== 'all', fn ($c) => $c->where('status', $status))
-            ->when($needle !== '', fn ($c) => $c->filter(fn ($m) =>
-                str_contains(mb_strtolower($m['code']), $needle)
+            ->when($needle !== '', fn ($c) => $c->filter(fn ($m) => str_contains(mb_strtolower($m['code']), $needle)
                 || str_contains(mb_strtolower($m['name']), $needle)
                 // Sub-category dan lokasi ikut dicari supaya "C.7" atau
                 // "Milenium" bisa dipakai sebagai kata kunci.

@@ -29,6 +29,9 @@ class MachineController extends Controller
     public function index(Request $request): Response
     {
         $machines = Machine::with('template')
+            // Halaman ini khusus mesin produksi; utility dikelola lewat
+            // halaman "Utility" terpisah.
+            ->where('type', '!=', MachineType::Utility->value)
             ->orderBy('sort_no')
             ->orderBy('code')
             ->get()
@@ -51,6 +54,7 @@ class MachineController extends Controller
         // Mesin yang dihapus tetap bisa dipulihkan, jadi daftarnya ikut dikirim
         // supaya UI bisa menawarkan tombol "Pulihkan" di halaman yang sama.
         $trashed = Machine::onlyTrashed()
+            ->where('type', '!=', MachineType::Utility->value)
             ->orderByDesc('deleted_at')
             ->get()
             ->map(fn ($m) => [
@@ -63,16 +67,23 @@ class MachineController extends Controller
         return Inertia::render('Machines/Index', [
             'machines' => $machines,
             'trashed' => $trashed,
-            'types' => collect(MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'types' => collect(MachineType::cases())
+                ->reject(fn ($t) => $t === MachineType::Utility)
+                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
             'templates' => ChecklistTemplate::orderBy('name')
+                // Template per-unit utility ("utility:{kode}") dibuat dari CSV,
+                // bukan milik halaman mesin ini.
+                ->where('machine_type', 'NOT LIKE', 'utility:%')
                 ->get(['id', 'name', 'machine_type'])
                 ->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'machine_type' => $t->machine_type]),
             'categories' => Machine::whereNotNull('category')
+                ->where('type', '!=', MachineType::Utility->value)
                 ->distinct()
                 ->orderBy('category')
                 ->pluck('category')
                 ->values(),
             'subCategories' => Machine::whereNotNull('sub_category')
+                ->where('type', '!=', MachineType::Utility->value)
                 ->distinct()
                 ->orderBy('sub_category')
                 ->pluck('sub_category')

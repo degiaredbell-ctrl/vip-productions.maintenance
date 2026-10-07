@@ -47,7 +47,11 @@ class PeriodService
      */
     public static function periodCompletion(int $year): array
     {
-        $activeIds = Machine::where('is_active', true)->pluck('id');
+        $activeIds = Machine::where('is_active', true)
+            // Utility tidak ikut Beranda, jadi tidak masuk penyebut tunggakan
+            // pada notifikasi periode.
+            ->where('type', '!=', 'utility')
+            ->pluck('id');
         $total = $activeIds->count();
 
         $approved = [];

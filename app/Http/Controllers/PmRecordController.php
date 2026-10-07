@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Actions\Pm\RejectPmRecord;
 use App\Actions\Pm\SignPmRecord;
 use App\Actions\Pm\SubmitPmRecord;
+use App\Enums\MachineType;
 use App\Enums\Period;
 use App\Enums\SignatureStage;
 use App\Http\Requests\RejectPmRecordRequest;
 use App\Http\Requests\SignPmRecordRequest;
 use App\Http\Requests\StorePmRecordRequest;
+use App\Models\ChecklistTemplate;
 use App\Models\Machine;
 use App\Models\PmRecord;
 use App\Services\PeriodService;
@@ -32,7 +34,7 @@ class PmRecordController extends Controller
             ->where('period', $period->value)
             ->first();
 
-        $template = $machine->template ?? $machine->type ? \App\Models\ChecklistTemplate::where('machine_type', $machine->type)->where('is_default', true)->first() : null;
+        $template = $machine->template ?? $machine->type ? ChecklistTemplate::where('machine_type', $machine->type)->where('is_default', true)->first() : null;
 
         $items = $existing ? $existing->items->map(function ($item) {
             return [
@@ -64,18 +66,23 @@ class PmRecordController extends Controller
 
         // Filter yang sedang aktif di Beranda ikut diteruskan, supaya tombol
         // "Kembali" dan redirect setelah simpan tidak membuat user kehilangan
-        // filter periode/area/status/pencarian yang sedang dipilih.
-        $dashboardUrl = route('dashboard', array_filter([
-            'period' => $period->value,
-            'year' => $year,
-            'sub' => $request->query('sub'),
-            'status' => $request->query('status'),
-            'q' => $request->query('q'),
-        ], fn ($value) => $value !== null && $value !== '' && $value !== 'all'));
-
+        // filter periode/area/status/pencarian yang sedang dipilih. Untuk unit
+        // utility, kembali ke halaman Utility (unit itu tidak ada di Beranda).
         // Disimpan lewat session, bukan diambil dari input form, supaya URL
         // tujuan redirect tidak bisa dipakai untuk open redirect.
-        $request->session()->put('pm_dashboard_url', $dashboardUrl);
+        if ($machine->type === MachineType::Utility->value) {
+            $request->session()->put('pm_dashboard_url', route('utility.index'));
+        } else {
+            $dashboardUrl = route('dashboard', array_filter([
+                'period' => $period->value,
+                'year' => $year,
+                'sub' => $request->query('sub'),
+                'status' => $request->query('status'),
+                'q' => $request->query('q'),
+            ], fn ($value) => $value !== null && $value !== '' && $value !== 'all'));
+
+            $request->session()->put('pm_dashboard_url', $dashboardUrl);
+        }
 
         $user = $request->user();
 

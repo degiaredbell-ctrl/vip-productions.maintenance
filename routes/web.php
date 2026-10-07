@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
@@ -10,9 +11,8 @@ use App\Http\Controllers\PmRecordController;
 use App\Http\Controllers\PmSignatureController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
-use Illuminate\Foundation\Application;
+use App\Http\Controllers\UtilityController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', function () {
     return redirect()->route('dashboard');
@@ -70,6 +70,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('machines.history')
         ->middleware('can:pm.history.view');
 
+    // Utility: daftar unit utility + komponen maintenance. Data read-only dari
+    // CSV; teknisi tetap bisa membuka form PM unit di sini.
+    Route::get('/utility', [UtilityController::class, 'index'])
+        ->name('utility.index')
+        ->middleware('can:dashboard.view');
+
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])
         ->name('reports.index')
@@ -88,7 +94,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
-        Route::resource('/admin/roles', \App\Http\Controllers\Admin\RoleController::class)->names('admin.roles');
+        Route::resource('/admin/roles', RoleController::class)->names('admin.roles');
     });
 
     Route::middleware('can:template.manage')->group(function () {

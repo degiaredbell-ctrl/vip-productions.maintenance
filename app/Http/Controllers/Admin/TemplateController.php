@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\MachineType;
 use App\Http\Controllers\Controller;
 use App\Models\ChecklistTemplate;
 use App\Models\ChecklistTemplateItem;
@@ -14,27 +15,32 @@ class TemplateController extends Controller
 {
     public function index(Request $request): Response
     {
-        $templates = ChecklistTemplate::with('items')->orderBy('machine_type')->get()->map(function ($t) {
-            return [
-                'id' => $t->id,
-                'machine_type' => $t->machine_type,
-                'name' => $t->name,
-                'is_default' => $t->is_default,
-                'items' => $t->items->map(function ($item) {
-                    return [
-                        'id' => $item->id,
-                        'category' => $item->category,
-                        'name' => $item->name,
-                        'spec' => $item->spec,
-                        'sort_no' => $item->sort_no,
-                    ];
-                }),
-            ];
-        });
+        // Template per-unit utility (machine_type "utility:{kode}") dibuat
+        // otomatis dari CSV dan dikelola lewat halaman "Utility", jadi tidak
+        // dimunculkan di pengelolaan template manual supaya tidak bising.
+        $templates = ChecklistTemplate::with('items')
+            ->where('machine_type', 'NOT LIKE', 'utility:%')
+            ->orderBy('machine_type')->get()->map(function ($t) {
+                return [
+                    'id' => $t->id,
+                    'machine_type' => $t->machine_type,
+                    'name' => $t->name,
+                    'is_default' => $t->is_default,
+                    'items' => $t->items->map(function ($item) {
+                        return [
+                            'id' => $item->id,
+                            'category' => $item->category,
+                            'name' => $item->name,
+                            'spec' => $item->spec,
+                            'sort_no' => $item->sort_no,
+                        ];
+                    }),
+                ];
+            });
 
         return Inertia::render('Admin/Templates', [
             'templates' => $templates,
-            'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'types' => collect(MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
         ]);
     }
 
@@ -75,6 +81,7 @@ class TemplateController extends Controller
         }
 
         $template->delete();
+
         return redirect()->back()->with('success', 'Template berhasil dihapus.');
     }
 }
