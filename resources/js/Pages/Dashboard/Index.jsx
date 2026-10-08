@@ -129,26 +129,28 @@ export default function Dashboard({
     const activeReport = tab === 'utility' ? reportUtility : reportMachine;
     const reportYearsList = (reportYears?.length ? reportYears : years) ?? [];
 
-    const BarSVG = ({ data, height = 140, valueColor = '#334155', labelColor = '#64748b', showValueAbove = true }) => {
-        const max = Math.max(1, ...data.map((d) => d.value || 0));
-        const barW = Math.max(12, Math.floor(320 / Math.max(1, data.length)) - 8);
+    const BarChart = ({ data, color = '#38bdf8', showPercent = false }) => {
+        const max = Math.max(1, ...data.map((d) => (showPercent ? d.percent || 0 : d.value || 0)));
         return (
-            <svg width="100%" height={height} viewBox="0 0 360 140" preserveAspectRatio="none">
-                {data.map((d, i) => {
-                    const h = ((d.value || 0) / max) * 100;
-                    const x = 24 + i * (barW + 8);
-                    const y = 110 - h;
+            <div className="flex items-end gap-2 sm:gap-3 h-[110px] w-full">
+                {data.map((d) => {
+                    const val = showPercent ? d.percent || 0 : d.value || 0;
+                    const h = `${Math.max(6, (val / max) * 100)}%`;
                     return (
-                        <g key={d.key}>
-                            <rect x={x} y={y} width={barW} height={h} rx="3" fill={d.color} />
-                            {showValueAbove && (d.value || 0) > 0 && (
-                                <text x={x + barW / 2} y={y - 2} textAnchor="middle" fontSize="8" fontWeight="600" fill={valueColor}>{d.value}</text>
+                        <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full min-w-[28px]">
+                            {val > 0 && (
+                                <span className="text-[11px] sm:text-xs font-semibold text-neu-text leading-none mb-1 tabular-nums">
+                                    {showPercent ? `${val}%` : val}
+                                </span>
                             )}
-                            <text x={x + barW / 2} y={125} textAnchor="middle" fontSize="7.5" fontWeight="500" fill={labelColor}>{d.label}</text>
-                        </g>
+                            <div className="w-full rounded-t-md" style={{ height: h, backgroundColor: color, maxHeight: '95%' }} />
+                            <span className="text-[10px] sm:text-[11px] text-neu-sub mt-1.5 text-center leading-none whitespace-nowrap">
+                                {d.label}
+                            </span>
+                        </div>
                     );
                 })}
-            </svg>
+            </div>
         );
     };
 
@@ -209,21 +211,21 @@ export default function Dashboard({
 
                     <NeuCard className="p-3.5">
                         <h2 className="text-sm font-semibold mb-1.5">Jumlah per Status (Semua Periode {filters.year})</h2>
-                        <BarSVG data={byStatusData} height={130} />
+                        <BarChart data={byStatusData} color="#38bdf8" />
                     </NeuCard>
                 </div>
 
                 <NeuCard className="mb-3 p-3.5">
                     <h2 className="text-sm font-semibold mb-1.5">Progress per Periode {filters.year}</h2>
-                    <BarSVG data={byPeriodData.map((d) => ({ key: d.key, label: d.label, value: d.percent, color: '#38bdf8' }))} height={130} />
-                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 text-[8px] text-neu-sub">
+                    <BarChart data={byPeriodData.map((d) => ({ key: d.key, label: d.label, percent: d.percent, value: d.percent }))} color="#0ea5e9" showPercent />
+                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 text-[9px] text-neu-sub">
                         {byPeriodData.map((d) => (
-                            <div key={d.key} className="neu-inset p-1">
+                            <div key={d.key} className="neu-inset p-1.5">
                                 <div className="flex items-center justify-between">
-                                    <span className="font-semibold text-[8px]">{d.label}</span>
+                                    <span className="font-semibold">{d.label}</span>
                                     <span className={`${d.locked ? 'text-neu-warn' : 'text-neu-text'} font-semibold`}>{d.percent}%</span>
                                 </div>
-                                <div className="mt-0.5 text-[7.5px]">{d.done}/{d.total} selesai{d.locked ? ' · Belum masuk' : ''}</div>
+                                <div className="mt-0.5 text-[8.5px]">{d.done}/{d.total} selesai{d.locked ? ' · Belum masuk' : ''}</div>
                             </div>
                         ))}
                     </div>
