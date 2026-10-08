@@ -69,7 +69,9 @@ class MachineController extends Controller
             'trashed' => $trashed,
             'types' => collect(MachineType::cases())
                 ->reject(fn ($t) => $t === MachineType::Utility)
-                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
+                ->values()
+                ->toArray(),
             'templates' => ChecklistTemplate::orderBy('name')
                 // Template per-unit utility ("utility:{kode}") dibuat dari CSV,
                 // bukan milik halaman mesin ini.
@@ -81,13 +83,15 @@ class MachineController extends Controller
                 ->distinct()
                 ->orderBy('category')
                 ->pluck('category')
-                ->values(),
+                ->values()
+                ->all(),
             'subCategories' => Machine::whereNotNull('sub_category')
                 ->where('type', '!=', MachineType::Utility->value)
                 ->distinct()
                 ->orderBy('sub_category')
                 ->pluck('sub_category')
-                ->values(),
+                ->values()
+                ->all(),
         ]);
     }
 

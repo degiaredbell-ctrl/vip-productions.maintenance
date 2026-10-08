@@ -49,7 +49,8 @@ class UtilityController extends Controller
             ->distinct()
             ->orderBy('sub_category')
             ->pluck('sub_category')
-            ->values();
+            ->values()
+            ->all();
 
         $user = $request->user();
 
