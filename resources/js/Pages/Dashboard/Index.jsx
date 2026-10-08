@@ -129,21 +129,22 @@ export default function Dashboard({
     const activeReport = tab === 'utility' ? reportUtility : reportMachine;
     const reportYearsList = (reportYears?.length ? reportYears : years) ?? [];
 
-    const BarSVG = ({ data, height = 160 }) => {
-        const total = data.reduce((s, d) => s + (d.value || 0), 0);
+    const BarSVG = ({ data, height = 140, valueColor = '#334155', labelColor = '#64748b', showValueAbove = true }) => {
         const max = Math.max(1, ...data.map((d) => d.value || 0));
-        const barW = Math.max(14, Math.floor(280 / Math.max(1, data.length)) - 10);
+        const barW = Math.max(12, Math.floor(320 / Math.max(1, data.length)) - 8);
         return (
-            <svg width="100%" height={height} viewBox="0 0 320 160" preserveAspectRatio="none">
+            <svg width="100%" height={height} viewBox="0 0 360 140" preserveAspectRatio="none">
                 {data.map((d, i) => {
-                    const h = ((d.value || 0) / max) * 120;
-                    const x = 20 + i * (barW + 10);
-                    const y = 140 - h;
+                    const h = ((d.value || 0) / max) * 100;
+                    const x = 24 + i * (barW + 8);
+                    const y = 110 - h;
                     return (
                         <g key={d.key}>
-                            <rect x={x} y={y} width={barW} height={h} rx="4" fill={d.color} />
-                            <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize="9" fill="#475569">{d.value}</text>
-                            <text x={x + barW / 2} y={155} textAnchor="middle" fontSize="8" fill="#64748b">{d.label}</text>
+                            <rect x={x} y={y} width={barW} height={h} rx="3" fill={d.color} />
+                            {showValueAbove && (d.value || 0) > 0 && (
+                                <text x={x + barW / 2} y={y - 2} textAnchor="middle" fontSize="8" fontWeight="600" fill={valueColor}>{d.value}</text>
+                            )}
+                            <text x={x + barW / 2} y={125} textAnchor="middle" fontSize="7.5" fontWeight="500" fill={labelColor}>{d.label}</text>
                         </g>
                     );
                 })}
@@ -172,83 +173,76 @@ export default function Dashboard({
     return (
         <AuthenticatedLayout user={auth.user}>
             <div className="page-container">
-                <div className="mb-5">
-                    <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
-                    <h1 className="text-xl sm:text-2xl font-bold">Dashboard Report</h1>
+                <div className="mb-4">
+                    <p className="text-neu-sub text-xs">PT Verra Inter Pangan</p>
+                    <h1 className="text-lg sm:text-xl font-bold">Dashboard Report</h1>
                 </div>
 
-                <div className="flex gap-2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-3">
                     <NeuChip active={tab === 'mesin'} onClick={() => setTab('mesin')}>Mesin</NeuChip>
                     <NeuChip active={tab === 'utility'} onClick={() => setTab('utility')}>Utility</NeuChip>
                 </div>
 
-                <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3" role="group" aria-label="Filter tahun">
+                <div className="flex gap-2.5 overflow-x-auto px-1 py-1.5 mb-3" role="group" aria-label="Filter tahun">
                     {(reportYearsList ?? []).map((y) => (
                         <NeuChip key={y} active={filters.year === y} onClick={() => handleYearChange(y)} aria-label={`Tahun ${y}`}>{y}</NeuChip>
                     ))}
                 </div>
 
-                {isLoading && <p className="text-xs text-neu-sub text-center mb-3" role="status">Memuat data…</p>}
+                {isLoading && <p className="text-xs text-neu-sub text-center mb-2" role="status">Memuat data…</p>}
 
-                <NeuCard className="mb-4">
-                    <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-5">
-                        <NeuRing percentage={activeReport.byStatus?.percent ?? 0} />
-                        <div className="flex-1 w-full grid grid-cols-4 gap-2">
-                            {STATUS_ORDER.map((key) => (
-                                <div key={key} className="neu-inset py-3 px-1.5 text-center">
-                                    <span className={`text-xl font-bold block ${STATUS_TILE_COLORS[key]}`}>{activeReport.byStatus?.[key] ?? 0}</span>
-                                    <span className="text-[10px] text-neu-sub leading-tight block">{STATUS_LABELS[key]}</span>
-                                </div>
-                            ))}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
+                    <NeuCard className="p-3.5">
+                        <div className="flex flex-col sm:flex-row items-center gap-3.5">
+                            <NeuRing percentage={activeReport.byStatus?.percent ?? 0} />
+                            <div className="flex-1 w-full grid grid-cols-4 gap-1">
+                                {STATUS_ORDER.map((key) => (
+                                    <div key={key} className="neu-inset py-1.5 px-0.5 text-center">
+                                        <span className={`text-base font-bold block ${STATUS_TILE_COLORS[key]}`}>{activeReport.byStatus?.[key] ?? 0}</span>
+                                        <span className="text-[8px] text-neu-sub leading-tight block">{STATUS_LABELS[key]}</span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
-                    <p className="text-xs text-neu-sub mt-3">Total unit {tab === 'utility' ? 'Utility' : 'Mesin'}: {activeReport.totalUnits} · Total entri (unit×periode): {activeReport.byStatus?.total ?? 0}</p>
-                </NeuCard>
+                        <p className="text-[10px] text-neu-sub mt-1.5">Total unit {tab === 'utility' ? 'Utility' : 'Mesin'}: {activeReport.totalUnits} · Total entri (unit×periode): {activeReport.byStatus?.total ?? 0}</p>
+                    </NeuCard>
 
-                <NeuCard className="mb-4">
-                    <h2 className="text-sm font-semibold mb-2">Progress per Periode {filters.year}</h2>
-                    <BarSVG data={byPeriodData.map((d) => ({ key: d.key, label: d.label, value: d.percent, color: '#0ea5e9' }))} height={180} />
-                    <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2 text-[10px] text-neu-sub">
+                    <NeuCard className="p-3.5">
+                        <h2 className="text-sm font-semibold mb-1.5">Jumlah per Status (Semua Periode {filters.year})</h2>
+                        <BarSVG data={byStatusData} height={130} />
+                    </NeuCard>
+                </div>
+
+                <NeuCard className="mb-3 p-3.5">
+                    <h2 className="text-sm font-semibold mb-1.5">Progress per Periode {filters.year}</h2>
+                    <BarSVG data={byPeriodData.map((d) => ({ key: d.key, label: d.label, value: d.percent, color: '#38bdf8' }))} height={130} />
+                    <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 text-[8px] text-neu-sub">
                         {byPeriodData.map((d) => (
-                            <div key={d.key} className="neu-inset p-2">
+                            <div key={d.key} className="neu-inset p-1">
                                 <div className="flex items-center justify-between">
-                                    <span className="font-semibold">{d.label}</span>
-                                    <span className={d.locked ? 'text-neu-warn' : ''}>{d.percent}%</span>
+                                    <span className="font-semibold text-[8px]">{d.label}</span>
+                                    <span className={`${d.locked ? 'text-neu-warn' : 'text-neu-text'} font-semibold`}>{d.percent}%</span>
                                 </div>
-                                <div className="mt-1">{d.done}/{d.total} selesai{d.locked ? ' · Belum memasuki periode' : ''}</div>
+                                <div className="mt-0.5 text-[7.5px]">{d.done}/{d.total} selesai{d.locked ? ' · Belum masuk' : ''}</div>
                             </div>
                         ))}
                     </div>
                 </NeuCard>
 
-                <NeuCard className="mb-4">
-                    <h2 className="text-sm font-semibold mb-2">Jumlah per Status (Semua Periode {filters.year})</h2>
-                    <BarSVG data={byStatusData} height={160} />
+                <NeuCard className="mb-3 !shadow-neu-in p-3">
+                    <p className="text-[11px] text-neu-sub">Keterangan: Grafik rekap per {tab === 'utility' ? 'Utility' : 'Mesin'} berdasarkan status PM per periode tahun {filters.year}.</p>
                 </NeuCard>
 
-                <NeuCard className="mb-4 !shadow-neu-in">
-                    <p className="text-xs text-neu-sub">Keterangan: Grafik di atas merupakan rekap per {tab === 'utility' ? 'Utility' : 'Mesin'} berdasarkan status PM per periode tahun {filters.year}.</p>
-                </NeuCard>
-
-                {tab === 'mesin' ? (
-                    <>
-                        {/* Bagian list mesin di dashboard dihilangkan sesuai permintaan */}
-                    </>
-                ) : (
-                    <>
-                        <NeuCard className="mb-4">
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="text-sm font-semibold">Preventive Maintenance Utility</h2>
-                                    <p className="text-xs text-neu-sub">Lihat daftar unit Utility untuk mengisi PM &amp; Riwayat</p>
-                                </div>
-                                <Link href={route('utility.index')} className="neu-btn">Buka Halaman Utility</Link>
+                {tab === 'mesin' ? null : (
+                    <NeuCard className="mb-3 p-4">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                            <div>
+                                <h2 className="text-sm font-semibold">Preventive Maintenance Utility</h2>
+                                <p className="text-[11px] text-neu-sub">Lihat daftar unit Utility untuk mengisi PM &amp; Riwayat</p>
                             </div>
-                        </NeuCard>
-                        <NeuCard className="mb-4">
-                            <p className="text-xs text-neu-sub">Rekap Utility per periode &amp; status tahun {filters.year} ditampilkan di atas.</p>
-                        </NeuCard>
-                    </>
+                            <Link href={route('utility.index')} className="neu-btn">Buka Halaman Utility</Link>
+                        </div>
+                    </NeuCard>
                 )}
             </div>
         </AuthenticatedLayout>

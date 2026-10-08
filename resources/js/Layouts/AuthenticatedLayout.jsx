@@ -106,17 +106,17 @@ export default function Authenticated({ user: userProp, header, children }) {
             </aside>
 
             {/* Main content */}
-            <div className="md:pl-[210px] lg:pl-[260px]">
+            <div className="md:pl-[210px] lg:pl-[260px] md:ml-[5px]">
                 {/* Top bar - ponsel */}
-                <header className="md:hidden sticky top-0 z-30 bg-neu-bg/90 backdrop-blur px-4 py-3 flex items-center justify-between">
+                <header className="md:hidden sticky top-0 z-30 bg-neu-bg/90 backdrop-blur px-3 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold min-w-0">
                         <ApplicationLogo className="w-7 h-7 flex-none" />
                         <span className="truncate">PM Preventive</span>
                     </div>
                     <Dropdown>
                         <Dropdown.Trigger>
-                            <button className="neu-btn !min-h-[40px] !px-3">
-                                <span className="text-sm">{user.name}</span>
+                            <button className="neu-btn !min-h-[36px] !px-2.5 !py-1.5 text-sm">
+                                <span>{user.name}</span>
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
@@ -130,12 +130,12 @@ export default function Authenticated({ user: userProp, header, children }) {
                 </header>
 
                 {/* Header - tablet & desktop */}
-                <header className="hidden md:flex items-center justify-end px-5 lg:px-8 py-4">
+                <header className="hidden md:flex items-center justify-end px-4 lg:px-5 py-3">
                     <Dropdown>
                         <Dropdown.Trigger>
-                            <button className="neu-btn !min-h-[40px] !px-3">
-                                <span className="text-sm">{user.name}</span>
-                                <span className="neu-pill text-neu-accent">{user.roles?.[0] ?? '-'}</span>
+                            <button className="neu-btn !min-h-[36px] !px-2.5 !py-1.5 text-sm">
+                                <span>{user.name}</span>
+                                <span className="neu-pill text-neu-accent text-[10px] py-0.5 px-2">{user.roles?.[0] ?? '-'}</span>
                             </button>
                         </Dropdown.Trigger>
                         <Dropdown.Content>
@@ -145,7 +145,7 @@ export default function Authenticated({ user: userProp, header, children }) {
                     </Dropdown>
                 </header>
 
-                <main className="px-4 sm:px-6 md:px-5 lg:px-8 pt-2 pb-28 md:pb-8">
+                <main className="px-3 sm:px-4 md:px-4 lg:px-5 pt-1 pb-24 md:pb-6">
                     {header}
                     {children}
                 </main>
