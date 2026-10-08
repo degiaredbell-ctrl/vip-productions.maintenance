@@ -20,6 +20,8 @@ Route::get('/', function () {
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/form-maintenance', [DashboardController::class, 'formMaintenance'])->name('form-maintenance');
+    Route::get('/form-maintenance/mesin', [DashboardController::class, 'formMaintenanceMesin'])->name('form-maintenance.mesin');
     Route::get('/dashboard/export', [DashboardController::class, 'export'])
         ->name('dashboard.export')
         ->middleware('can:report.export');

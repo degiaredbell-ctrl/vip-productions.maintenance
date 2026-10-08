@@ -1,4 +1,5 @@
-import PrimaryButton from '@/Components/PrimaryButton';
+import NeuButton from '@/Components/NeuButton';
+import NeuCard from '@/Components/NeuCard';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link, useForm } from '@inertiajs/react';
 
@@ -13,38 +14,41 @@ export default function VerifyEmail({ status }) {
 
     return (
         <GuestLayout>
-            <Head title="Email Verification" />
+            <Head title="Verifikasi Email" />
 
-            <div className="mb-4 text-sm text-gray-600">
-                Thanks for signing up! Before getting started, could you verify
-                your email address by clicking on the link we just emailed to
-                you? If you didn't receive the email, we will gladly send you
-                another.
-            </div>
+            <NeuCard className="w-full max-w-md">
+                <p className="mb-4 text-sm text-neu-sub">
+                    Terima kasih sudah mendaftar! Sebelum memulai, silakan verifikasi
+                    alamat email Anda dengan mengklik tautan yang baru kami kirim.
+                    Jika belum menerima email, kami akan mengirim ulang dengan senang hati.
+                </p>
 
-            {status === 'verification-link-sent' && (
-                <div className="mb-4 text-sm font-medium text-green-600">
-                    A new verification link has been sent to the email address
-                    you provided during registration.
-                </div>
-            )}
+                {status === 'verification-link-sent' && (
+                    <NeuCard className="mb-4 !bg-[#DCFCE7] !shadow-neu-in">
+                        <p className="text-sm font-medium text-neu-accent">
+                            Tautan verifikasi baru telah dikirim ke alamat email yang Anda
+                            daftarkan.
+                        </p>
+                    </NeuCard>
+                )}
 
-            <form onSubmit={submit}>
-                <div className="mt-4 flex items-center justify-between">
-                    <PrimaryButton disabled={processing}>
-                        Resend Verification Email
-                    </PrimaryButton>
+                <form onSubmit={submit} className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <NeuButton type="submit" variant="primary" disabled={processing} className="flex-1">
+                            Kirim Ulang Verifikasi
+                        </NeuButton>
 
-                    <Link
-                        href={route('logout')}
-                        method="post"
-                        as="button"
-                        className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                    >
-                        Log Out
-                    </Link>
-                </div>
-            </form>
+                        <Link
+                            href={route('logout')}
+                            method="post"
+                            as="button"
+                            className="text-sm text-neu-accent underline hover:text-neu-warn focus:outline-none focus:ring-2 focus:ring-neu-accent/40 rounded px-1"
+                        >
+                            Keluar
+                        </Link>
+                    </div>
+                </form>
+            </NeuCard>
         </GuestLayout>
     );
 }

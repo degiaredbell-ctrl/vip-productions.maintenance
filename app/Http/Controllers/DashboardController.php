@@ -135,4 +135,53 @@ class DashboardController extends Controller
 
         return [$year, $period];
     }
+
+    /**
+     * Halaman Form Maintenance: menampilkan tiga kartu navigasi utama
+     * (Mesin, Utility, Komponen) untuk akses cepat ke pengelolaan form PM.
+     */
+    public function formMaintenance(): Response
+    {
+        return Inertia::render('FormMaintenance/Index');
+    }
+
+    /**
+     * Halaman Form Maintenance - Mesin: daftar mesin dengan status PM per periode.
+     * Mirip tab Mesin di Dashboard, tapi tanpa grafik/chart report.
+     */
+    public function formMaintenanceMesin(Request $request): Response
+    {
+        [$year, $period] = $this->resolvePeriod($request);
+
+        $search = $request->query('q', '');
+        $status = $request->query('status', 'all');
+        $subCategory = (string) $request->query('sub', 'all');
+
+        // Data mesin dengan status PM untuk periode ini
+        $machines = DashboardService::machineStatuses($year, $period);
+        $stats = DashboardService::stats($machines);
+
+        $subCategories = DashboardService::subCategories();
+
+        if ($subCategory !== 'all' && !$subCategories->contains($subCategory)) {
+            $subCategory = 'all';
+        }
+
+        $visible = DashboardService::applyFilters($machines, $status, $subCategory, $search);
+
+        return Inertia::render('FormMaintenance/Mesin', [
+            'machines' => $visible,
+            'stats' => $stats,
+            'periods' => PeriodService::buildPeriods($year),
+            'years' => PeriodService::availableYears(),
+            'subCategories' => $subCategories,
+            'subCategory' => $subCategory,
+            'currentPeriod' => $period->value,
+            'currentYear' => $year,
+            'search' => $search,
+            'statusFilter' => $status,
+            'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
+        ]);
+    }
 }

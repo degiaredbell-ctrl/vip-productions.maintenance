@@ -50,6 +50,7 @@ export default function Authenticated({ user: userProp, header, children }) {
             show: pending > 0 || can['pm.sign'] || can['pm.acknowledge'] || can['pm.approve'],
         },
         { name: 'Laporan', href: route('reports.index'), path: '/reports', show: can['report.view'] },
+        { name: 'Form Maintenance', href: route('form-maintenance'), path: '/form-maintenance', show: can['machine.manage'] || can['dashboard.view'] || can['template.manage'] },
         { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] },
         { name: 'Utility', href: route('utility.index'), path: '/utility', show: can['dashboard.view'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },

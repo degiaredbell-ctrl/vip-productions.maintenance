@@ -1,14 +1,13 @@
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
-import PrimaryButton from '@/Components/PrimaryButton';
+import NeuButton from '@/Components/NeuButton';
+import NeuCard from '@/Components/NeuCard';
 import TextInput from '@/Components/TextInput';
-import { Transition } from '@headlessui/react';
 import { Link, useForm, usePage } from '@inertiajs/react';
 
 export default function UpdateProfileInformation({
     mustVerifyEmail,
     status,
-    className = '',
 }) {
     const user = usePage().props.auth.user;
 
@@ -25,24 +24,21 @@ export default function UpdateProfileInformation({
     };
 
     return (
-        <section className={className}>
-            <header>
-                <h2 className="text-lg font-medium text-gray-900">
-                    Profile Information
-                </h2>
-
-                <p className="mt-1 text-sm text-gray-600">
-                    Update your account's profile information and email address.
+        <NeuCard>
+            <header className="mb-4">
+                <h2 className="text-lg font-bold text-neu-text">Informasi Profil</h2>
+                <p className="mt-1 text-sm text-neu-sub">
+                    Perbarui nama dan alamat email akun Anda.
                 </p>
             </header>
 
-            <form onSubmit={submit} className="mt-6 space-y-6">
+            <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <InputLabel htmlFor="name" value="Name" />
+                    <InputLabel htmlFor="name" value="Nama" />
 
                     <TextInput
                         id="name"
-                        className="mt-1 block w-full"
+                        className="mt-1"
                         value={data.name}
                         onChange={(e) => setData('name', e.target.value)}
                         required
@@ -59,7 +55,7 @@ export default function UpdateProfileInformation({
                     <TextInput
                         id="email"
                         type="email"
-                        className="mt-1 block w-full"
+                        className="mt-1"
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
                         required
@@ -70,44 +66,46 @@ export default function UpdateProfileInformation({
                 </div>
 
                 {mustVerifyEmail && user.email_verified_at === null && (
-                    <div>
-                        <p className="mt-2 text-sm text-gray-800">
-                            Your email address is unverified.
-                            <Link
-                                href={route('verification.send')}
-                                method="post"
-                                as="button"
-                                className="rounded-md text-sm text-gray-600 underline hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                                Click here to re-send the verification email.
-                            </Link>
-                        </p>
+                    <NeuCard className="!shadow-neu-in !bg-[#FEF3C7]">
+                        <div className="flex items-start gap-3">
+                            <span className="neu-inset w-9 h-9 flex-none grid place-items-center text-neu-warn font-bold">
+                                !
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold text-neu-warn">
+                                    Alamat email Anda belum diverifikasi.
+                                </p>
+                                <Link
+                                    href={route('verification.send')}
+                                    method="post"
+                                    as="button"
+                                    className="text-sm text-neu-warn underline hover:text-neu-accent focus:outline-none focus:ring-2 focus:ring-neu-accent/40 rounded px-1"
+                                >
+                                    Klik di sini untuk mengirim ulang email verifikasi.
+                                </Link>
 
-                        {status === 'verification-link-sent' && (
-                            <div className="mt-2 text-sm font-medium text-green-600">
-                                A new verification link has been sent to your
-                                email address.
+                                {status === 'verification-link-sent' && (
+                                    <div className="mt-2 text-sm font-bold text-neu-accent">
+                                        Link verifikasi baru telah dikirim ke email Anda.
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    </NeuCard>
                 )}
 
-                <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
+                <div className="flex items-center gap-4 pt-2">
+                    <NeuButton type="submit" variant="primary" disabled={processing}>
+                        Simpan
+                    </NeuButton>
 
-                    <Transition
-                        show={recentlySuccessful}
-                        enter="transition ease-in-out"
-                        enterFrom="opacity-0"
-                        leave="transition ease-in-out"
-                        leaveTo="opacity-0"
-                    >
-                        <p className="text-sm text-gray-600">
-                            Saved.
-                        </p>
-                    </Transition>
+                    {recentlySuccessful && (
+                        <span className="text-sm text-neu-accent font-medium transition-opacity duration-300">
+                            Tersimpan.
+                        </span>
+                    )}
                 </div>
             </form>
-        </section>
+        </NeuCard>
     );
 }
