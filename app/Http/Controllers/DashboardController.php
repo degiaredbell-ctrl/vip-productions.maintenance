@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\Period;
 use App\Exports\MachineStatusExport;
+use App\Services\DashboardReportService;
 use App\Services\DashboardService;
 use App\Services\PeriodService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -49,6 +50,10 @@ class DashboardController extends Controller
             'statusFilter' => $status,
             'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
+            // Data terpisah untuk report Mesin & Utility (Beranda baru)
+            'reportMachine' => DashboardReportService::build($year, 'machine'),
+            'reportUtility' => DashboardReportService::build($year, 'utility'),
+            'reportYears' => PeriodService::availableYears(),
         ]);
     }
 
