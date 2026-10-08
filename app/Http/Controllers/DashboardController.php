@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MachineType;
 use App\Enums\Period;
 use App\Exports\MachineStatusExport;
 use App\Services\DashboardReportService;
@@ -181,6 +182,50 @@ class DashboardController extends Controller
             'search' => $search,
             'statusFilter' => $status,
             'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
+        ]);
+    }
+
+    /**
+     * Halaman Form Maintenance - Utility: daftar unit utility dengan status PM per periode,
+     * mengikuti pola halaman Mesin (tanpa chart). Dapat diakses dari kartu Utility
+     * pada halaman /form-maintenance.
+     */
+    public function formMaintenanceUtility(Request $request): Response
+    {
+        [$year, $period] = $this->resolvePeriod($request);
+
+        $search = $request->query('q', '');
+        $status = $request->query('status', 'all');
+        $subCategory = (string) $request->query('sub', 'all');
+
+        $machines = DashboardService::machineStatuses($year, $period, MachineType::Utility);
+        $stats = DashboardService::stats($machines);
+
+        $subCategories = DashboardService::subCategories(MachineType::Utility);
+
+        if ($subCategory !== 'all' && !$subCategories->contains($subCategory)) {
+            $subCategory = 'all';
+        }
+
+        $visible = DashboardService::applyFilters($machines, $status, $subCategory, $search);
+
+        return Inertia::render('FormMaintenance/Utility', [
+            'machines' => $visible,
+            'stats' => $stats,
+            'periods' => PeriodService::buildPeriods($year, MachineType::Utility),
+            'years' => PeriodService::availableYears(),
+            'subCategories' => $subCategories,
+            'subCategory' => $subCategory,
+            'currentPeriod' => $period->value,
+            'currentYear' => $year,
+            'search' => $search,
+            'statusFilter' => $status,
+            'types' => collect(\App\Enums\MachineType::cases())
+                ->filter(fn ($t) => $t === MachineType::Utility)
+                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
+                ->values()
+                ->toArray(),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
         ]);
     }

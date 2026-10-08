@@ -214,7 +214,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
 
                                     <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
                                         {can.fill && (
-                                            <Link href={route('machines.pm.create', { machine: unit.id })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Isi PM</Link>
+                                            <Link href={route('machines.pm.create', { machine: unit.id, return: 'utility' })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Isi PM</Link>
                                         )}
                                         {can.history && (
                                             <Link href={route('machines.history', { machine: unit.id })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Riwayat</Link>

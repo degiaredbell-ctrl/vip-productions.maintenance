@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\MachineType;
 use App\Enums\Period;
 use App\Enums\PmStatus;
 use App\Models\Machine;
@@ -44,13 +45,21 @@ class PeriodService
 
     /**
      * Daftar mesin aktif beserta jumlah PM yang sudah disetujui per periode.
+     *
+     * `$type` null memakai populasi Beranda (tanpa unit utility). Halaman
+     * khusus utility mengirim `MachineType::Utility` supaya dot periode
+     * mencerminkan kemajuan PM unit utility, bukan mesin.
      */
-    public static function periodCompletion(int $year): array
+    public static function periodCompletion(int $year, ?MachineType $type = null): array
     {
         $activeIds = Machine::where('is_active', true)
             // Utility tidak ikut Beranda, jadi tidak masuk penyebut tunggakan
             // pada notifikasi periode.
-            ->where('type', '!=', 'utility')
+            ->when(
+                $type === null,
+                fn ($q) => $q->where('type', '!=', MachineType::Utility->value),
+                fn ($q) => $q->where('type', $type->value)
+            )
             ->pluck('id');
         $total = $activeIds->count();
 
@@ -78,9 +87,9 @@ class PeriodService
      * terhadap periode berjalan (lihat resolveDot), bukan hanya oleh
      * kondisi periodenya sendiri.
      */
-    public static function buildPeriods(int $year): array
+    public static function buildPeriods(int $year, ?MachineType $type = null): array
     {
-        ['total' => $total, 'approved' => $approved] = self::periodCompletion($year);
+        ['total' => $total, 'approved' => $approved] = self::periodCompletion($year, $type);
 
         $cases = Period::cases();
         $pending = [];

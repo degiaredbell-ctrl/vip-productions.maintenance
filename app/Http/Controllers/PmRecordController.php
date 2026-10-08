@@ -71,7 +71,18 @@ class PmRecordController extends Controller
         // Disimpan lewat session, bukan diambil dari input form, supaya URL
         // tujuan redirect tidak bisa dipakai untuk open redirect.
         if ($machine->type === MachineType::Utility->value) {
-            $dashboardUrl = route('utility.index');
+            $return = $request->query('return');
+            if ($return === 'utility') {
+                $dashboardUrl = route('form-maintenance.utility', array_filter([
+                    'period' => $period->value,
+                    'year' => $year,
+                    'sub' => $request->query('sub'),
+                    'status' => $request->query('status'),
+                    'q' => $request->query('q'),
+                ], fn ($value) => $value !== null && $value !== '' && $value !== 'all'));
+            } else {
+                $dashboardUrl = route('utility.index');
+            }
             $request->session()->put('pm_dashboard_url', $dashboardUrl);
         } else {
             $dashboardUrl = route('dashboard', array_filter([

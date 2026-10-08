@@ -21,8 +21,12 @@ class DashboardService
      * Seluruh mesin aktif pada satu periode, lengkap dengan status tampilan PM.
      * Statistik Beranda memakai koleksi ini sebelum difilter supaya angka
      * ringkasan tidak berubah saat user menyaring daftar.
+     *
+     * `$type` null berarti daftar Beranda (tanpa unit utility). Kirim
+     * `MachineType::Utility` untuk daftar khusus utility, misalnya halaman
+     * Form Maintenance - Utility, supaya unitnya tidak bercampur dengan mesin.
      */
-    public static function machineStatuses(int $year, Period $period): Collection
+    public static function machineStatuses(int $year, Period $period, ?MachineType $type = null): Collection
     {
         return Machine::with(['template.items', 'pmRecords' => function ($q) use ($year, $period) {
             $q->where('year', $year)->where('period', $period->value);
@@ -30,7 +34,11 @@ class DashboardService
             ->where('is_active', true)
             // Utility dikelola lewat halaman khusus, bukan Beranda, jadi tidak
             // ikut dihitung pada daftar maupun statistik PM.
-            ->where('type', '!=', MachineType::Utility->value)
+            ->when(
+                $type === null,
+                fn ($q) => $q->where('type', '!=', MachineType::Utility->value),
+                fn ($q) => $q->where('type', $type->value)
+            )
             ->orderBy('sort_no')
             ->get()
             ->map(function (Machine $machine) {
@@ -77,11 +85,17 @@ class DashboardService
 
     /**
      * Daftar area (sub_category) yang tersedia, dipakai filter Beranda.
+     * Ikut aturan `$type` yang sama dengan machineStatuses() supaya chip area
+     * tidak pernah menampilkan area milik tipe lain.
      */
-    public static function subCategories(): Collection
+    public static function subCategories(?MachineType $type = null): Collection
     {
         return Machine::where('is_active', true)
-            ->where('type', '!=', MachineType::Utility->value)
+            ->when(
+                $type === null,
+                fn ($q) => $q->where('type', '!=', MachineType::Utility->value),
+                fn ($q) => $q->where('type', $type->value)
+            )
             ->whereNotNull('sub_category')
             ->distinct()
             ->orderBy('sub_category')

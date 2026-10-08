@@ -24,7 +24,7 @@ const MENU_CARDS = [
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H3.006a2.25 2.25 0 0 0-2.25 2.25v11.994a2.25 2.25 0 0 0 2.25 2.25h18a2.25 2.25 0 0 0 2.25-2.25V13.5m-9-9.75v9m0 0h9m-9 0l10.393 10.393m-10.393 0L9 21M21 15a2.25 2.25 0 0 0-2.25-2.25H15" />
             </svg>
         ),
-        href: route('utility.index'),
+        href: route('form-maintenance.utility'),
         permission: 'dashboard.view',
         color: 'bg-neu-info/10 border-neu-info/20',
     },
