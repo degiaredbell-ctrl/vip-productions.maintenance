@@ -133,7 +133,10 @@ export default function Dashboard({
     const reportYearsList = (reportYears?.length ? reportYears : years) ?? [];
 
     const BarChart = ({ data, color = '#38bdf8', showPercent = false, highlightKey = null }) => {
-        const max = Math.max(1, ...data.map((d) => (showPercent ? d.percent || 0 : d.value || 0)));
+        // Chart persentase memakai sumbu tetap 0-100% supaya tinggi batang
+        // mencerminkan persentase aslinya (bukan diskalakan ke nilai tertinggi).
+        // Chart jumlah (mis. per status) tetap diskalakan ke nilai tertinggi.
+        const max = showPercent ? 100 : Math.max(1, ...data.map((d) => d.value || 0));
         return (
             <div className="flex items-end gap-2 sm:gap-3 h-[110px] w-full">
                 {data.map((d) => {
