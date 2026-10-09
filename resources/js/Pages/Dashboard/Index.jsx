@@ -141,6 +141,9 @@ export default function Dashboard({
                     const h = `${Math.max(6, (val / max) * 100)}%`;
                     const isHighlighted = highlightKey === d.key;
                     const isDimmed = highlightKey != null && !isHighlighted;
+                    // Tiap batang boleh punya warnanya sendiri (mis. warna status);
+                    // kalau tidak diisi, pakai warna default chart.
+                    const barColor = isHighlighted ? '#0ea5e9' : (d.color || color);
                     return (
                         <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full min-w-[28px]">
                             {val > 0 && (
@@ -150,7 +153,7 @@ export default function Dashboard({
                             )}
                             <div
                                 className={`w-full rounded-t-md transition-opacity duration-150 ${isHighlighted ? 'ring-2 ring-neu-accent/50 ring-offset-1' : ''}`}
-                                style={{ height: h, backgroundColor: isHighlighted ? '#0ea5e9' : color, maxHeight: '95%', opacity: isDimmed ? 0.5 : 1 }}
+                                style={{ height: h, backgroundColor: barColor, maxHeight: '95%', opacity: isDimmed ? 0.5 : 1 }}
                             />
                             <span className={`text-[10px] sm:text-[11px] mt-1.5 text-center leading-none whitespace-nowrap ${isHighlighted ? 'text-neu-accent font-semibold' : 'text-neu-sub'}`}>
                                 {d.label}
