@@ -34,35 +34,58 @@ class PmRecordController extends Controller
             ->where('period', $period->value)
             ->first();
 
-        $template = $machine->template ?? $machine->type ? ChecklistTemplate::where('machine_type', $machine->type)->where('is_default', true)->first() : null;
+        $template = $machine->template ?? ($machine->type ? ChecklistTemplate::where('machine_type', $machine->type)->where('is_default', true)->first() : null);
 
-        $items = $existing ? $existing->items->map(function ($item) {
-            return [
-                'item_name' => $item->item_name,
-                'category' => $item->category,
-                'spec' => $item->spec,
-                'actual' => $item->actual,
-                'act_clean' => $item->act_clean,
-                'act_repair' => $item->act_repair,
-                'act_lubricate' => $item->act_lubricate,
-                'act_replace' => $item->act_replace,
-                'final_condition' => $item->final_condition,
-                'parts_replaced' => $item->parts_replaced,
-            ];
-        })->toArray() : ($template ? $template->items->map(function ($item) {
-            return [
-                'item_name' => $item->name,
-                'category' => $item->category,
-                'spec' => $item->spec,
-                'actual' => '',
-                'act_clean' => false,
-                'act_repair' => false,
-                'act_lubricate' => false,
-                'act_replace' => false,
-                'final_condition' => '',
-                'parts_replaced' => 0,
-            ];
-        })->toArray() : []);
+        // Sumber item form PM: snapshot record yang sudah ada lebih dulu, lalu
+        // master Komponen milik unit ini. Template lama hanya dipakai sebagai
+        // cadangan bila unit belum punya komponen sama sekali (data yang belum
+        // ikut termigrasi), supaya form tidak kosong tanpa penjelasan.
+        if ($existing) {
+            $items = $existing->items->map(function ($item) {
+                return [
+                    'item_name' => $item->item_name,
+                    'category' => $item->category,
+                    'spec' => $item->spec,
+                    'actual' => $item->actual,
+                    'act_clean' => $item->act_clean,
+                    'act_repair' => $item->act_repair,
+                    'act_lubricate' => $item->act_lubricate,
+                    'act_replace' => $item->act_replace,
+                    'final_condition' => $item->final_condition,
+                    'parts_replaced' => $item->parts_replaced,
+                ];
+            })->toArray();
+        } elseif ($machine->components->isNotEmpty()) {
+            $items = $machine->components->map(function ($component) {
+                return [
+                    'item_name' => $component->name,
+                    'category' => $component->category,
+                    'spec' => $component->spec,
+                    'actual' => '',
+                    'act_clean' => false,
+                    'act_repair' => false,
+                    'act_lubricate' => false,
+                    'act_replace' => false,
+                    'final_condition' => '',
+                    'parts_replaced' => 0,
+                ];
+            })->toArray();
+        } else {
+            $items = $template ? $template->items->map(function ($item) {
+                return [
+                    'item_name' => $item->name,
+                    'category' => $item->category,
+                    'spec' => $item->spec,
+                    'actual' => '',
+                    'act_clean' => false,
+                    'act_repair' => false,
+                    'act_lubricate' => false,
+                    'act_replace' => false,
+                    'final_condition' => '',
+                    'parts_replaced' => 0,
+                ];
+            })->toArray() : [];
+        }
 
         // Filter yang sedang aktif di Beranda ikut diteruskan, supaya tombol
         // "Kembali" dan redirect setelah simpan tidak membuat user kehilangan

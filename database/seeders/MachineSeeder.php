@@ -126,5 +126,12 @@ class MachineSeeder extends Seeder
         $importer = app(MachineImportService::class);
 
         $importer->import(purge: true);
+
+        // Kalau master komponen masih kosong (instalasi baru), komponen diisi
+        // dari template sesuai unit masing-masing. Pada instalasi yang sudah
+        // bermigrasi tsb diisi oleh migrasi, jadi tidak diutak-atik lagi.
+        if (\App\Models\Component::query()->count() === 0) {
+            app(\App\Services\ComponentMigrationService::class)->migrateFromTemplates();
+        }
     }
 }

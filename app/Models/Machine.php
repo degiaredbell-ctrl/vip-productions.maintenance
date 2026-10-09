@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -26,6 +27,19 @@ class Machine extends Model
     public function template(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(ChecklistTemplate::class, 'template_id');
+    }
+
+    /**
+     * Komponen/parts yang diperiksa untuk unit ini. Relasi baru pengganti
+     * template: komponen memakai tabel master tersendiri dan diikat ke unit
+     * lewat pivot, sehingga satu komponen bisa dipakai banyak unit.
+     */
+    public function components(): BelongsToMany
+    {
+        return $this->belongsToMany(Component::class, 'component_machine')
+            ->withPivot('sort_no')
+            ->orderBy('component_machine.sort_no')
+            ->withTimestamps();
     }
 
     public function pmRecords(): HasMany

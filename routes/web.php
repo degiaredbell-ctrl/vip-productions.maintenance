@@ -1,8 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\ComponentController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\DashboardController;
@@ -100,10 +100,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('/admin/roles', RoleController::class)->names('admin.roles');
     });
 
+    // Komponen / Parts: master komponen + penugasan ke Mesin & Utility.
+    // Menggantikan halaman Template lama; permission `template.manage` dipakai
+    // ulang supaya role yang sudah ada tidak perlu diatur ulang.
     Route::middleware('can:template.manage')->group(function () {
-        Route::get('/admin/templates', [TemplateController::class, 'index'])->name('admin.templates');
-        Route::post('/admin/templates', [TemplateController::class, 'store'])->name('admin.templates.store');
-        Route::delete('/admin/templates/{template}', [TemplateController::class, 'destroy'])->name('admin.templates.destroy');
+        Route::get('/admin/komponen', [ComponentController::class, 'index'])->name('admin.components');
+        Route::post('/admin/komponen', [ComponentController::class, 'store'])->name('admin.components.store');
+        Route::put('/admin/komponen/{component}', [ComponentController::class, 'update'])->name('admin.components.update');
+        Route::delete('/admin/komponen/{component}', [ComponentController::class, 'destroy'])->name('admin.components.destroy');
+        Route::post('/admin/komponen/penugasan', [ComponentController::class, 'assign'])->name('admin.components.assign');
+
+        // URL lama diarahkan supaya bookmark/tautan lama tidak mati.
+        Route::get('/admin/templates', fn () => redirect()->route('admin.components'));
     });
 
     Route::middleware('can:audit.view')->group(function () {

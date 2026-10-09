@@ -30,14 +30,14 @@ const MENU_CARDS = [
     },
     {
         name: 'Komponen',
-        description: 'Kelola template checklist & item komponen per tipe mesin',
+        description: 'Kelola master komponen/parts & penugasannya ke Mesin dan Utility',
         icon: (
             <svg className="w-10 h-10 text-neu-warn" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 3h5.259a1.5 1.5 0 0 1 1.06.44l4.5 2.598a1.5 1.5 0 0 1 .3.939V19.5a1.5 1.5 0 0 1-1.5 1.5H15" />
             </svg>
         ),
-        href: route('admin.templates'),
+        href: route('admin.components'),
         permission: 'template.manage',
         color: 'bg-neu-warn/10 border-neu-warn/20',
     },

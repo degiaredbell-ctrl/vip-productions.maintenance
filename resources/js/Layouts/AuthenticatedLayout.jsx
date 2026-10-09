@@ -55,7 +55,7 @@ export default function Authenticated({ user: userProp, header, children }) {
         { name: 'Utility', href: route('utility.index'), path: '/utility', show: can['dashboard.view'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
         { name: 'Role', href: route('admin.roles.index'), path: '/admin/roles', show: user?.roles?.includes('admin') },
-        { name: 'Template', href: route('admin.templates'), path: '/admin/templates', show: can['template.manage'] },
+        { name: 'Komponen / Parts', href: route('admin.components'), path: '/admin/komponen', show: can['template.manage'] },
         { name: 'Audit Log', href: route('admin.audit-logs'), path: '/admin/audit-logs', show: can['audit.view'] },
     ].filter(item => item.show);
 
