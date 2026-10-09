@@ -142,20 +142,22 @@ export default function Dashboard({
                     const isHighlighted = highlightKey === d.key;
                     const isDimmed = highlightKey != null && !isHighlighted;
                     // Tiap batang boleh punya warnanya sendiri (mis. warna status);
-                    // kalau tidak diisi, pakai warna default chart.
-                    const barColor = isHighlighted ? '#0ea5e9' : (d.color || color);
+                    // kalau tidak diisi, pakai warna default chart. Batang yang
+                    // di-highlight tetap memakai warnanya sendiri, dibedakan lewat
+                    // ring + batang lain yang diredupkan.
+                    const barColor = d.color || color;
                     return (
                         <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full min-w-[28px]">
                             {val > 0 && (
-                                <span className={`text-[11px] sm:text-xs font-semibold leading-none mb-1 tabular-nums ${isHighlighted ? 'text-neu-accent' : 'text-neu-text'}`}>
+                                <span className={`text-[11px] sm:text-xs font-semibold leading-none mb-1 tabular-nums ${isHighlighted ? 'text-neu-active' : 'text-neu-text'}`}>
                                     {showPercent ? `${val}%` : val}
                                 </span>
                             )}
                             <div
-                                className={`w-full rounded-t-md transition-opacity duration-150 ${isHighlighted ? 'ring-2 ring-neu-accent/50 ring-offset-1' : ''}`}
+                                className={`w-full rounded-t-md transition-opacity duration-150 ${isHighlighted ? 'ring-2 ring-neu-active/50 ring-offset-1' : ''}`}
                                 style={{ height: h, backgroundColor: barColor, maxHeight: '95%', opacity: isDimmed ? 0.5 : 1 }}
                             />
-                            <span className={`text-[10px] sm:text-[11px] mt-1.5 text-center leading-none whitespace-nowrap ${isHighlighted ? 'text-neu-accent font-semibold' : 'text-neu-sub'}`}>
+                            <span className={`text-[10px] sm:text-[11px] mt-1.5 text-center leading-none whitespace-nowrap ${isHighlighted ? 'text-neu-active font-semibold' : 'text-neu-sub'}`}>
                                 {d.label}
                             </span>
                         </div>
@@ -280,7 +282,7 @@ export default function Dashboard({
                     <h2 className="text-sm font-semibold mb-1.5">Progress per Periode {filters.year}</h2>
                     <BarChart
                         data={byPeriodData.map((d) => ({ key: d.key, label: d.label, percent: d.percent, value: d.percent }))}
-                        color="#38bdf8"
+                        color="#033066"
                         showPercent
                         highlightKey={selectedPeriod ? selectedPeriod.period : null}
                     />
