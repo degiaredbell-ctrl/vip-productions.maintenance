@@ -64,6 +64,9 @@ export default function Dashboard({
     const [isLoading, setIsLoading] = useState(false);
     const searchTimer = useRef(null);
     const [tab, setTab] = useState('mesin');
+    // Filter periode bersifat tampilan saja ('all' = ringkasan setahun penuh).
+    // Chart "Progress per Periode" tetap menampilkan semua periode sebagai konteks.
+    const [periodFilter, setPeriodFilter] = useState('all');
 
     useEffect(() => {
         setFilters({
@@ -129,22 +132,27 @@ export default function Dashboard({
     const activeReport = tab === 'utility' ? reportUtility : reportMachine;
     const reportYearsList = (reportYears?.length ? reportYears : years) ?? [];
 
-    const BarChart = ({ data, color = '#38bdf8', showPercent = false }) => {
+    const BarChart = ({ data, color = '#38bdf8', showPercent = false, highlightKey = null }) => {
         const max = Math.max(1, ...data.map((d) => (showPercent ? d.percent || 0 : d.value || 0)));
         return (
             <div className="flex items-end gap-2 sm:gap-3 h-[110px] w-full">
                 {data.map((d) => {
                     const val = showPercent ? d.percent || 0 : d.value || 0;
                     const h = `${Math.max(6, (val / max) * 100)}%`;
+                    const isHighlighted = highlightKey === d.key;
+                    const isDimmed = highlightKey != null && !isHighlighted;
                     return (
                         <div key={d.key} className="flex-1 flex flex-col items-center justify-end h-full min-w-[28px]">
                             {val > 0 && (
-                                <span className="text-[11px] sm:text-xs font-semibold text-neu-text leading-none mb-1 tabular-nums">
+                                <span className={`text-[11px] sm:text-xs font-semibold leading-none mb-1 tabular-nums ${isHighlighted ? 'text-neu-accent' : 'text-neu-text'}`}>
                                     {showPercent ? `${val}%` : val}
                                 </span>
                             )}
-                            <div className="w-full rounded-t-md" style={{ height: h, backgroundColor: color, maxHeight: '95%' }} />
-                            <span className="text-[10px] sm:text-[11px] text-neu-sub mt-1.5 text-center leading-none whitespace-nowrap">
+                            <div
+                                className={`w-full rounded-t-md transition-opacity duration-150 ${isHighlighted ? 'ring-2 ring-neu-accent/50 ring-offset-1' : ''}`}
+                                style={{ height: h, backgroundColor: isHighlighted ? '#0ea5e9' : color, maxHeight: '95%', opacity: isDimmed ? 0.5 : 1 }}
+                            />
+                            <span className={`text-[10px] sm:text-[11px] mt-1.5 text-center leading-none whitespace-nowrap ${isHighlighted ? 'text-neu-accent font-semibold' : 'text-neu-sub'}`}>
                                 {d.label}
                             </span>
                         </div>
@@ -165,10 +173,38 @@ export default function Dashboard({
         dot: p.dot,
     }));
 
+    const selectedPeriod = periodFilter === 'all'
+        ? null
+        : (activeReport.byPeriod ?? []).find((p) => p.period === periodFilter) ?? null;
+
+    // Ringkasan yang ditampilkan: agregat setahun saat "Semua Periode", atau
+    // angka satu periode saja saat filter periode dipilih.
+    const periodStats = selectedPeriod
+        ? {
+            done: selectedPeriod.done ?? 0,
+            progress: selectedPeriod.progress ?? 0,
+            todo: selectedPeriod.todo ?? 0,
+            issue: selectedPeriod.issue ?? 0,
+            total: selectedPeriod.total ?? 0,
+            percent: selectedPeriod.percent ?? 0,
+        }
+        : {
+            done: activeReport.byStatus?.done ?? 0,
+            progress: activeReport.byStatus?.progress ?? 0,
+            todo: activeReport.byStatus?.todo ?? 0,
+            issue: activeReport.byStatus?.issue ?? 0,
+            total: activeReport.byStatus?.total ?? 0,
+            percent: activeReport.byStatus?.percent ?? 0,
+        };
+
+    const periodScopeLabel = selectedPeriod
+        ? `Periode ${selectedPeriod.label} ${filters.year}`
+        : `Semua Periode ${filters.year}`;
+
     const byStatusData = STATUS_ORDER.map((k) => ({
         key: k,
         label: STATUS_LABELS[k],
-        value: activeReport.byStatus?.[k] ?? 0,
+        value: periodStats[k] ?? 0,
         color: STATUS_COLORS[k],
     }));
 
@@ -191,33 +227,60 @@ export default function Dashboard({
                     ))}
                 </div>
 
+                <div className="flex gap-2.5 overflow-x-auto px-1 py-1.5 mb-3" role="group" aria-label="Filter periode">
+                    <NeuChip active={periodFilter === 'all'} onClick={() => setPeriodFilter('all')} aria-label="Semua periode">Semua Periode</NeuChip>
+                    {(periods ?? []).map((p) => (
+                        <NeuChip
+                            key={p.value}
+                            active={periodFilter === p.value}
+                            onClick={p.locked ? undefined : () => setPeriodFilter(p.value)}
+                            disabled={p.locked}
+                            dot={p.dot}
+                            title={p.locked ? `${p.label} — belum dibuka` : `${p.label} — ${p.done}/${p.total} selesai`}
+                            className={[p.locked ? 'neu-chip-locked' : '', p.isCurrent ? 'neu-chip-current' : ''].filter(Boolean).join(' ')}
+                        >
+                            {p.label}
+                        </NeuChip>
+                    ))}
+                </div>
+
                 {isLoading && <p className="text-xs text-neu-sub text-center mb-2" role="status">Memuat data…</p>}
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mb-3">
                     <NeuCard className="p-3.5">
                         <div className="flex flex-col sm:flex-row items-center gap-3.5">
-                            <NeuRing percentage={activeReport.byStatus?.percent ?? 0} />
+                            <NeuRing percentage={periodStats.percent} />
                             <div className="flex-1 w-full grid grid-cols-4 gap-1">
                                 {STATUS_ORDER.map((key) => (
                                     <div key={key} className="neu-inset py-1.5 px-0.5 text-center">
-                                        <span className={`text-base font-bold block ${STATUS_TILE_COLORS[key]}`}>{activeReport.byStatus?.[key] ?? 0}</span>
+                                        <span className={`text-base font-bold block ${STATUS_TILE_COLORS[key]}`}>{periodStats[key] ?? 0}</span>
                                         <span className="text-[8px] text-neu-sub leading-tight block">{STATUS_LABELS[key]}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
-                        <p className="text-[10px] text-neu-sub mt-1.5">Total unit {tab === 'utility' ? 'Utility' : 'Mesin'}: {activeReport.totalUnits} · Total entri (unit×periode): {activeReport.byStatus?.total ?? 0}</p>
+                        <p className="text-[10px] text-neu-sub mt-1.5">
+                            {selectedPeriod
+                                ? `${periodScopeLabel} · ${periodStats.done}/${periodStats.total} selesai`
+                                : `Total unit ${tab === 'utility' ? 'Utility' : 'Mesin'}: ${activeReport.totalUnits}`}
+                            {' · '}Total entri: {periodStats.total}
+                        </p>
                     </NeuCard>
 
                     <NeuCard className="p-3.5">
-                        <h2 className="text-sm font-semibold mb-1.5">Jumlah per Status (Semua Periode {filters.year})</h2>
+                        <h2 className="text-sm font-semibold mb-1.5">Jumlah per Status ({periodScopeLabel})</h2>
                         <BarChart data={byStatusData} color="#38bdf8" />
                     </NeuCard>
                 </div>
 
                 <NeuCard className="mb-3 p-3.5">
                     <h2 className="text-sm font-semibold mb-1.5">Progress per Periode {filters.year}</h2>
-                    <BarChart data={byPeriodData.map((d) => ({ key: d.key, label: d.label, percent: d.percent, value: d.percent }))} color="#0ea5e9" showPercent />
+                    <BarChart
+                        data={byPeriodData.map((d) => ({ key: d.key, label: d.label, percent: d.percent, value: d.percent }))}
+                        color="#38bdf8"
+                        showPercent
+                        highlightKey={selectedPeriod ? selectedPeriod.period : null}
+                    />
                     <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1 text-[9px] text-neu-sub">
                         {byPeriodData.map((d) => (
                             <div key={d.key} className="neu-inset p-1.5">
