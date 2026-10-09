@@ -66,7 +66,7 @@ export default function FormMaintenanceIndex({ auth }) {
                                     <h2 className="text-lg font-bold text-neu-text mb-2">{card.name}</h2>
                                     <p className="text-sm text-neu-sub leading-relaxed">{card.description}</p>
                                     <div className="mt-auto pt-4 w-full">
-                                        <span className="neu-btn-primary w-full justify-center">
+                                        <span className="neu-btn w-full justify-center">
                                             Buka
                                             <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />

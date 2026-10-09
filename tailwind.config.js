@@ -31,6 +31,8 @@ export default {
                     text: '#2B3445',
                     sub: '#5A6475',
                     accent: '#0F6E56',
+                    // Warna tombol/chip yang sedang aktif (terpilih).
+                    active: '#033066',
                     info: '#1F6FEB',
                     warn: '#A86B0B',
                     bad: '#B93A2E',

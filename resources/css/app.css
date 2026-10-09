@@ -155,7 +155,7 @@
     */
     .neu-chip-active,
     .neu-chip-active:hover:not(:disabled) {
-        @apply bg-neu-accent text-white shadow-neu-in;
+        @apply bg-neu-active text-white shadow-[inset_3px_3px_8px_rgba(0,0,0,0.45),inset_-3px_-3px_8px_rgba(255,255,255,0.16)];
     }
 
     /* Ring fokus accent tidak kelihatan di atas latar accent. */
@@ -165,7 +165,7 @@
 
     /* Chip terkunci tetap boleh jadi pilihan, jadi teksnya jangan ikut gelap. */
     .neu-chip-active.neu-chip-locked:hover {
-        @apply text-white shadow-neu-in;
+        @apply text-white shadow-[inset_3px_3px_8px_rgba(0,0,0,0.45),inset_-3px_-3px_8px_rgba(255,255,255,0.16)];
     }
 
     .neu-chip:disabled {
