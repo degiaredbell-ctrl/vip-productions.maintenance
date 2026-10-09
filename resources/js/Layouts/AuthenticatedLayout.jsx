@@ -64,11 +64,11 @@ export default function Authenticated({ user: userProp, header, children }) {
             <NeuToast toast={toast} onDismiss={() => setToast(null)} />
 
             {/*
-                Sidebar dipakai mulai tablet (md/768px) supaya iPad tidak lagi
-                memakai bottom navigation seperti ponsel. Lebarnya dikecilkan di
-                tablet lalu dilebarkan di desktop agar konten tetap lega.
+                Sidebar baru dipakai mulai desktop (lg/1024px). iPad dan
+                tablet memakai layout mobile (top bar + bottom menu) supaya
+                tampilannya konsisten dengan ponsel, dengan ruang konten penuh.
             */}
-            <aside className="hidden md:flex md:flex-col md:fixed md:inset-y-0 md:w-[210px] lg:w-[260px] bg-neu-bg p-4 lg:p-6 gap-3">
+            <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-[260px] bg-neu-bg p-6 gap-3">
                 <div className="flex items-center gap-2.5 mb-3 px-1">
                     <ApplicationLogo className="w-9 h-9 lg:w-10 lg:h-10 flex-none" />
                     <div className="min-w-0">
@@ -106,9 +106,9 @@ export default function Authenticated({ user: userProp, header, children }) {
             </aside>
 
             {/* Main content */}
-            <div className="md:pl-[210px] lg:pl-[260px] md:ml-[5px]">
-                {/* Top bar - ponsel */}
-                <header className="md:hidden sticky top-0 z-30 bg-neu-bg/90 backdrop-blur px-3 py-2.5 flex items-center justify-between">
+            <div className="lg:pl-[260px] lg:ml-[5px]">
+                {/* Top bar - ponsel & tablet */}
+                <header className="lg:hidden sticky top-0 z-30 bg-neu-bg/90 backdrop-blur px-3 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold min-w-0">
                         <ApplicationLogo className="w-7 h-7 flex-none" />
                         <span className="truncate">PM Preventive</span>
@@ -129,8 +129,8 @@ export default function Authenticated({ user: userProp, header, children }) {
                     </Dropdown>
                 </header>
 
-                {/* Header - tablet & desktop */}
-                <header className="hidden md:flex items-center justify-end px-4 lg:px-5 py-3">
+                {/* Header - desktop */}
+                <header className="hidden lg:flex items-center justify-end px-5 py-3">
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className="neu-btn !min-h-[36px] !px-2.5 !py-1.5 text-sm">
@@ -145,29 +145,32 @@ export default function Authenticated({ user: userProp, header, children }) {
                     </Dropdown>
                 </header>
 
-                <main className="px-3 sm:px-4 md:px-4 lg:px-5 pt-1 pb-24 md:pb-6">
+                <main className="px-3 sm:px-4 lg:px-5 pt-1 pb-24 lg:pb-6">
                     {header}
                     {children}
                 </main>
             </div>
 
-            {/* Bottom nav - ponsel (< md) */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-neu-bg flex gap-1 px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))] shadow-[0_-6px_16px_rgba(195,202,214,0.55)] z-30">
-                {navItems.slice(0, 5).map((item) => (
+            {/* Bottom nav - ponsel & tablet (< lg). Semua menu ditampilkan dan
+                bisa digeser horizontal, jadi tidak ada item yang tercampak
+                hanya karena layar ponsel sempit. */}
+            <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-neu-bg z-30 shadow-[0_-6px_16px_rgba(195,202,214,0.55)]">
+                <div className="overflow-x-auto">
+                <div className="flex gap-1.5 px-3 pt-2 pb-[calc(8px+env(safe-area-inset-bottom))] w-max mx-auto">
+                {navItems.map((item) => (
                     <NavLink
                         key={item.href}
                         href={item.href}
                         active={isActive(item.path, item.exact)}
                         activeClassName="neu-nav-sunken"
-                        className="neu-nav-raised flex-1 flex flex-col items-center gap-1 py-2 text-[11px] font-semibold relative"
+                        className="neu-nav-raised flex-none min-w-[68px] flex flex-col items-center gap-1 py-2 px-2 text-[11px] font-semibold relative whitespace-nowrap"
                     >
                         {item.name}
                         {/*
                             Dot jumlah antrean diletakkan persis di pojok kanan
-                            atas tombol, bukan di atas ikonnya. Jaraknya cuma 4px
-                            dari tepi tombol dan dari bar di atasnya supaya tetap
-                            terbaca jadi lencana tanpa melintasi batas antar
-                            tombol (jarak antar tombol cuma 4px).
+                            atas tombol, bukan di atas ikonnya, supaya tetap
+                            terbaca sebagai lencana tanpa melintasi batas antar
+                            tombol.
                         */}
                         {item.badge > 0 && (
                             <span
@@ -179,6 +182,8 @@ export default function Authenticated({ user: userProp, header, children }) {
                         )}
                     </NavLink>
                 ))}
+                </div>
+                </div>
             </nav>
         </div>
     );
