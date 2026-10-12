@@ -34,6 +34,23 @@ export default function Authenticated({ user: userProp, header, children }) {
     const isActive = (path, exact = false) =>
         exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
 
+    // Form PM & riwayat mesin memakai URL /machines/{id}/..., jadi logika
+    // isActive menandai menu "Mesin" dengan sendirinya. Untuk unit utility,
+    // menu aktif harus tetap "Utility", supaya sidebar tidak tampak pindah
+    // sendiri waktu teknisi sedang mengisi PM utility.
+    const machine = page.props.machine;
+    const machineDetailUrl = pathname.startsWith('/machines/');
+    const machineIsUtility = Boolean(machineDetailUrl && machine?.type === 'utility');
+
+    const isNavActive = (item) => {
+        if (machineDetailUrl) {
+            if (item.path === '/machines') return !machineIsUtility;
+            if (item.path === '/utility') return machineIsUtility;
+        }
+
+        return isActive(item.path, item.exact);
+    };
+
     // Badge antrean persetujuan dihitung di backend (SignatureChain), bukan di
     // client, supaya angka yang sama dipakai juga untuk query daftarnya.
     const pending = Number(page.props.pendingApprovals ?? 0);
@@ -82,13 +99,13 @@ export default function Authenticated({ user: userProp, header, children }) {
                         <NavLink
                             key={item.href}
                             href={item.href}
-                            active={isActive(item.path, item.exact)}
+                            active={isNavActive(item)}
                             activeClassName="neu-nav-sunken"
                             className="neu-nav-raised flex items-center gap-3 px-3.5 py-3 text-sm font-semibold"
                         >
                             <span
                                 className={`h-5 w-1 rounded-full transition-colors duration-150 ${
-                                    isActive(item.path, item.exact) ? 'bg-neu-accent' : 'bg-transparent'
+                                    isNavActive(item) ? 'bg-neu-accent' : 'bg-transparent'
                                 }`}
                                 aria-hidden="true"
                             />
@@ -162,7 +179,7 @@ export default function Authenticated({ user: userProp, header, children }) {
                     <NavLink
                         key={item.href}
                         href={item.href}
-                        active={isActive(item.path, item.exact)}
+                        active={isNavActive(item)}
                         activeClassName="neu-nav-sunken"
                         className="neu-nav-raised flex-none min-w-[68px] flex flex-col items-center gap-1 py-2 px-2 text-[11px] font-semibold relative whitespace-nowrap"
                     >
