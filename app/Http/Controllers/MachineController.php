@@ -65,7 +65,7 @@ class MachineController extends Controller
             ]);
 
         return Inertia::render('Machines/Index', [
-            'assets' => $machines,
+            'machines' => $machines,
             'trashed' => $trashed,
             'types' => collect(MachineType::cases())
                 ->reject(fn ($t) => $t === MachineType::Utility)
