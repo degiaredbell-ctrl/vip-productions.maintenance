@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, router } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
+import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 
@@ -116,7 +117,13 @@ export default function FormMaintenanceMesin({
             <div className="page-container">
                 <div className="mb-5">
                     <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
-                    <h1 className="text-xl sm:text-2xl font-bold">Form Maintenance - Mesin</h1>
+                    <div className="flex items-center gap-3 mb-2">
+                        <NeuButton href={route('form-maintenance')} className="!px-3 !min-h-[36px] !py-1.5 text-xs">
+                            ‹ Kembali
+                        </NeuButton>
+                        <h1 className="text-xl sm:text-2xl font-bold">Form Maintenance - Mesin</h1>
+                    </div>
+                    <p className="text-xs text-neu-sub">Path: /form-maintenance/mesin</p>
                 </div>
 
                 <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3" role="group" aria-label="Filter tahun">
