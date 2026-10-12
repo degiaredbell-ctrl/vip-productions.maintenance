@@ -56,6 +56,53 @@ class ReportService
             ->toArray();
     }
 
+    /**
+     * Rincian komponen yang benar-benar diganti pada periode terpilih,
+     * lengkap dengan mesin tempat penggantian dilakukan.
+     *
+     * `topReplacedParts()` hanya menjawab "komponen apa yang sering habis",
+     * sehingga angka totalnya tidak memberi tahu unit mana yang harus dicek.
+     * Data ini dipakai halaman cetak PDF supaya barisnya bisa dilacak ke
+     * mesin dan periodenya. Dikelola di PHP (bukan GROUP BY) karena jumlah
+     * barisnya kecil dan relasi mesin sudah tersedia lewat `pmRecord.machine`.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function replacedPartsDetail(int $year, ?string $period = null): array
+    {
+        return PmRecordItem::query()
+            ->with('pmRecord.machine')
+            ->where('act_replace', true)
+            ->whereHas('pmRecord', function ($q) use ($year, $period) {
+                $q->where('year', $year);
+                if ($period) $q->where('period', $period);
+            })
+            ->get()
+            ->map(function (PmRecordItem $item) {
+                $record = $item->pmRecord;
+                $machine = $record?->machine;
+
+                return [
+                    'machine_code' => $machine?->code,
+                    'machine_name' => $machine?->name,
+                    'machine_location' => $machine?->location,
+                    'machine_area' => $machine?->sub_category,
+                    'period' => $record?->period,
+                    'period_label' => Period::tryFrom((string) $record?->period)?->label() ?? $record?->period,
+                    'item_name' => $item->item_name,
+                    'spec' => $item->spec,
+                    'total' => (int) $item->parts_replaced,
+                ];
+            })
+            ->sortBy([
+                ['machine_code', 'asc'],
+                ['period', 'asc'],
+                ['item_name', 'asc'],
+            ])
+            ->values()
+            ->all();
+    }
+
     public static function actionSummary(int $year, ?string $period = null): array
     {
         $query = PmRecordItem::whereHas('pmRecord', function ($q) use ($year, $period) {

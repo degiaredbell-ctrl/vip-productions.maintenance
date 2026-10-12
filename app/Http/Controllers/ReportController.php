@@ -60,9 +60,32 @@ class ReportController extends Controller
             'compliance' => ReportService::complianceByPeriod($year),
             'topParts' => ReportService::topReplacedParts(),
             'actions' => ReportService::actionSummary($year, $period),
+            // Detail komponen diganti + mesinnya, dibatasi tahun/periode yang
+            // sedang diekspor supaya cocok dengan angka di halaman laporan.
+            'replacedParts' => ReportService::replacedPartsDetail($year, $period),
+            'logoDataUri' => $this->logoDataUri(),
+            'generatedAt' => now(),
         ];
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('reports.pdf', $data);
         return $pdf->download("pm-report-{$year}.pdf");
+    }
+
+    /**
+     * Logo aplikasi sebagai data URI (base64).
+     *
+     * DomPDF tidak punya akses HTTP saat render, jadi aset publik harus
+     * ditanam langsung ke dalam dokumen. Mengembalikan null kalau file logo
+     * tidak ada supaya cetak tetap jalan tanpa gambar.
+     */
+    private function logoDataUri(): ?string
+    {
+        $path = public_path('img/logo.png');
+
+        if (! is_file($path)) {
+            return null;
+        }
+
+        return 'data:image/png;base64,' . base64_encode(file_get_contents($path));
     }
 }
