@@ -39,6 +39,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/machines/{machine}/pm', [PmRecordController::class, 'create'])
         ->name('machines.pm.create')
         ->middleware('can:dashboard.view');
+    Route::get('/machines/{machine}/pm-history', [PmRecordController::class, 'pmHistory'])
+        ->name('machines.pm.history')
+        ->middleware('can:dashboard.view');
     Route::post('/machines/{machine}/pm', [PmRecordController::class, 'store'])
         ->name('machines.pm.store')
         ->middleware('can:pm.fill');
@@ -94,6 +97,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
         Route::put('/admin/users/{user}/password', [UserController::class, 'updatePassword'])->name('admin.users.update-password');
         Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+    });
+
+    // PM Records Management (Admin)
+    Route::middleware('can:pm.manage')->group(function () {
+        Route::get('/admin/pm-records', [PmRecordController::class, 'adminIndex'])->name('admin.pm-records');
+        Route::delete('/admin/pm-records/{record}', [PmRecordController::class, 'adminDestroy'])->name('admin.pm-records.destroy');
     });
 
     Route::middleware('role:admin')->group(function () {

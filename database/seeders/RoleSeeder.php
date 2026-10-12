@@ -16,6 +16,8 @@ class RoleSeeder extends Seeder
             'user.manage', 'audit.view',
             // Tiga permission terpisah, satu per tahap rantai persetujuan.
             'pm.sign', 'pm.acknowledge', 'pm.approve',
+            // Admin bisa kelola (CRUD) semua PM Record
+            'pm.manage',
         ];
 
         foreach ($permissions as $perm) {
@@ -25,7 +27,7 @@ class RoleSeeder extends Seeder
         $roles = [
             // Admin memegang semua permission, jadi bisa menandatangani tahap
             // mana pun bila belum ada orang lain yang menanganinya.
-            'admin' => $permissions,
+            'admin' => [...$permissions, 'pm.manage'],
             // Atasan = tahap 3. Tidak boleh mengisi checklist lapangan.
             'manager' => ['dashboard.view', 'pm.approve', 'pm.history.view', 'report.view', 'report.export', 'machine.manage', 'template.manage', 'audit.view'],
             // Technician mengisi checklist (pm.fill) lalu menandatanganinya (pm.sign).

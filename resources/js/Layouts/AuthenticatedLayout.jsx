@@ -53,6 +53,7 @@ export default function Authenticated({ user: userProp, header, children }) {
         { name: 'Form Maintenance', href: route('form-maintenance'), path: '/form-maintenance', show: can['machine.manage'] || can['dashboard.view'] || can['template.manage'] },
         { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] },
         { name: 'Utility', href: route('utility.index'), path: '/utility', show: can['dashboard.view'] },
+        { name: 'PM Records', href: route('admin.pm-records'), path: '/admin/pm-records', show: can['pm.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
         { name: 'Role', href: route('admin.roles.index'), path: '/admin/roles', show: user?.roles?.includes('admin') },
         { name: 'Komponen / Parts', href: route('admin.components'), path: '/admin/komponen', show: can['template.manage'] },

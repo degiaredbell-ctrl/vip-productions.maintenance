@@ -6,6 +6,7 @@ import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import MachineFields from '@/Components/MachineFields';
+import PmHistoryModal from '@/Pages/Pm/HistoryModal';
 
 const EMPTY_MACHINE = {
     code: '',
@@ -62,6 +63,23 @@ export default function Machines({ auth, machines, types, templates, categories,
     const [confirmingId, setConfirmingId] = useState(null);
     const [busyId, setBusyId] = useState(null);
     const [showTrashed, setShowTrashed] = useState(false);
+
+    // Modal riwayat PM
+    const [pmHistoryMachine, setPmHistoryMachine] = useState(null);
+    const [pmHistoryPeriod, setPmHistoryPeriod] = useState(null);
+    const [pmHistoryYear, setPmHistoryYear] = useState(null);
+
+    const openPmHistory = (machine, period = null, year = null) => {
+        setPmHistoryMachine(machine);
+        setPmHistoryPeriod(period);
+        setPmHistoryYear(year);
+    };
+
+    const closePmHistory = () => {
+        setPmHistoryMachine(null);
+        setPmHistoryPeriod(null);
+        setPmHistoryYear(null);
+    };
 
     const typeLabels = useMemo(
         () => Object.fromEntries((types ?? []).map((t) => [t.value, t.label])),
@@ -296,6 +314,12 @@ export default function Machines({ auth, machines, types, templates, categories,
                                                 Riwayat
                                             </Link>
                                             <NeuButton
+                                                onClick={() => openPmHistory(machine)}
+                                                className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs !text-neu-info"
+                                            >
+                                                Riwayat PM
+                                            </NeuButton>
+                                            <NeuButton
                                                 onClick={() => startEdit(machine)}
                                                 className="!min-h-[36px] !px-3 !py-1.5 text-xs"
                                             >
@@ -365,6 +389,21 @@ export default function Machines({ auth, machines, types, templates, categories,
                     </NeuCard>
                 )}
             </div>
+
+            {/* Modal Riwayat PM */}
+            {pmHistoryMachine && (
+                <PmHistoryModal
+                    machine={{
+                        id: pmHistoryMachine.id,
+                        code: pmHistoryMachine.code,
+                        name: pmHistoryMachine.name,
+                    }}
+                    period={pmHistoryPeriod}
+                    year={pmHistoryYear}
+                    onClose={closePmHistory}
+                />
+            )}
+
         </AuthenticatedLayout>
     );
 }

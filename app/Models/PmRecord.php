@@ -153,6 +153,23 @@ class PmRecord extends Model
         return is_string($reason) && $reason !== '' ? $reason : null;
     }
 
+    /**
+     * Semua penolakan untuk timeline riwayat dokumen.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection<\App\Models\AuditLog>
+     */
+    public function allRejections()
+    {
+        return AuditLog::query()
+            ->with('user')
+            ->where('action', 'pm.reject')
+            ->where('subject_type', self::class)
+            ->where('subject_id', $this->id)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+    }
+
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');

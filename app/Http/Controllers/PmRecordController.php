@@ -312,6 +312,271 @@ class PmRecordController extends Controller
             ] : null,
             'canSign' => $record !== null && $user->can('sign', $record),
             'canReject' => $record !== null && $user->can('reject', $record),
+            // Timeline riwayat dokumen (ascending: terlama di atas)
+            'timeline' => $this->buildTimeline($record),
         ];
+    }
+
+    /**
+     * Membangun timeline riwayat dokumen untuk form PM.
+     *
+     * @return array{time: string, label: string, detail?: string, type: string}[]
+     */
+    private function buildTimeline(?PmRecord $record): array
+    {
+        if (!$record) return [];
+
+        $events = [];
+
+        // 1. Dokument dibuat (saat pertama submit)
+        if ($record->submitted_at) {
+            $events[] = [
+                'time' => $record->created_at?->format('d/m/Y H:i'),
+                'label' => 'Dokumen dibuat',
+                'detail' => 'Checklist dikirim untuk persetujuan',
+                'type' => 'created',
+            ];
+        }
+
+        // 2. Semua penolakan (ascending)
+        foreach ($record->allRejections() as $rejection) {
+            $changes = $rejection->getAttribute('changes');
+            $reason = is_array($changes) ? ($changes['reason'] ?? null) : null;
+
+            $events[] = [
+                'time' => $rejection->created_at?->format('d/m/Y H:i'),
+                'label' => 'Ditolak',
+                'detail' => $reason ? "Alasan: {$reason}" : 'Tidak ada alasan',
+                'type' => 'rejected',
+                'by' => $rejection->user?->name,
+            ];
+        }
+
+        // 3. Semua tanda tangan (ascending)
+        foreach ($record->signatures->sortBy('signed_at') as $sig) {
+            $stageLabel = match ($sig->stage->value) {
+                'technician' => 'Teknisi',
+                'pic' => 'User PIC',
+                'supervisor' => 'Atasan',
+                default => $sig->stage->label(),
+            };
+
+            $events[] = [
+                'time' => $sig->signed_at?->format('d/m/Y H:i'),
+                'label' => "Ditandatangani oleh {$stageLabel}",
+                'detail' => $sig->signed_by_name ?? 'Tidak diketahui',
+                'type' => 'signed',
+                'note' => $sig->note,
+            ];
+        }
+
+        // 4. Terakhir diubah (updated_at)
+        if ($record->updated_at) {
+            $events[] = [
+                'time' => $record->updated_at?->format('d/m/Y H:i'),
+                'label' => 'Terakhir diperbarui',
+                'detail' => 'Data checklist atau status berubah',
+                'type' => 'updated',
+            ];
+        }
+
+        // Urutkan ascending berdasarkan waktu
+        usort($events, function ($a, $b) {
+            return strtotime(str_replace('/', '-', $a['time'])) <=> strtotime(str_replace('/', '-', $b['time']));
+        });
+
+        return $events;
+    }
+
+    /**
+     * Admin: daftar semua PM Record dengan filter dan pencarian.
+     */
+    public function adminIndex(Request $request): Response
+    {
+        $query = PmRecord::with(['machine', 'technician', 'picUser', 'signatures', 'items']);
+
+        // Filter: pencarian
+        if ($search = $request->query('q')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('technician_name', 'like', "%{$search}%")
+                  ->orWhere('general_note', 'like', "%{$search}%")
+                  ->orWhereHas('machine', function ($mq) use ($search) {
+                      $mq->where('code', 'like', "%{$search}%")
+                        ->orWhere('name', 'like', "%{$search}%")
+                        ->orWhere('location', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filter: status
+        if ($status = $request->query('status')) {
+            $query->where('status', $status);
+        }
+
+        // Filter: periode
+        if ($period = $request->query('period')) {
+            $query->where('period', $period);
+        }
+
+        // Filter: tahun
+        if ($year = $request->query('year')) {
+            $query->where('year', $year);
+        }
+
+        // Filter: tipe mesin (mesin/utility)
+        if ($type = $request->query('type')) {
+            $query->whereHas('machine', function ($mq) use ($type) {
+                $mq->where('type', $type);
+            });
+        }
+
+        $records = $query->orderByDesc('updated_at')->paginate(20)->withQueryString();
+
+        // Data untuk filter dropdown
+        $years = PmRecord::select('year')->distinct()->orderByDesc('year')->pluck('year');
+        $periods = PmRecord::select('period')->distinct()->orderBy('period')->pluck('period');
+        $statuses = \App\Enums\PmStatus::cases();
+
+        return Inertia::render('Admin/PmRecords/Index', [
+            'records' => $records,
+            'filters' => $request->only(['q', 'status', 'period', 'year', 'type']),
+            'years' => $years,
+            'periods' => $periods,
+            'statuses' => $statuses,
+        ]);
+    }
+
+    /**
+     * Admin: hapus PM Record secara permanen (hard delete).
+     *
+     * Menghapus record beserta items, signatures, revisions, dan audit logs terkait.
+     */
+    public function adminDestroy(Request $request, PmRecord $record): RedirectResponse
+    {
+        $this->authorize('delete', $record);
+
+        $info = [
+            'id' => $record->id,
+            'machine' => $record->machine?->code,
+            'period' => $record->period,
+            'year' => $record->year,
+            'status' => $record->status->value,
+            'technician_name' => $record->technicianName(),
+        ];
+
+        // Hapus relasi terkait (cascade sudah diatur di migration, tapi pastikan)
+        $record->items()->delete();
+        $record->signatures()->delete();
+        $record->revisions()->delete();
+
+        // Hapus audit logs terkait
+        \App\Models\AuditLog::where('subject_type', PmRecord::class)
+            ->where('subject_id', $record->id)
+            ->delete();
+
+        $record->delete();
+
+        return back()->with('success', "PM Record untuk {$info['machine']} ({$info['period']} {$info['year']}) berhasil dihapus permanen.");
+    }
+
+    /**
+     * Ambil PM Record dengan timeline untuk modal riwayat di halaman Mesin.
+     */
+    public function pmHistory(Request $request, Machine $machine): Response
+    {
+        $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
+        $year = (int) $request->query('year', now()->year);
+
+        $record = PmRecord::with(['items', 'signatures', 'picUser'])
+            ->where('machine_id', $machine->id)
+            ->where('year', $year)
+            ->where('period', $period->value)
+            ->first();
+
+        if (!$record) {
+            return Inertia::render('Pm/HistoryModal', [
+                'machine' => [
+                    'id' => $machine->id,
+                    'code' => $machine->code,
+                    'name' => $machine->name,
+                ],
+                'record' => null,
+                'period' => $period->value,
+                'year' => $year,
+                'error' => 'PM Record tidak ditemukan untuk periode ini.',
+            ]);
+        }
+
+        // Build timeline (reuse logic from buildTimeline)
+        $events = [];
+
+        if ($record->submitted_at) {
+            $events[] = [
+                'time' => $record->created_at?->format('d/m/Y H:i'),
+                'label' => 'Dokumen dibuat',
+                'detail' => 'Checklist dikirim untuk persetujuan',
+                'type' => 'created',
+            ];
+        }
+
+        foreach ($record->allRejections() as $rejection) {
+            $changes = $rejection->getAttribute('changes');
+            $reason = is_array($changes) ? ($changes['reason'] ?? null) : null;
+            $events[] = [
+                'time' => $rejection->created_at?->format('d/m/Y H:i'),
+                'label' => 'Ditolak',
+                'detail' => $reason ? "Alasan: {$reason}" : 'Tidak ada alasan',
+                'type' => 'rejected',
+                'by' => $rejection->user?->name,
+            ];
+        }
+
+        foreach ($record->signatures->sortBy('signed_at') as $sig) {
+            $stageLabel = match ($sig->stage->value) {
+                'technician' => 'Teknisi',
+                'pic' => 'User PIC',
+                'supervisor' => 'Atasan',
+                default => $sig->stage->label(),
+            };
+            $events[] = [
+                'time' => $sig->signed_at?->format('d/m/Y H:i'),
+                'label' => "Ditandatangani oleh {$stageLabel}",
+                'detail' => $sig->signed_by_name ?? 'Tidak diketahui',
+                'type' => 'signed',
+                'note' => $sig->note,
+            ];
+        }
+
+        if ($record->updated_at) {
+            $events[] = [
+                'time' => $record->updated_at?->format('d/m/Y H:i'),
+                'label' => 'Terakhir diperbarui',
+                'detail' => 'Data checklist atau status berubah',
+                'type' => 'updated',
+            ];
+        }
+
+        usort($events, function ($a, $b) {
+            return strtotime(str_replace('/', '-', $a['time'])) <=> strtotime(str_replace('/', '-', $b['time']));
+        });
+
+        return Inertia::render('Pm/HistoryModal', [
+            'machine' => [
+                'id' => $machine->id,
+                'code' => $machine->code,
+                'name' => $machine->name,
+            ],
+            'record' => [
+                'id' => $record->id,
+                'status' => $record->status->value,
+                'status_label' => $record->status->label(),
+                'technician_name' => $record->technicianName(),
+                'revision_count' => $record->revision_count,
+                'general_note' => $record->general_note,
+                'timeline' => $events,
+            ],
+            'period' => $period->value,
+            'year' => $year,
+        ]);
     }
 }
