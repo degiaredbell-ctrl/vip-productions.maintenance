@@ -3,7 +3,7 @@ import NeuCard from '@/Components/NeuCard';
 import NeuPill from '@/Components/NeuPill';
 import NeuButton from '@/Components/NeuButton';
 
-export default function History({ auth, machine, records }) {
+export default function History({ auth, machine, records, returnTo }) {
     const statusLabels = {
         draft: 'Menunggu Tanda Tangan',
         submitted: 'On Progress Approval by User PIC',
@@ -23,7 +23,7 @@ export default function History({ auth, machine, records }) {
         <AuthenticatedLayout user={auth.user}>
             <div className="page-container">
                 <div className="flex items-center gap-3 mb-5">
-                    <NeuButton href={route('machines.index')} className="!px-3">
+                    <NeuButton href={returnTo === 'utility' ? route('utility.index') : route('machines.index')} className="!px-3">
                         ‹ Kembali
                     </NeuButton>
                     <div>

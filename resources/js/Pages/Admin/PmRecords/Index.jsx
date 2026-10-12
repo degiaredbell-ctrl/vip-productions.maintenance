@@ -94,7 +94,47 @@ export default function AdminPmRecordsIndex({ auth, records, filters, years, per
                     <p className="text-neu-sub text-sm mt-1">Lihat, filter, dan hapus semua PM Record di sistem</p>
                 </div>
 
+                {!localFilters.type && (
+                    <div className="mb-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <button
+                            type="button"
+                            onClick={() => applyFilters({ type: 'generic' })}
+                            className="neu-card text-left p-6 hover:shadow-neu-in transition-shadow"
+                        >
+                            <h2 className="text-lg font-bold">Machine</h2>
+                            <p className="text-sm text-neu-sub mt-1">Tampilkan PM Records kategori Mesin</p>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => applyFilters({ type: 'utility' })}
+                            className="neu-card text-left p-6 hover:shadow-neu-in transition-shadow"
+                        >
+                            <h2 className="text-lg font-bold">Utilities</h2>
+                            <p className="text-sm text-neu-sub mt-1">Tampilkan PM Records kategori Utility</p>
+                        </button>
+                    </div>
+                )}
+
+                {localFilters.type && (
+                    <div className="mb-3 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <NeuButton
+                                type="button"
+                                variant="ghost"
+                                onClick={() => applyFilters({ type: undefined })}
+                                className="!min-h-[36px] !px-3 !py-1.5 text-xs"
+                            >
+                                ‹ Kembali
+                            </NeuButton>
+                            <h2 className="text-sm font-bold">
+                                {localFilters.type === 'utility' ? 'Utilities' : 'Machine'}
+                            </h2>
+                        </div>
+                    </div>
+                )}
+
                 {/* Filter Form */}
+                {localFilters.type && (
                 <NeuCard className="mb-4">
                     <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -182,17 +222,19 @@ export default function AdminPmRecordsIndex({ auth, records, filters, years, per
 
                         {(Object.keys(localFilters).length > 0 && Object.values(localFilters).some(v => v)) && (
                             <div className="flex items-center justify-end pt-2">
-                                <NeuButton type="button" onClick={clearFilters} variant="ghost" className="!min-h-[40px] !px-3">
+                                <button type="button" onClick={clearFilters} className="neu-btn !min-h-[40px] !px-3 !py-1.5 text-xs">
                                     Bersihkan Filter
-                                </NeuButton>
+                                </button>
                             </div>
                         )}
                     </form>
                 </NeuCard>
+                )}
 
                 {/* Records Table */}
-                <NeuCard>
-                    {records.data.length === 0 ? (
+                {localFilters.type && (
+                    <NeuCard>
+                        {records.data.length === 0 ? (
                         <div className="text-center py-12">
                             <ApplicationLogo className="w-16 h-16 mx-auto mb-4 text-neu-sub" />
                             <p className="text-neu-sub text-lg">Tidak ada PM Record yang cocok</p>
@@ -315,6 +357,7 @@ export default function AdminPmRecordsIndex({ auth, records, filters, years, per
                         </>
                     )}
                 </NeuCard>
+                )}
             </div>
         </AuthenticatedLayout>
     );

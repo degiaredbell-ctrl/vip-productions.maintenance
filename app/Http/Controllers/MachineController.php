@@ -245,6 +245,7 @@ class MachineController extends Controller
                 'week_group' => $machine->week_group,
             ],
             'records' => $records,
+            'returnTo' => $request->query('return'),
         ]);
     }
 }

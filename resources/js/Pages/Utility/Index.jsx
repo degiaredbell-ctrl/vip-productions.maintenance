@@ -217,7 +217,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                             <Link href={route('machines.pm.create', { machine: unit.id, return: 'utility' })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Isi PM</Link>
                                         )}
                                         {can.history && (
-                                            <Link href={route('machines.history', { machine: unit.id })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Riwayat</Link>
+                                            <Link href={route('machines.history', { machine: unit.id, return: 'utility' })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Riwayat</Link>
                                         )}
                                         {auth.can?.update && (
                                             <NeuButton size="sm" variant="ghost" onClick={() => startEdit(unit)}>Ubah</NeuButton>
