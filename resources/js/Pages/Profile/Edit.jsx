@@ -7,12 +7,12 @@ import UpdateProfileInformationForm from './Partials/UpdateProfileInformationFor
 export default function Edit({ mustVerifyEmail, status }) {
     return (
         <AuthenticatedLayout>
-            <Head title="Profil" />
+            <Head title="Profile" />
 
             <div className="page-container">
                 <div className="mb-6">
                     <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
-                    <h1 className="text-xl sm:text-2xl font-bold">Profil Pengguna</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold">Profile Pengguna</h1>
                 </div>
 
                 <div className="space-y-4 max-w-2xl">

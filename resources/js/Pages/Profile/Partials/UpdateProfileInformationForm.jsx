@@ -26,7 +26,7 @@ export default function UpdateProfileInformation({
     return (
         <NeuCard>
             <header className="mb-4">
-                <h2 className="text-lg font-bold text-neu-text">Informasi Profil</h2>
+                <h2 className="text-lg font-bold text-neu-text">Informasi Profile</h2>
                 <p className="mt-1 text-sm text-neu-sub">
                     Perbarui nama dan alamat email akun Anda.
                 </p>
