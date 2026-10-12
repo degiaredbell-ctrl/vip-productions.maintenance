@@ -9,7 +9,7 @@ import NeuSignaturePad from '@/Components/NeuSignaturePad';
 import SignatureActions from '@/Components/SignatureActions';
 import SignatureChain from '@/Components/SignatureChain';
 import { useRef, useState } from 'react';
-import PmHistoryModal from '@/Pages/Pm/HistoryModal';
+
 
 export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain }) {
     const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
@@ -19,7 +19,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
     // Detail stempel waktu dokumen: tertutup sebagai default supaya checklist
     // tetap yang pertama terlihat, dan hanya bisa dibuka dari barisnya.
     const [showHistory, setShowHistory] = useState(true);
-    const [showPmHistory, setShowPmHistory] = useState(false);
+
     const padRef = useRef(null);
 
     const { data, setData, post, processing } = useForm({
@@ -167,14 +167,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                         </p>
                         <p className="text-xs text-neu-sub">Periode {period} {year}</p>
                     </div>
-                    {existing && (
-                        <NeuButton
-                            onClick={() => setShowPmHistory(true)}
-                            className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs !text-neu-info"
-                        >
-                            Riwayat
-                        </NeuButton>
-                    )}
+
                 </div>
 
                 {/*
@@ -562,19 +555,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                         />
                     )}
 
-                {/* Modal Riwayat PM */}
-                {showPmHistory && existing && (
-                    <PmHistoryModal
-                        machine={{
-                            id: machine.id,
-                            code: machine.code,
-                            name: machine.name,
-                        }}
-                        period={period}
-                        year={year}
-                        onClose={() => setShowPmHistory(false)}
-                    />
-                )}
+
 
             </div>
         </AuthenticatedLayout>

@@ -13,6 +13,8 @@ class Machine extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'assets';
+
     protected $fillable = [
         'code', 'name', 'location', 'category', 'sub_category',
         'type', 'week_group', 'template_id', 'is_active', 'sort_no',

@@ -15,7 +15,7 @@ class StoreMachineRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'code' => ['required', 'string', 'max:20', Rule::unique('machines', 'code')->ignore($this->machine?->id)],
+            'code' => ['required', 'string', 'max:20', Rule::unique('assets', 'code')->ignore($this->machine?->id)],
             'name' => ['required', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:100'],
             'category' => ['nullable', 'string', 'max:50'],

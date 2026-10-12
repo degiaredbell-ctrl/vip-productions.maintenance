@@ -56,7 +56,7 @@ class ComponentController extends Controller
 
         return Inertia::render('Admin/Components', [
             'components' => $components,
-            'machines' => $machines,
+            'assets' => $machines,
             'categories' => Component::query()
                 ->orderBy('category')
                 ->distinct()

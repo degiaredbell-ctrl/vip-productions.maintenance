@@ -84,7 +84,7 @@ class ComponentMigrationService
 
         return [
             'components' => count($componentIds),
-            'machines' => $machineCount,
+            'assets' => $machineCount,
         ];
     }
 

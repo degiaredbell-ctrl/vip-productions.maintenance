@@ -494,7 +494,7 @@ class PmRecordController extends Controller
             ->first();
 
         if (!$record) {
-            return Inertia::render('Pm/HistoryModal', [
+            $payload = [
                 'machine' => [
                     'id' => $machine->id,
                     'code' => $machine->code,
@@ -504,7 +504,13 @@ class PmRecordController extends Controller
                 'period' => $period->value,
                 'year' => $year,
                 'error' => 'PM Record tidak ditemukan untuk periode ini.',
-            ]);
+            ];
+
+            if ($request->wantsJson()) {
+                return response()->json($payload);
+            }
+
+            return Inertia::render('Pm/HistoryModal', $payload);
         }
 
         // Build timeline (reuse logic from buildTimeline)
@@ -560,7 +566,7 @@ class PmRecordController extends Controller
             return strtotime(str_replace('/', '-', $a['time'])) <=> strtotime(str_replace('/', '-', $b['time']));
         });
 
-        return Inertia::render('Pm/HistoryModal', [
+        $payload = [
             'machine' => [
                 'id' => $machine->id,
                 'code' => $machine->code,
@@ -577,6 +583,12 @@ class PmRecordController extends Controller
             ],
             'period' => $period->value,
             'year' => $year,
-        ]);
+        ];
+
+        if ($request->wantsJson()) {
+            return response()->json($payload);
+        }
+
+        return Inertia::render('Pm/HistoryModal', $payload);
     }
 }

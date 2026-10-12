@@ -6,7 +6,7 @@ import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import MachineFields from '@/Components/MachineFields';
-import PmHistoryModal from '@/Pages/Pm/HistoryModal';
+
 
 const EMPTY_MACHINE = {
     code: '',
@@ -63,22 +63,7 @@ export default function Machines({ auth, machines, types, templates, categories,
     const [busyId, setBusyId] = useState(null);
     const [showTrashed, setShowTrashed] = useState(false);
 
-    // Modal riwayat PM
-    const [pmHistoryMachine, setPmHistoryMachine] = useState(null);
-    const [pmHistoryPeriod, setPmHistoryPeriod] = useState(null);
-    const [pmHistoryYear, setPmHistoryYear] = useState(null);
 
-    const openPmHistory = (machine, period = null, year = null) => {
-        setPmHistoryMachine(machine);
-        setPmHistoryPeriod(period);
-        setPmHistoryYear(year);
-    };
-
-    const closePmHistory = () => {
-        setPmHistoryMachine(null);
-        setPmHistoryPeriod(null);
-        setPmHistoryYear(null);
-    };
 
     const typeLabels = useMemo(
         () => Object.fromEntries((types ?? []).map((t) => [t.value, t.label])),
@@ -256,7 +241,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                                     {confirmingId === machine.id ? (
                                         <div className="mt-3 neu-inset rounded-neu-sm px-3.5 py-3 flex flex-wrap items-center gap-2">
                                             <p className="text-xs font-bold text-neu-bad flex-1 min-w-[14rem]">
-                                                Hapus mesin ini dari daftar? Riwayat PM tetap tersimpan dan bisa dipulihkan.
+                                                Hapus mesin ini dari daftar? Riwayat tetap tersimpan dan bisa dipulihkan.
                                             </p>
                                             <NeuButton
                                                 onClick={() => destroyMachine(machine)}
@@ -277,12 +262,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                                             >
                                                 Riwayat
                                             </Link>
-                                            <NeuButton
-                                                onClick={() => openPmHistory(machine)}
-                                                className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs !text-neu-info"
-                                            >
-                                                Riwayat PM
-                                            </NeuButton>
+
                                             <NeuButton
                                                 onClick={() => startEdit(machine)}
                                                 className="!min-h-[36px] !px-3 !py-1.5 text-xs"
@@ -354,19 +334,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                 )}
             </div>
 
-            {/* Modal Riwayat PM */}
-            {pmHistoryMachine && (
-                <PmHistoryModal
-                    machine={{
-                        id: pmHistoryMachine.id,
-                        code: pmHistoryMachine.code,
-                        name: pmHistoryMachine.name,
-                    }}
-                    period={pmHistoryPeriod}
-                    year={pmHistoryYear}
-                    onClose={closePmHistory}
-                />
-            )}
+
 
         </AuthenticatedLayout>
     );
