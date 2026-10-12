@@ -49,7 +49,6 @@ const machineToForm = (machine) => ({
 });
 
 export default function Machines({ auth, machines, types, templates, categories, subCategories, trashed }) {
-    const createForm = useForm({ ...EMPTY_MACHINE });
     const editForm = useForm({ ...EMPTY_MACHINE });
 
     // Daftar mesin sekarang 120+ baris, jadi pencarian dan filter area
@@ -98,17 +97,6 @@ export default function Machines({ auth, machines, types, templates, categories,
                 .some((v) => String(v).toLowerCase().includes(needle));
         });
     }, [machines, q, sub, typeLabels]);
-
-    const submitCreate = (e) => {
-        e.preventDefault();
-
-        createForm.post(route('machines.store'), {
-            preserveScroll: true,
-            // Tanpa reset, isian mesin yang barusan ditambahkan masih tertinggal
-            // di formulir dan terlihat seperti gagal disimpan.
-            onSuccess: () => createForm.reset(),
-        });
-    };
 
     const startEdit = (machine) => {
         setConfirmingId(null);
@@ -177,31 +165,7 @@ export default function Machines({ auth, machines, types, templates, categories,
                     </div>
                 </div>
 
-                {/* Add form */}
-                <NeuCard className="mb-5">
-                    <h2 className="font-bold text-sm mb-3">Tambah Mesin</h2>
-                    <form onSubmit={submitCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        <MachineFields
-                            data={createForm.data}
-                            setData={createForm.setData}
-                            clearErrors={createForm.clearErrors}
-                            errors={createForm.errors}
-                            types={types}
-                            templates={templates}
-                            categories={categories}
-                            subCategories={subCategories}
-                            onSubCategoryChange={applySubCategory(createForm.setData)}
-                            idPrefix="tambah"
-                        />
-                        <div className="sm:col-span-2">
-                            <NeuButton type="submit" variant="primary" disabled={createForm.processing}>
-                                {createForm.processing ? 'Menambahkan...' : '+ Tambah Mesin'}
-                            </NeuButton>
-                        </div>
-                    </form>
-                </NeuCard>
-
-                {/* Search + filter area */}
+                {/* Search + filter area (diletakkan di atas form tambah, sama seperti halaman Utility) */}
                 <div className="mb-4">
                     <input
                         type="search"
