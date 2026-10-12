@@ -19,11 +19,18 @@ class ReportController extends Controller
         $period = $request->query('period');
 
         $compliance = ReportService::complianceByPeriod($year);
-        $topParts = ReportService::topReplacedParts();
+        $topParts = ReportService::topReplacedParts($year, $period);
         $actions = ReportService::actionSummary($year, $period);
 
-        $totalPm = PmRecord::where('year', $year)->count();
-        $totalApproved = PmRecord::where('year', $year)->where('status', 'approved')->count();
+        // Statistik ikut filter periode supaya angka di kartu atas sinkron
+        // dengan Ringkasan Tindakan dan daftar komponen di bawahnya.
+        $totalPm = PmRecord::where('year', $year)
+            ->when($period, fn ($q) => $q->where('period', $period))
+            ->count();
+        $totalApproved = PmRecord::where('year', $year)
+            ->where('status', 'approved')
+            ->when($period, fn ($q) => $q->where('period', $period))
+            ->count();
 
         return Inertia::render('Reports/Index', [
             'compliance' => $compliance,
@@ -58,7 +65,7 @@ class ReportController extends Controller
             'year' => $year,
             'period' => $period,
             'compliance' => ReportService::complianceByPeriod($year),
-            'topParts' => ReportService::topReplacedParts(),
+            'topParts' => ReportService::topReplacedParts($year, $period),
             'actions' => ReportService::actionSummary($year, $period),
             // Detail komponen diganti + mesinnya, dibatasi tahun/periode yang
             // sedang diekspor supaya cocok dengan angka di halaman laporan.

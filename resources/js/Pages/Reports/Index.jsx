@@ -4,6 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuBars from '@/Components/NeuBars';
 import NeuButton from '@/Components/NeuButton';
+import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 
 export default function Reports({ auth, compliance, topParts, actions, totalPm, totalApproved, year, period, periods }) {
@@ -14,11 +15,10 @@ export default function Reports({ auth, compliance, topParts, actions, totalPm, 
         setSelectedPeriod(period || '');
     }, [year, period]);
 
-    const handlePeriodChange = (e) => {
-        const value = e.target.value;
+    const applyPeriod = (value) => {
         if (value === selectedPeriod) return;
         setSelectedPeriod(value);
-        router.get(route('reports.index'), { year, period: value }, {
+        router.get(route('reports.index'), { year, period: value || undefined }, {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -30,22 +30,36 @@ export default function Reports({ auth, compliance, topParts, actions, totalPm, 
     return (
         <AuthenticatedLayout user={auth.user}>
             <div className="page-container">
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between mb-3">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold">Laporan PM</h1>
                         <p className="text-sm text-neu-sub">Tahun {year}</p>
                     </div>
-                    <select
-                        value={selectedPeriod}
-                        onChange={handlePeriodChange}
-                        className="neu-input !w-auto"
-                        aria-label="Filter periode"
+                </div>
+
+                {/* Filter Periode - tombol terpilih, mengikuti pola halaman
+                    Persetujuan supaya semua filter periode tampil seragam. */}
+                <div
+                    className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-4"
+                    role="group"
+                    aria-label="Filter periode"
+                >
+                    <NeuChip
+                        active={!selectedPeriod}
+                        onClick={() => applyPeriod('')}
                     >
-                        <option value="">Semua Periode</option>
-                        {periods.map((p) => (
-                            <option key={p.value} value={p.value}>{p.label}</option>
-                        ))}
-                    </select>
+                        Semua Periode
+                    </NeuChip>
+                    {periods.map((p) => (
+                        <NeuChip
+                            key={p.value}
+                            active={selectedPeriod === p.value}
+                            onClick={() => applyPeriod(p.value)}
+                            aria-label={`Periode ${p.label}`}
+                        >
+                            {p.label}
+                        </NeuChip>
+                    ))}
                 </div>
 
                 {/* Stats */}

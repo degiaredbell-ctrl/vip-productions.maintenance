@@ -45,11 +45,24 @@ class ReportService
         return $result;
     }
 
-    public static function topReplacedParts(int $limit = 5): array
+    /**
+     * Komponen paling sering diganti, dibatasi tahun dan (opsional) periode
+     * yang sedang dilihat.
+     *
+     * Sebelumnya fungsi ini menghitung seluruh tahun sekaligus sehingga
+     * angkanya tidak sinkron dengan Ringkasan Tindakan / Detail Komponen
+     * Diganti yang sudah difilter. Sekarang sumbernya PM record yang sama
+     * supaya ringkasan dan rincian selalu cocok.
+     */
+    public static function topReplacedParts(int $year, ?string $period = null, int $limit = 5): array
     {
-        return PmRecordItem::where('act_replace', true)
-            ->select('item_name', DB::raw('SUM(parts_replaced) as total'))
-            ->groupBy('item_name')
+        return PmRecordItem::query()
+            ->join('pm_records', 'pm_record_items.pm_record_id', '=', 'pm_records.id')
+            ->where('pm_record_items.act_replace', true)
+            ->where('pm_records.year', $year)
+            ->when($period, fn ($q) => $q->where('pm_records.period', $period))
+            ->select('pm_record_items.item_name', DB::raw('SUM(pm_record_items.parts_replaced) as total'))
+            ->groupBy('pm_record_items.item_name')
             ->orderByDesc('total')
             ->limit($limit)
             ->get()
