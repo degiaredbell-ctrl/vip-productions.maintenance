@@ -29,6 +29,33 @@ abstract class TestCase extends BaseTestCase
         $app['config']->set('database.default', 'sqlite');
         $app['config']->set('database.connections.sqlite.database', ':memory:');
 
+        /*
+            Sama seperti koneksi DB: APP_ENV di phpunit.xml hanya menyentuh
+            $_ENV, sedangkan container mengisi $_SERVER lebih dulu dan env()
+            membacanya dari sana. Akibatnya app tetap dianggap production,
+            lalu migrate:fresh (dipakai RefreshDatabase) dibatalkan oleh
+            pengaman "APPLICATION IN PRODUCTION" dan seluruh test DB gagal
+            dengan "no such table: users". Ditetapkan lewat config agar
+            phpunit selalu berjalan sebagai environment testing.
+        */
+        $app['config']->set('app.env', 'testing');
+
+        /*
+            config('app.env') saja tidak cukup: Application::isProduction()
+            membaca binding container 'env' yang diisi tahap DetectEnvironment,
+            bukan config. Tanpa baris ini app()->isProduction() tetap true dan
+            migrate:fresh dibatalkan.
+        */
+        $app['env'] = 'testing';
+
+        /*
+            phpunit.xml menetapkan SESSION_DRIVER=array, tapi sama seperti
+            APP_ENV, nilainya kalah oleh $_SERVER dari container. Akibatnya
+            request tanpa RefreshDatabase (mis. ExampleTest) menabrak tabel
+            sessions yang tidak ada. Dipaksa lewat config agar konsisten.
+        */
+        $app['config']->set('session.driver', 'array');
+
         return $app;
     }
 }

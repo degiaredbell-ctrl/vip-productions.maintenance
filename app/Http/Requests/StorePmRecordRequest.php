@@ -37,7 +37,7 @@ class StorePmRecordRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'machine_id' => ['required', 'exists:machines,id'],
+            'machine_id' => ['required', 'exists:assets,id'],
             'year' => ['required', 'integer', 'min:2020', 'max:' . (date('Y') + 1)],
             'period' => ['required', Rule::enum(Period::class)],
             // Nama teknisi wajib diketik manual: nama ini yang jadi rujukan

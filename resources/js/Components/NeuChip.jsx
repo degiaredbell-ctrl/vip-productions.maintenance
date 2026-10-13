@@ -6,12 +6,14 @@ const DOT_LABELS = {
     muted: 'Periode belum dibuka',
 };
 
-export default function NeuChip({ children, active = false, onClick, className = '', dot = null, title, ...props }) {
+export default function NeuChip({ children, active = false, onClick, className = '', size = 'md', dot = null, title, ...props }) {
+    const sizeClass = size === 'sm' ? 'neu-chip-sm' : '';
+
     return (
         <button
             type="button"
             onClick={onClick}
-            className={`neu-chip ${active ? 'neu-chip-active' : ''} ${className}`}
+            className={`neu-chip ${sizeClass} ${active ? 'neu-chip-active' : ''} ${className}`}
             aria-pressed={active}
             {...(dot ? { title: title ?? DOT_LABELS[dot], 'aria-label': `${children} — ${DOT_LABELS[dot]}` } : {})}
             {...props}

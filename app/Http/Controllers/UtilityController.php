@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\MachineType;
+use App\Enums\Role;
 use App\Models\ChecklistTemplate;
 use App\Models\Machine;
 use Illuminate\Http\Request;
@@ -89,6 +90,9 @@ class UtilityController extends Controller
             'can' => [
                 'fill' => $user->can('pm.fill'),
                 'history' => $user->can('pm.history.view'),
+                // Hanya Admin yang boleh mengelola (tambah/ubah/hapus/pulihkan)
+                // unit utility. Teknisi/manager tetap bisa membuka form PM.
+                'manage' => $user->hasRole(Role::Admin->value),
             ],
         ]);
     }

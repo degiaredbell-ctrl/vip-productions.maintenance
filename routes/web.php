@@ -29,7 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Persetujuan (rantai tanda tangan 3 tahap)
@@ -76,11 +76,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('machines.history')
         ->middleware('can:pm.history.view');
 
-    // Utility: daftar unit utility + komponen maintenance. Data read-only dari
-    // CSV; teknisi tetap bisa membuka form PM unit di sini.
+    // Utility: daftar unit utility + komponen maintenance. Halaman dapat
+    // dikelola (CRUD) oleh Admin lewat rute khusus di bawah; teknisi tetap
+    // bisa membuka form PM unit dari sini.
     Route::get('/utility', [UtilityController::class, 'index'])
         ->name('utility.index')
         ->middleware('can:dashboard.view');
+
+    // CRUD Utility khusus role Admin. Tabel `assets` menampung mesin dan
+    // utility, jadi eksekusinya memakai MachineController supaya validasi,
+    // audit log, dan perilaku soft delete tetap satu sumber. Parameter
+    // bernama `machine` supaya aturan unik kode dan model binding bawaan
+    // MachineController tetap bekerja.
+    Route::middleware('role:admin')->group(function () {
+        Route::post('/utility', [MachineController::class, 'store'])->name('utility.store');
+        Route::put('/utility/{machine}', [MachineController::class, 'update'])->name('utility.update');
+        Route::delete('/utility/{machine}', [MachineController::class, 'destroy'])->name('utility.destroy');
+        Route::patch('/utility/{machine}/restore', [MachineController::class, 'restore'])
+            ->name('utility.restore')
+            ->whereNumber('machine');
+    });
 
     // Reports
     Route::get('/reports', [ReportController::class, 'index'])

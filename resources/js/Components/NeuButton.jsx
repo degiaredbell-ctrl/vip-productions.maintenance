@@ -1,8 +1,9 @@
 import { Link } from '@inertiajs/react';
 
-export default function NeuButton({ children, href, onClick, type = 'button', variant = 'default', className = '', disabled = false, native = false, ...props }) {
+export default function NeuButton({ children, href, onClick, type = 'button', variant = 'default', size = 'md', className = '', disabled = false, native = false, ...props }) {
     const baseClass = variant === 'primary' ? 'neu-btn-primary' : 'neu-btn';
-    const fullClass = `${baseClass} ${className}`;
+    const sizeClass = size === 'sm' ? 'neu-btn-sm' : '';
+    const fullClass = `${baseClass} ${sizeClass} ${className}`.trim();
 
     if (href) {
         // Unduhan (ekspor/cetak) harus memakai anchor biasa: Inertia hanya

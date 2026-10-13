@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuButton from '@/Components/NeuButton';
@@ -63,6 +63,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
 
     const [q, setQ] = useState('');
     const [sub, setSub] = useState('all');
+    const [showCreate, setShowCreate] = useState(false);
     const [expandedId, setExpandedId] = useState(null);
     const [editingId, setEditingId] = useState(null);
     const [confirmingId, setConfirmingId] = useState(null);
@@ -84,9 +85,12 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
 
     const submitCreate = (e) => {
         e.preventDefault();
-        createForm.post(route('machines.store'), {
+        createForm.post(route('utility.store'), {
             preserveScroll: true,
-            onSuccess: () => createForm.reset(),
+            onSuccess: () => {
+                createForm.reset();
+                setShowCreate(false);
+            },
         });
     };
 
@@ -99,7 +103,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
 
     const submitEdit = (e) => {
         e.preventDefault();
-        editForm.put(route('machines.update', editingId), {
+        editForm.put(route('utility.update', editingId), {
             preserveScroll: true,
             onSuccess: () => setEditingId(null),
         });
@@ -118,7 +122,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
 
     const confirmDelete = (machine) => {
         setBusyId(machine.id);
-        router.delete(route('machines.destroy', machine.id), {
+        router.delete(route('utility.destroy', machine.id), {
             preserveScroll: true,
             onFinish: () => {
                 setBusyId(null);
@@ -133,7 +137,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
 
     const restore = (machine) => {
         setBusyId(machine.id);
-        router.patch(route('machines.restore', machine.id), {}, {
+        router.patch(route('utility.restore', machine.id), {}, {
             preserveScroll: true,
             onFinish: () => setBusyId(null),
         });
@@ -144,12 +148,25 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
     return (
         <AuthenticatedLayout user={auth.user}>
             <div className="page-container">
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between gap-3 mb-5">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold">Utility</h1>
                         <p className="text-sm text-neu-sub">{utilities.length} unit utility terdaftar{visible.length !== utilities.length && ` · ${visible.length} ditampilkan`}</p>
                     </div>
-                    <NeuButton onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} variant="ghost">Kembali ke atas</NeuButton>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {can.manage && (
+                            <NeuButton
+                                variant="primary"
+                                onClick={() => {
+                                    if (showCreate) createForm.reset();
+                                    setShowCreate((v) => !v);
+                                }}
+                            >
+                                {showCreate ? 'Tutup' : 'Tambah Utility'}
+                            </NeuButton>
+                        )}
+                        <NeuButton onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} variant="ghost">Kembali ke atas</NeuButton>
+                    </div>
                 </div>
 
                 <div className="mb-4">
@@ -163,13 +180,36 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                     ))}
                 </div>
 
-                {auth.can?.create && (
+                {can.manage && showCreate && (
                     <NeuCard className="mb-4">
                         <h2 className="text-sm font-semibold mb-3">Tambah Utility</h2>
                         <form className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3" onSubmit={submitCreate}>
-                            <MachineFields form={createForm} types={types} templates={templates} categories={categories} subCategories={subCategories} applySubCategory={applySubCategory} />
-                            <div className="sm:col-span-2 flex justify-end">
-                                <NeuButton type="submit" disabled={createForm.processing}>Simpan Utility</NeuButton>
+                            <MachineFields
+                                data={createForm.data}
+                                setData={createForm.setData}
+                                clearErrors={createForm.clearErrors}
+                                errors={createForm.errors}
+                                types={types}
+                                templates={templates}
+                                categories={categories}
+                                subCategories={subCategories}
+                                onSubCategoryChange={applySubCategory(createForm.setData)}
+                                idPrefix="utility-baru"
+                            />
+                            <div className="sm:col-span-2 flex flex-wrap justify-end gap-2">
+                                <NeuButton
+                                    type="button"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        createForm.reset();
+                                        setShowCreate(false);
+                                    }}
+                                >
+                                    Batal
+                                </NeuButton>
+                                <NeuButton type="submit" disabled={createForm.processing}>
+                                    {createForm.processing ? 'Menyimpan...' : 'Simpan Utility'}
+                                </NeuButton>
                             </div>
                         </form>
                     </NeuCard>
@@ -214,18 +254,18 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
 
                                     <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
                                         {can.fill && (
-                                            <Link href={route('machines.pm.create', { machine: unit.id, return: 'utility' })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Isi PM</Link>
+                                            <NeuButton href={route('machines.pm.create', { machine: unit.id, return: 'utility' })} size="sm">Isi PM</NeuButton>
                                         )}
                                         {can.history && (
-                                            <Link href={route('machines.history', { machine: unit.id, return: 'utility' })} className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs">Riwayat</Link>
+                                            <NeuButton href={route('machines.history', { machine: unit.id, return: 'utility' })} size="sm">Riwayat</NeuButton>
                                         )}
-                                        {auth.can?.update && (
+                                        {can.manage && (
                                             <NeuButton size="sm" variant="ghost" onClick={() => startEdit(unit)}>Ubah</NeuButton>
                                         )}
-                                        {auth.can?.delete && (
+                                        {can.manage && (
                                             <NeuButton size="sm" variant="ghost" onClick={() => askDelete(unit)}>Hapus</NeuButton>
                                         )}
-                                        <NeuChip active={expanded} onClick={() => setExpandedId(expanded ? null : unit.id)} aria-label="Lihat komponen maintenance">
+                                        <NeuChip size="sm" active={expanded} onClick={() => setExpandedId(expanded ? null : unit.id)} aria-label="Lihat komponen maintenance">
                                             {expanded ? 'Tutup' : `Komponen${unit.component_count > 0 ? ` (${unit.component_count})` : ''}`}
                                         </NeuChip>
                                     </div>
@@ -234,10 +274,23 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                         <div className="mt-4 pt-4 border-t border-neu-border/70">
                                             <h3 className="text-sm font-semibold mb-3">Ubah Utility</h3>
                                             <form className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3" onSubmit={submitEdit}>
-                                                <MachineFields form={editForm} types={types} templates={templates} categories={categories} subCategories={subCategories} applySubCategory={applySubCategory} isEditing />
+                                                <MachineFields
+                                                    data={editForm.data}
+                                                    setData={editForm.setData}
+                                                    clearErrors={editForm.clearErrors}
+                                                    errors={editForm.errors}
+                                                    types={types}
+                                                    templates={templates}
+                                                    categories={categories}
+                                                    subCategories={subCategories}
+                                                    onSubCategoryChange={applySubCategory(editForm.setData)}
+                                                    idPrefix={`utility-ubah-${unit.id}`}
+                                                />
                                                 <div className="sm:col-span-2 flex flex-wrap gap-2 justify-end">
-                                                    <NeuButton type="button" variant="ghost" onClick={cancelEdit}>Batal</NeuButton>
-                                                    <NeuButton type="submit" disabled={editForm.processing}>Simpan Perubahan</NeuButton>
+                                                    <NeuButton type="button" size="sm" variant="ghost" onClick={cancelEdit}>Batal</NeuButton>
+                                                    <NeuButton type="submit" size="sm" disabled={editForm.processing}>
+                                                        {editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                                    </NeuButton>
                                                 </div>
                                             </form>
                                         </div>
@@ -247,8 +300,8 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                         <div className="mt-4 pt-4 border-t border-neu-border/70">
                                             <p className="text-sm mb-3">Yakin ingin menghapus utility <b>{unit.code}</b> — {unit.name}?</p>
                                             <div className="flex gap-2 justify-end">
-                                                <NeuButton type="button" variant="ghost" onClick={cancelDelete}>Batal</NeuButton>
-                                                <NeuButton type="button" variant="bad" onClick={() => confirmDelete(unit)} disabled={busyId === unit.id}>Hapus</NeuButton>
+                                                <NeuButton type="button" size="sm" variant="ghost" onClick={cancelDelete}>Batal</NeuButton>
+                                                <NeuButton type="button" size="sm" variant="bad" onClick={() => confirmDelete(unit)} disabled={busyId === unit.id}>Hapus</NeuButton>
                                             </div>
                                         </div>
                                     )}
@@ -279,7 +332,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                                     <b className="block text-sm truncate">{machine.name}</b>
                                                     <span className="block text-xs text-neu-sub truncate">{machine.code} · Dihapus {machine.deleted_at}</span>
                                                 </div>
-                                                {auth.can?.restore && (
+                                                {can.manage && (
                                                     <NeuButton type="button" size="sm" variant="ghost" onClick={() => restore(machine)} disabled={busyId === machine.id}>Pulihkan</NeuButton>
                                                 )}
                                             </div>

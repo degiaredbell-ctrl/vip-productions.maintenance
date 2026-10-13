@@ -115,6 +115,15 @@
         @apply bg-neu-accent brightness-95 shadow-[5px_5px_12px_#C3CAD6,-5px_-5px_12px_#FFFFFF];
     }
 
+    /*
+        Varian ukuran kecil untuk deretan tombol aksi di dalam kartu, mis. di
+        halaman Utility. Ditaruh setelah .neu-btn/.neu-btn-primary agar padding,
+        tinggi minimum, dan ukuran hurufnya seragam menimpa nilai dasar.
+    */
+    .neu-btn-sm {
+        @apply px-3 py-1.5 text-xs min-h-[36px];
+    }
+
     .neu-input {
         @apply w-full rounded-neu-sm bg-neu-bg px-4 py-3 shadow-neu-in outline-none text-neu-text placeholder:text-neu-sub/60 min-h-[44px];
     }
@@ -170,6 +179,11 @@
 
     .neu-chip:disabled {
         @apply opacity-40 cursor-not-allowed shadow-neu-in;
+    }
+
+    /* Varian kecil chip, ukurannya disamakan dengan .neu-btn-sm. */
+    .neu-chip-sm {
+        @apply px-3 py-1.5 text-xs min-h-[36px];
     }
 
     .neu-pill {

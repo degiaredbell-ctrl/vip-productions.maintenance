@@ -122,7 +122,7 @@ class ComponentController extends Controller
     public function assign(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'machine_id' => ['required', 'exists:machines,id'],
+            'machine_id' => ['required', 'exists:assets,id'],
             'component_ids' => ['array'],
             'component_ids.*' => ['integer', 'exists:components,id'],
         ]);
