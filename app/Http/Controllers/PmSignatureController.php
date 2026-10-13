@@ -27,10 +27,14 @@ class PmSignatureController extends Controller
 
         abort_if($path === null, 404);
 
-        return response()->file($path, [
+        // Cache-Control ditetapkan sesudah response dibuat: BinaryFileResponse
+        // menulis Cache-Control sendiri saat dikonstruksi, jadi header yang lewat
+        // array konstruktor bisa digabung/tertimpa (mis. jadi "public").
+        $response = response()->file($path, [
             'Content-Type' => 'image/png',
-            // Signature bersifat pribadi dan tidak boleh disimpan di cache bersama.
-            'Cache-Control' => 'private, max-age=86400',
         ]);
+        $response->headers->set('Cache-Control', 'private, max-age=86400');
+
+        return $response;
     }
 }

@@ -2,12 +2,18 @@ import { useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 
 /**
- * Logika approve/tolak satu PM: gambar tanda tangan, catatan, dan status
- * request-nya.
+ * Logika approve/tolak satu PM: tanda tangan, catatan, dan status request-nya.
  *
  * Dipisah dari tampilan supaya `SignatureActions` (kartu utuh di form PM) tidak
  * bercampur dengan request-nya. Antrean Persetujuan tidak memakai hook ini
  * lagi karena di sana tidak ada penandatanganan.
+ *
+ * Sumber tanda tangan ada dua (dipilih lewat `mode`):
+ *
+ * - `saved`: memakai tanda tangan tersimpan di halaman Profile akun yang login
+ *   (`use_saved_signature` di payload). Approve langsung, tanpa menggambar.
+ * - `draw`: gambar baru di canvas (perilaku lama). Bisa sekaligus disimpan ke
+ *   profil (`save_signature_to_profile`) untuk dipakai lagi berikutnya.
  *
  * Nama penanda tangan tidak lagi diketik di sini: tahap persetujuan memakai
  * nama akun login, jadi `signerName` diteruskan lewat props dan hanya dibaca.
@@ -17,15 +23,28 @@ import { router } from '@inertiajs/react';
  * `signerName` tetap dikirim di payload sebagai nilai cadangan, dan
  * `signerNameFilled` dipakai untuk mematikan tombol kalau nama akunnya kosong.
  */
-export default function useSignatureActions({ recordId, canSign = false, canReject = false, signerName = '' }) {
+export default function useSignatureActions({
+    recordId,
+    canSign = false,
+    canReject = false,
+    signerName = '',
+    savedSignature = null,
+}) {
     const padRef = useRef(null);
     const [note, setNote] = useState('');
     const [hasSignature, setHasSignature] = useState(false);
+    const [mode, setMode] = useState(savedSignature ? 'saved' : 'draw');
+    const [saveToProfile, setSaveToProfile] = useState(false);
     const [error, setError] = useState('');
     const [processing, setProcessing] = useState('');
 
     const signerNameFilled = signerName.trim() !== '';
     const busy = processing !== '';
+
+    // Tanda tangan dianggap siap kalau mode yang dipilih terpenuhi: mode
+    // `saved` cukup karena tersimpan di profil, mode `draw` butuh goresan di
+    // canvas.
+    const signatureReady = mode === 'saved' ? Boolean(savedSignature) : hasSignature;
 
     /**
      * Pesan error dipisah dari penanda kolom, supaya hanya bagian yang
@@ -34,13 +53,41 @@ export default function useSignatureActions({ recordId, canSign = false, canReje
     const message = error
         ? {
               text: error,
-              field: !signerNameFilled && canSign ? 'name' : !hasSignature && canSign ? 'signature' : null,
+              field: !signerNameFilled && canSign ? 'name' : !signatureReady && canSign ? 'signature' : null,
           }
         : null;
 
     const handleSign = () => {
         if (!signerNameFilled) {
             setError('Nama penanda tangan tidak tersedia. Periksa nama akun Anda.');
+            return;
+        }
+
+        if (mode === 'saved') {
+            if (!savedSignature) {
+                setError('Anda belum menyimpan tanda tangan di halaman Profile.');
+                return;
+            }
+
+            setError('');
+            setProcessing('sign');
+
+            router.post(
+                route('pm.sign', recordId),
+                { use_saved_signature: true, signer_name: signerName.trim(), note },
+                {
+                    preserveScroll: true,
+                    onError: (errors) => {
+                        setProcessing('');
+                        setError(Object.values(errors)[0] ?? 'Gagal menyimpan tanda tangan.');
+                    },
+                    onSuccess: () => {
+                        setProcessing('');
+                        setNote('');
+                    },
+                },
+            );
+
             return;
         }
 
@@ -56,7 +103,12 @@ export default function useSignatureActions({ recordId, canSign = false, canReje
 
         router.post(
             route('pm.sign', recordId),
-            { signature: dataUrl, signer_name: signerName.trim(), note },
+            {
+                signature: dataUrl,
+                signer_name: signerName.trim(),
+                note,
+                save_signature_to_profile: saveToProfile,
+            },
             {
                 preserveScroll: true,
                 onError: (errors) => {
@@ -104,10 +156,14 @@ export default function useSignatureActions({ recordId, canSign = false, canReje
         signerName,
         note,
         hasSignature,
+        signatureReady,
         busy,
         processing,
         message,
         signerNameFilled,
+        savedSignature,
+        mode,
+        saveToProfile,
         onNoteChange: (value) => {
             setNote(value);
             if (error) setError('');
@@ -115,6 +171,21 @@ export default function useSignatureActions({ recordId, canSign = false, canReje
         onSignatureChange: (value) => {
             setHasSignature(Boolean(value));
             if (value && error) setError('');
+        },
+        onModeChange: (value) => {
+            // Pad di-mount ulang setiap kali masuk "gambar baru" (dia tidak
+            // dirender di mode "tersimpan"), jadi tinta lamanya hilang.
+            // Reset penanda goresan saat transisi ke mode gambar baru, supaya
+            // tombol tidak aktif pada pad yang ternyata kosong.
+            if (value === 'draw' && mode !== 'draw') {
+                setHasSignature(false);
+            }
+            setMode(value);
+            if (error) setError('');
+        },
+        onSaveToProfileChange: (value) => {
+            setSaveToProfile(Boolean(value));
+            if (error) setError('');
         },
         canSign,
         canReject,

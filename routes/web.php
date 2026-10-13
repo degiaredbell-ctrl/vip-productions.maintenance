@@ -32,6 +32,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    // Tanda tangan tersimpan per akun: disimpan PNG dari canvas di halaman
+    // Profile, lalu dipakai ulang untuk persetujuan PM. Preview hanya milik
+    // akun sendiri (route tanpa parameter), disajikan lewat URL ber-otorisasi
+    // seperti tanda tangan dokumen supaya nama file tidak pernah diekspos.
+    Route::get('/profile/signature', [ProfileController::class, 'showSignature'])
+        ->name('profile.signature.show');
+    Route::post('/profile/signature', [ProfileController::class, 'updateSignature'])
+        ->name('profile.signature.store');
+    Route::delete('/profile/signature', [ProfileController::class, 'destroySignature'])
+        ->name('profile.signature.destroy');
+
     // Persetujuan (rantai tanda tangan 3 tahap)
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
 

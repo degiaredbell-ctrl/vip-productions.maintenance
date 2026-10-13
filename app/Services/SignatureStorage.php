@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\SignatureStage;
 use App\Models\PmRecord;
+use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -11,8 +12,18 @@ use RuntimeException;
  * Penyimpanan gambar tanda tangan (PNG dari canvas browser) di disk publik.
  *
  * File disimpan di storage/app/public/signatures/... dan disajikan lewat route
- * ber-otorisasi (PmSignatureController), bukan path mentah. Dengan begitu nama
+ * ber-otorisasi (PmSignatureController untuk dokumen PM, ProfileController
+ * untuk tanda tangan tersimpan per akun), bukan path mentah. Dengan begitu nama
  * file tidak bisa ditebak dari luar dan URL gambar tidak bergantung APP_URL.
+ *
+ * Ada dua keluarga file:
+ *
+ * - Tanda tangan dokumen (`signatures/pm-record-{id}/...`): snapshot PNG pada
+ *   tiap tahap rantai persetujuan. Satu baris per tahap, menandatangani ulang
+ *   menimpa baris dan menghapus file lama.
+ * - Tanda tangan tersimpan (`signatures/user-{id}/...`): milik akun, dipakai
+ *   ulang di panel persetujuan. Saat dipakai, isinya disalin ke keluarga
+ *   dokumen supaya dokumen tidak berubah kalau user mengganti tanda tangannya.
  */
 class SignatureStorage
 {
@@ -29,27 +40,73 @@ class SignatureStorage
     private const PNG_MAGIC = "\x89PNG\r\n\x1a\n";
 
     /**
-     * Simpan gambar tanda tangan dan kembalikan path relatifnya.
+     * Simpan gambar tanda tangan dokumen dan kembalikan path relatifnya.
      *
      * @throws RuntimeException kalau data URL bukan PNG yang valid atau terlalu besar.
      */
     public static function store(PmRecord $record, SignatureStage $stage, string $dataUrl): string
     {
-        $binary = self::decode($dataUrl);
-
-        $directory = sprintf('signatures/pm-record-%d', $record->id);
-        $name = sprintf(
-            '%s-%s-%s.png',
-            $stage->value,
-            now()->format('YmdHis'),
-            bin2hex(random_bytes(4))
+        return self::putBinary(
+            sprintf('signatures/pm-record-%d', $record->id),
+            sprintf('%s-%s-%s.png', $stage->value, now()->format('YmdHis'), bin2hex(random_bytes(4))),
+            self::decode($dataUrl)
         );
+    }
 
-        $path = $directory . '/' . $name;
+    /**
+     * Simpan tanda tangan tersimpan milik user, sebagai pengganti yang lama.
+     *
+     * Pemanggil (ProfileController atau SignPmRecord saat "simpan ke profil")
+     * yang bertanggung jawab menghapus path lama setelah yang baru berhasil
+     * ditulis, supaya kegagalan menulis tidak menghilangkan tanda tangan lama.
+     */
+    public static function storeUserSignature(User $user, string $dataUrl): string
+    {
+        return self::putBinary(
+            sprintf('signatures/user-%d', $user->id),
+            sprintf('saved-%s-%s.png', now()->format('YmdHis'), bin2hex(random_bytes(4))),
+            self::decode($dataUrl)
+        );
+    }
 
-        Storage::disk(self::DISK)->put($path, $binary);
+    /**
+     * Salin tanda tangan tersimpan milik user ke dokumen PM.
+     *
+     * Pembacaan dan penulisan dilakukan per byte (bukan memindahkan path),
+     * supaya setelah disalin dokumen sudah pegang snapshot sendiri dan tidak
+     * bergantung pada perubahan tanda tangan di profil.
+     *
+     * @throws RuntimeException kalau user belum punya tanda tangan tersimpan.
+     */
+    public static function copyUserSignature(PmRecord $record, SignatureStage $stage, User $user): string
+    {
+        $binary = self::readBinary($user->signature_path);
 
-        return $path;
+        return self::putBinary(
+            sprintf('signatures/pm-record-%d', $record->id),
+            sprintf('%s-%s-%s.png', $stage->value, now()->format('YmdHis'), bin2hex(random_bytes(4))),
+            $binary
+        );
+    }
+
+    /**
+     * Baca byte PNG tanda tangan tersimpan dari path relatif.
+     *
+     * @throws RuntimeException kalau path kosong/ketahuan file tidak ada.
+     */
+    public static function readBinary(?string $path): string
+    {
+        if ($path === null || $path === '') {
+            throw new RuntimeException('Tanda tangan tersimpan tidak ditemukan.');
+        }
+
+        $binary = Storage::disk(self::DISK)->get($path);
+
+        if ($binary === null || $binary === '') {
+            throw new RuntimeException('Tanda tangan tersimpan tidak dapat dibaca.');
+        }
+
+        return $binary;
     }
 
     public static function delete(?string $path): void
@@ -71,6 +128,15 @@ class SignatureStorage
         $full = Storage::disk(self::DISK)->path($path);
 
         return is_file($full) ? $full : null;
+    }
+
+    private static function putBinary(string $directory, string $name, string $binary): string
+    {
+        $path = $directory . '/' . $name;
+
+        Storage::disk(self::DISK)->put($path, $binary);
+
+        return $path;
     }
 
     /**

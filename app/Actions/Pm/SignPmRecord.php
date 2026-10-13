@@ -12,20 +12,37 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Satu tahap rantai persetujuan ditandatangani (dengan gambar tulisan tangan).
+ * Satu tahap rantai persetujuan ditandatangani.
  *
  * Tahap ditentukan dari status record, bukan dari parameter: submitted berarti
  * PIC yang menandatangani, pic_approved berarti Atasan. Technician sering
  * menandatangani ulang setelah ditolak, jadi baris signature per tahap ditulis
  * ulang (updateOrCreate) dan file gambar lamanya dihapus.
  *
+ * Sumber gambarnya dua:
+ *
+ * - `$dataUrl` PNG baru dari canvas (teknis, dan persetujuan yang memilih
+ *   "gambar baru"), atau
+ * - `useSavedSignature` menyalin tanda tangan tersimpan di profil akun yang
+ *   login ke dokumen. Penyalinan per-byte, jadi dokumen pegang snapshot sendiri
+ *   dan tidak berubah kalau user mengganti tanda tangannya di profil.
+ *
+ * `saveToProfile` hanya berlaku untuk `$dataUrl`: hasil gambar baru disalin ke
+ * profil akun login supaya bisa dipakai lagi di persetujuan berikutnya.
+ *
  * `$signerName` hanya dipakai pada tahap teknisi; tahap persetujuan memakai
  * nama akun login. Lihat `resolveSignerName()`.
  */
 class SignPmRecord
 {
-    public function handle(PmRecord $record, string $dataUrl, ?string $note = null, ?string $signerName = null): PmSignature
-    {
+    public function handle(
+        PmRecord $record,
+        ?string $dataUrl = null,
+        ?string $note = null,
+        ?string $signerName = null,
+        bool $useSavedSignature = false,
+        bool $saveToProfile = false,
+    ): PmSignature {
         $stage = $record->status->awaiting();
 
         if ($stage === null) {
@@ -39,16 +56,45 @@ class SignPmRecord
             throw new \LogicException('Checklist PM belum lengkap.');
         }
 
+        // Tanda tangan tersimpan adalah milik akun yang login; tahap teknisi
+        // menandatangani pekerjaan sendiri dengan nama yang bisa berbeda dari
+        // akun, jadi tetap harus menggambar.
+        if ($useSavedSignature && $stage === SignatureStage::Technician) {
+            throw new \LogicException('Tanda tangan tersimpan tidak dipakai untuk tahap teknisi.');
+        }
+
+        if (! $useSavedSignature && ! is_string($dataUrl)) {
+            throw new \LogicException('Tanda tangan wajib digambar.');
+        }
+
         $signedByName = $this->resolveSignerName($stage, $signerName);
 
-        return DB::transaction(function () use ($record, $stage, $dataUrl, $note, $signedByName) {
+        return DB::transaction(function () use ($record, $stage, $dataUrl, $note, $signedByName, $useSavedSignature, $saveToProfile) {
+            $user = Auth::user();
+
+            // Simpan ke profil dulu (kalau diminta), lalu snapshot untuk
+            // dokumen. Urutan ini membuat dua file selalu sama isi dengan
+            // gambar yang baru saja digambar.
+            if ($saveToProfile && is_string($dataUrl) && $user !== null) {
+                $previousUserPath = $user->signature_path;
+                $newUserPath = SignatureStorage::storeUserSignature($user, $dataUrl);
+
+                $user->forceFill(['signature_path' => $newUserPath])->save();
+
+                if ($previousUserPath !== null && $previousUserPath !== $newUserPath) {
+                    SignatureStorage::delete($previousUserPath);
+                }
+            }
+
             // File lama dihapus setelah yang baru berhasil ditulis, supaya
             // kegagalan saat menulis tidak menghilangkan tanda tangan lama.
             $previousPath = $record->signatures()
                 ->where('stage', $stage->value)
                 ->value('image_path');
 
-            $path = SignatureStorage::store($record, $stage, $dataUrl);
+            $path = $useSavedSignature
+                ? SignatureStorage::copyUserSignature($record, $stage, $user)
+                : SignatureStorage::store($record, $stage, $dataUrl);
 
             $signature = PmSignature::updateOrCreate(
                 ['pm_record_id' => $record->id, 'stage' => $stage->value],

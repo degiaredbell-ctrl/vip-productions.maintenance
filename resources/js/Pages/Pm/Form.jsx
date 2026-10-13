@@ -11,7 +11,7 @@ import SignatureChain from '@/Components/SignatureChain';
 import { useRef, useState } from 'react';
 
 
-export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain }) {
+export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain, savedSignature = null }) {
     const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
@@ -552,6 +552,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                             canSign={chain.canSign}
                             canReject={chain.canReject}
                             signerName={auth.user.name}
+                            savedSignature={savedSignature}
                         />
                     )}
 

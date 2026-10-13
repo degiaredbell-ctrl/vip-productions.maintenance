@@ -3,8 +3,9 @@ import { Head } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
+import UpdateSignatureForm from './Partials/UpdateSignatureForm';
 
-export default function Edit({ mustVerifyEmail, status }) {
+export default function Edit({ mustVerifyEmail, status, savedSignature }) {
     return (
         <AuthenticatedLayout>
             <Head title="Profile" />
@@ -20,6 +21,7 @@ export default function Edit({ mustVerifyEmail, status }) {
                         mustVerifyEmail={mustVerifyEmail}
                         status={status}
                     />
+                    <UpdateSignatureForm savedSignature={savedSignature} />
                     <UpdatePasswordForm />
                     <DeleteUserForm />
                 </div>

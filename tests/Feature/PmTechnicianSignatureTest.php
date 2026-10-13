@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
+use App\Services\SignatureStorage;
 
 /**
  * Aturan tahap 1: checklist teknisi hanya bisa ditutup lewat satu submit, dan
@@ -545,5 +546,146 @@ class PmTechnicianSignatureTest extends TestCase
         $this->actingAs($record->technician);
 
         app(SignPmRecord::class)->handle($record, self::PNG, null, 'Budi Santoso');
+    }
+
+    public function test_pic_menyetujui_pakai_tanda_tangan_tersimpan(): void
+    {
+        // User menyimpan tandanya di halaman Profile; persetujuan berikutnya
+        // tinggal memilih "tanda tangan tersimpan" dan menyetujui langsung.
+        $path = SignatureStorage::storeUserSignature($this->pic, self::PNG);
+        $this->pic->forceFill(['signature_path' => $path])->save();
+
+        $record = $this->signedRecord();
+
+        $this->actingAs($this->pic)
+            ->post(route('pm.sign', $record), ['use_saved_signature' => true, 'note' => null])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $record->refresh();
+        $this->assertSame(PmStatus::PicApproved, $record->status);
+        $this->assertSame($this->pic->name, $record->signatureFor(SignatureStage::Pic)->signed_by_name);
+
+        // Dokumen harus memegang salinan identik PNG tersimpan: dokumen tidak
+        // boleh berubah kalau user mengganti tanda tangannya di profil nanti.
+        $signature = $record->signatureFor(SignatureStage::Pic);
+        $this->assertNotNull($signature->image_path);
+        Storage::disk('public')->assertExists($signature->image_path);
+        $this->assertSame(
+            Storage::disk('public')->get($path),
+            Storage::disk('public')->get($signature->image_path),
+            'Tanda tangan tersimpan disalin utuh ke dokumen PM.',
+        );
+    }
+
+    public function test_pic_memakai_tanda_tangan_tersimpan_di_tahap_atasan(): void
+    {
+        $record = $this->signedRecord();
+        app(SignPmRecord::class)->handle($record, self::PNG, null, 'Siti Rahayu');
+
+        $manager = $this->user('manager');
+        $path = SignatureStorage::storeUserSignature($manager, self::PNG);
+        $manager->forceFill(['signature_path' => $path])->save();
+
+        $this->actingAs($manager)
+            ->post(route('pm.sign', $record), ['use_saved_signature' => true])
+            ->assertRedirect();
+
+        $record->refresh();
+        $this->assertSame(PmStatus::Approved, $record->status);
+        $this->assertSame(
+            $manager->name,
+            $record->signatureFor(SignatureStage::Supervisor)->signed_by_name
+        );
+    }
+
+    public function test_approve_wajib_punya_tanda_tangan_tersimpan(): void
+    {
+        // `use_saved_signature` hanya sah kalau akun benar-benar sudah
+        // menyimpan gambar di profil; tanpa itu endpoint menolak, supaya tidak
+        // ada approval dengan tanda tangan yang tidak ada.
+        $record = $this->signedRecord();
+
+        $this->actingAs($this->pic)
+            ->post(route('pm.sign', $record), ['use_saved_signature' => true])
+            ->assertSessionHasErrors('use_saved_signature');
+
+        $this->assertSame(PmStatus::Submitted, $record->fresh()->status);
+    }
+
+    public function test_pic_menggambar_baru_sekaligus_menyimpan_ke_profil(): void
+    {
+        $record = $this->signedRecord();
+
+        $this->actingAs($this->pic)
+            ->post(route('pm.sign', $record), [
+                'signature' => self::PNG,
+                'save_signature_to_profile' => true,
+            ])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $record->refresh();
+        $this->assertSame(PmStatus::PicApproved, $record->status);
+
+        // Hasil gambar tadi ikut tersimpan sebagai tanda tangan tersimpan
+        // user, jadi persetujuan berikutnya tinggal memakainya lagi.
+        $this->pic->refresh();
+        $this->assertNotNull($this->pic->signature_path);
+        Storage::disk('public')->assertExists($this->pic->signature_path);
+
+        // Dokumen dan profil sama-sama menyimpan gambar yang sama.
+        $this->assertSame(
+            Storage::disk('public')->get($this->pic->signature_path),
+            Storage::disk('public')->get($record->signatureFor(SignatureStage::Pic)->image_path),
+        );
+    }
+
+    public function test_save_signature_to_profile_menimpa_yang_lama(): void
+    {
+        $first = SignatureStorage::storeUserSignature($this->pic, self::PNG);
+        $this->pic->forceFill(['signature_path' => $first])->save();
+
+        $record = $this->signedRecord();
+
+        $this->actingAs($this->pic)
+            ->post(route('pm.sign', $record), [
+                'signature' => self::PNG,
+                'save_signature_to_profile' => true,
+            ])
+            ->assertRedirect();
+
+        $this->pic->refresh();
+        $this->assertNotSame($first, $this->pic->signature_path);
+        Storage::disk('public')->assertExists($this->pic->signature_path);
+        Storage::disk('public')->assertMissing($first);
+    }
+
+    public function test_gambar_baru_tanpa_dicetak_ke_profil_kalau_tidak_diminta(): void
+    {
+        $record = $this->signedRecord();
+
+        $this->actingAs($this->pic)
+            ->post(route('pm.sign', $record), ['signature' => self::PNG])
+            ->assertRedirect();
+
+        $this->assertNull($this->pic->fresh()->signature_path);
+    }
+
+    public function test_tahap_teknisi_tidak_bisa_memakai_tanda_tangan_tersimpan(): void
+    {
+        // Teknisi menandatangani pekerjaan sendiri dengan nama yang bisa beda
+        // dari akun, jadi mode "tersimpan" milik tahap persetujuan saja.
+        $technician = $this->user('technician');
+        $record = $this->incompleteRecord($technician);
+
+        $this->actingAs($technician)
+            ->post(route('pm.sign', $record), [
+                'use_saved_signature' => true,
+                'signer_name' => 'Budi Santoso',
+            ])
+            ->assertSessionHasErrors('use_saved_signature');
+
+        $this->assertSame(PmStatus::Draft, $record->fresh()->status);
     }
 }

@@ -188,6 +188,9 @@ class PmRecordController extends Controller
                 ])
                 ->values()
                 ->all(),
+            // Tanda tangan yang sudah disimpan akun login di halaman Profile,
+            // supaya panel persetujuan bisa memakainya langsung.
+            'savedSignature' => $this->userSignatureProps($user),
             'chain' => $this->chainProps($existing, $user),
         ]);
     }
@@ -235,6 +238,8 @@ class PmRecordController extends Controller
             $request->validated('signature'),
             $request->validated('note'),
             $request->validated('signer_name'),
+            (bool) $request->validated('use_saved_signature', false),
+            (bool) $request->validated('save_signature_to_profile', false),
         );
 
         return redirect()->back()->with('success', match ($stage) {
@@ -275,6 +280,28 @@ class PmRecordController extends Controller
             'by' => $log->user?->name,
             'at' => $log->created_at?->translatedFormat('d M Y H:i'),
             'reason' => is_string($reason) && $reason !== '' ? $reason : null,
+        ];
+    }
+
+    /**
+     * Tanda tangan yang sudah disimpan akun di halaman Profile, untuk panel
+     * persetujuan.
+     *
+     * Null kalau akun belum pernah menyimpan; frontend lalu hanya menawarkan
+     * mode menggambar baru. `version` dipakai untuk mem-bypass cache preview
+     * setelah gambar diganti.
+     *
+     * @return array{url: string, version: int}|null
+     */
+    private function userSignatureProps($user): ?array
+    {
+        if ($user->signature_path === null) {
+            return null;
+        }
+
+        return [
+            'url' => route('profile.signature.show'),
+            'version' => (int) ($user->updated_at?->timestamp ?? 0),
         ];
     }
 
