@@ -9,6 +9,8 @@ use App\Http\Requests\UpdateMachineRequest;
 use App\Models\ChecklistTemplate;
 use App\Models\Machine;
 use App\Models\PmRecord;
+use App\Models\User;
+use App\Services\AssetScope;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -104,20 +106,36 @@ class MachineController extends Controller
             'can' => [
                 'fill' => $user->can('pm.fill'),
                 'history' => $user->can('pm.history.view'),
-                // Halaman ini sendiri sudah dibatasi `machine.manage`, jadi
-                // nilainya selalu benar bagi yang bisa membukanya. Tetap dikirim
-                // eksplisit supaya kontrol CRUD di UI memakai syarat yang sama
-                // dengan halaman Utility.
+                // Halaman ini sendiri sudah dibatasi `machine.manage` atau
+                // `machine.view`, jadi `manage` dikirim eksplisit supaya
+                // kontrol CRUD di UI digantung pada izin yang benar (mis.
+                // tech-machines bisa membuka halaman tanpa tombol tambah/ubah).
                 'manage' => $user->can('machine.manage'),
             ],
         ]);
     }
 
+    /**
+     * Izin kelola aset dibedakan per tipe (mesin vs utility) supaya satu
+     * controller tetap bisa dipakai oleh halaman Mesin dan Utility tanpa
+     * membocorkan CRUD antar-scope. Tipe utility butuh `utility.manage`,
+     * selain itu butuh `machine.manage`.
+     */
+    private function authorizeType(User $user, string $type): void
+    {
+        $permission = $type === MachineType::Utility->value ? 'utility.manage' : 'machine.manage';
+
+        abort_unless($user->can($permission), 403);
+    }
+
     public function store(StoreMachineRequest $request): RedirectResponse
     {
-        $this->authorize('create', Machine::class);
-
         $data = $request->validated();
+
+        // Izin disesuaikan dengan tipe aset, bukan dengan route, supaya
+        // seseorang tidak bisa membuat unit utility lewat endpoint mesin
+        // (atau sebaliknya) hanya karena memegang salah satu permission.
+        $this->authorizeType($request->user(), $data['type'] ?? MachineType::Generic->value);
 
         // Urutan tampil mengikuti sort_no. Nilai mesin baru otomatis ditaruh di
         // akhir. Mesin yang sudah dihapus tetap dihitung supaya nomor urutnya
@@ -137,7 +155,7 @@ class MachineController extends Controller
 
     public function update(UpdateMachineRequest $request, Machine $machine): RedirectResponse
     {
-        $this->authorize('update', $machine);
+        $this->authorizeType($request->user(), $machine->type);
 
         $data = $request->validated();
         $before = $machine->only(self::MANAGED_FIELDS);
@@ -165,7 +183,7 @@ class MachineController extends Controller
 
     public function destroy(Request $request, Machine $machine): RedirectResponse
     {
-        $this->authorize('delete', $machine);
+        $this->authorizeType($request->user(), $machine->type);
 
         // Soft delete: riwayat PM beserta tanda tangannya tetap utuh dan mesin
         // masih bisa dipulihkan, jadi menghapus mesin tidak menghapus data.
@@ -186,8 +204,6 @@ class MachineController extends Controller
 
     public function restore(Request $request, int $machine): RedirectResponse
     {
-        $this->authorize('restore', Machine::class);
-
         // Route model binding tidak pernah mengambil model yang soft-deleted,
         // jadi pencarian dilakukan manual lewat onlyTrashed().
         $trashed = Machine::onlyTrashed()->find($machine);
@@ -195,6 +211,8 @@ class MachineController extends Controller
         if (! $trashed) {
             return back()->with('error', 'Mesin tersebut tidak ada di daftar mesin yang dihapus.');
         }
+
+        $this->authorizeType($request->user(), $trashed->type);
 
         $trashed->restore();
 
@@ -208,6 +226,14 @@ class MachineController extends Controller
 
     public function history(Request $request, Machine $machine): Response
     {
+        // Riwayat dipakai ulang untuk mesin dan utility (lewat halaman yang
+        // berbeda), jadi scope tipe aset tetap ditegakkan di sini.
+        abort_unless(
+            AssetScope::allows($request->user(), $machine),
+            403,
+            'Akses tidak sesuai ruang lingkup role Anda.',
+        );
+
         $records = PmRecord::with(['technician', 'items', 'signatures'])
             ->where('machine_id', $machine->id)
             ->orderByDesc('year')

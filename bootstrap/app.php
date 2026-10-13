@@ -21,6 +21,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // alias di bawah, halaman itu balas 500 "Target class [role]".
         $middleware->alias([
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            // Guard "punya setidaknya satu permission" untuk akses berbasis
+            // scope mesin vs utility (lihat EnsureAnyPermission).
+            'can_any' => \App\Http\Middleware\EnsureAnyPermission::class,
         ]);
 
         //

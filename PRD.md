@@ -298,25 +298,30 @@ Admin tidak boleh mengubah role sendiri maupun menghapus akunnya sendiri. Alasan
 
 Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 
-| Permission | Admin | Manager | Technician | User | Viewer |
-|---|:---:|:---:|:---:|:---:|:---:|
-| `dashboard.view` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `pm.fill` | ✅ | — | ✅ | — | — |
-| `pm.sign` | ✅ | — | ✅ | — | — |
-| `pm.acknowledge` | ✅ | — | — | ✅ | — |
-| `pm.approve` | ✅ | ✅ | — | — | — |
-| `pm.history.view` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `report.view` | ✅ | ✅ | ✅ | ✅ | — |
-| `report.export` | ✅ | ✅ | ✅ | — | ✅ |
-| `machine.manage` | ✅ | ✅ | — | — | — |
-| `template.manage` | ✅ | ✅ | — | — | — |
-| `user.manage` | ✅ | — | — | — | — |
-| `audit.view` | ✅ | ✅ | — | — | — |
+| Permission | Admin | Manager | Technician | User | Viewer | tech-machines | tech-utilities | tech-all |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `dashboard.view` | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
+| `pm.fill` | ✅ | — | ✅ | — | — | ✅ | ✅ | ✅ |
+| `pm.sign` | ✅ | — | ✅ | — | — | ✅ | ✅ | ✅ |
+| `pm.acknowledge` | ✅ | — | — | ✅ | — | — | — | — |
+| `pm.approve` | ✅ | ✅ | — | — | — | — | — | — |
+| `pm.history.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `report.view` | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| `report.export` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
+| `machine.manage` | ✅ | ✅ | — | — | — | — | — | ✅ |
+| `machine.view` | ✅ | — | — | — | — | ✅ | — | ✅ |
+| `utility.manage` | ✅ | — | — | — | — | — | — | ✅ |
+| `utility.view` | ✅ | — | — | — | — | — | ✅ | ✅ |
+| `template.manage` | ✅ | ✅ | — | — | — | — | — | ✅ |
+| `user.manage` | ✅ | — | — | — | — | — | — | — |
+| `audit.view` | ✅ | ✅ | — | — | — | — | — | — |
 
 Prinsip:
-- Menu sidebar hanya menampilkan item sesuai permission, **tetapi** otorisasi sesungguhnya ditegakkan di server oleh Policy.
+- Menu sidebar hanya menampilkan item sesuai permission, **tetapi** otorisasi sesungguhnya ditegakkan di server oleh Policy/middleware (`can_any` + `AssetScope` untuk scope mesin vs utility).
 - Role `admin` memegang seluruh permission.
 - Role `manager` tidak memegang `pm.fill` (tidak melakukan pekerjaan lapangan).
+- `machine.view` / `utility.view` adalah **scope** halaman/daftar aset; role general membukanya lewat baseline `dashboard.view`.
+- Role teknisi **tech-machines** / **tech-utilities** tanpa `dashboard.view` → hanya satu scope terbuka; kartu di luar scope pada `/form-maintenance` tampil abu-abu dan URL langsungnya diblokir. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap termasuk Komponen).
 
 ---
 

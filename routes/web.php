@@ -21,8 +21,12 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/form-maintenance', [DashboardController::class, 'formMaintenance'])->name('form-maintenance');
-    Route::get('/form-maintenance/mesin', [DashboardController::class, 'formMaintenanceMesin'])->name('form-maintenance.mesin');
-    Route::get('/form-maintenance/utility', [DashboardController::class, 'formMaintenanceUtility'])->name('form-maintenance.utility');
+    Route::get('/form-maintenance/mesin', [DashboardController::class, 'formMaintenanceMesin'])
+        ->name('form-maintenance.mesin')
+        ->middleware('can_any:machine.manage,machine.view,dashboard.view');
+    Route::get('/form-maintenance/utility', [DashboardController::class, 'formMaintenanceUtility'])
+        ->name('form-maintenance.utility')
+        ->middleware('can_any:utility.view,dashboard.view');
     Route::get('/dashboard/export', [DashboardController::class, 'export'])
         ->name('dashboard.export')
         ->middleware('can:report.export');
@@ -46,13 +50,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Persetujuan (rantai tanda tangan 3 tahap)
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
 
-    // PM Records
+    // PM Records — mengisi form PM hanya untuk role yang memang bisa mengisi
+    // (pm.fill), bukan sekadar "masuk aplikasi" (dashboard.view).
     Route::get('/machines/{machine}/pm', [PmRecordController::class, 'create'])
         ->name('machines.pm.create')
-        ->middleware('can:dashboard.view');
+        ->middleware('can:pm.fill');
     Route::get('/machines/{machine}/pm-history', [PmRecordController::class, 'pmHistory'])
         ->name('machines.pm.history')
-        ->middleware('can:dashboard.view');
+        ->middleware('can:pm.history.view');
     Route::post('/machines/{machine}/pm', [PmRecordController::class, 'store'])
         ->name('machines.pm.store')
         ->middleware('can:pm.fill');
@@ -66,10 +71,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/pm/{record}/signature/{stage}', [PmSignatureController::class, 'show'])
         ->name('pm.signatures.show');
 
-    // Machines
+    // Machines. Halaman indeks dibuka oleh pemegang machine.manage (kelola
+    // penuh) maupun machine.view (role teknisi mesin yang read-only + isi PM).
     Route::get('/machines', [MachineController::class, 'index'])
         ->name('machines.index')
-        ->middleware('can:machine.manage');
+        ->middleware('can_any:machine.manage,machine.view');
     Route::post('/machines', [MachineController::class, 'store'])
         ->name('machines.store')
         ->middleware('can:machine.manage');
@@ -88,18 +94,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:pm.history.view');
 
     // Utility: daftar unit utility + komponen maintenance. Halaman dapat
-    // dikelola (CRUD) oleh Admin lewat rute khusus di bawah; teknisi tetap
-    // bisa membuka form PM unit dari sini.
+    // dikelola (CRUD) oleh pemegang `utility.manage` (Admin & tech-all) lewat
+    // rute khusus di bawah; pemegang `utility.view` (tech-utilities) dan role
+    // general (`dashboard.view`) tetap bisa membuka form PM unit dari sini.
     Route::get('/utility', [UtilityController::class, 'index'])
         ->name('utility.index')
-        ->middleware('can:dashboard.view');
+        ->middleware('can_any:utility.view,dashboard.view');
 
-    // CRUD Utility khusus role Admin. Tabel `assets` menampung mesin dan
-    // utility, jadi eksekusinya memakai MachineController supaya validasi,
-    // audit log, dan perilaku soft delete tetap satu sumber. Parameter
-    // bernama `machine` supaya aturan unik kode dan model binding bawaan
-    // MachineController tetap bekerja.
-    Route::middleware('role:admin')->group(function () {
+    // CRUD Utility khusus pemegang permission `utility.manage`. Tabel `assets`
+    // menampung mesin dan utility, jadi eksekusinya memakai MachineController
+    // supaya validasi, audit log, dan perilaku soft delete tetap satu sumber.
+    // Parameter bernama `machine` supaya aturan unik kode dan model binding
+    // bawaan MachineController tetap bekerja.
+    Route::middleware('can:utility.manage')->group(function () {
         Route::post('/utility', [MachineController::class, 'store'])->name('utility.store');
         Route::put('/utility/{machine}', [MachineController::class, 'update'])->name('utility.update');
         Route::delete('/utility/{machine}', [MachineController::class, 'destroy'])->name('utility.destroy');

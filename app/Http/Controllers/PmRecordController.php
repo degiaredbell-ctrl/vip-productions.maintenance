@@ -14,6 +14,7 @@ use App\Http\Requests\StorePmRecordRequest;
 use App\Models\ChecklistTemplate;
 use App\Models\Machine;
 use App\Models\PmRecord;
+use App\Services\AssetScope;
 use App\Services\PeriodService;
 use App\Services\SignatureChain;
 use Illuminate\Http\RedirectResponse;
@@ -25,6 +26,10 @@ class PmRecordController extends Controller
 {
     public function create(Request $request, Machine $machine): Response
     {
+        // Scoping mesin vs utility: teknisi mesin tidak boleh membuka form PM
+        // unit utility lewat URL langsung, dan sebaliknya.
+        $this->ensureScope($request, $machine);
+
         $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
         $year = (int) $request->query('year', now()->year);
 
@@ -511,6 +516,8 @@ class PmRecordController extends Controller
      */
     public function pmHistory(Request $request, Machine $machine): Response
     {
+        $this->ensureScope($request, $machine);
+
         $period = Period::tryFrom($request->query('period', Period::current()->value)) ?? Period::current();
         $year = (int) $request->query('year', now()->year);
 
@@ -617,5 +624,20 @@ class PmRecordController extends Controller
         }
 
         return Inertia::render('Pm/HistoryModal', $payload);
+    }
+
+    /**
+     * Pembatas "ruang lingkup" aset untuk form PM & riwayat. Endpoint ini
+     * dipakai bersama untuk mesin dan utility, jadi selain izin mengisi
+     * (pm.fill / pm.history.view via route) user juga harus punya scope yang
+     * cocok dengan tipe unitnya. Aturannya dipusatkan di AssetScope.
+     */
+    private function ensureScope(Request $request, Machine $machine): void
+    {
+        abort_unless(
+            AssetScope::allows($request->user(), $machine),
+            403,
+            'Akses tidak sesuai ruang lingkup role Anda.',
+        );
     }
 }

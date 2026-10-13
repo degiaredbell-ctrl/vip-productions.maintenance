@@ -128,11 +128,13 @@ Catatan desain:
 
 ## 5. Autentikasi & Otorisasi
 
-**Role:** `admin`, `manager`, `technician`, `user`, `viewer` (enum `App\Enums\Role`, disimpan lewat spatie permission).
+**Role:** `admin`, `manager`, `technician`, `user`, `viewer`, plus role teknisi berbasis scope
+`tech-machines`, `tech-utilities`, `tech-all` (disimpan lewat spatie permission).
 
 **Permission (contoh):**
 `dashboard.view`, `pm.fill`, `pm.sign`, `pm.acknowledge`, `pm.approve`, `pm.history.view`,
-`report.view`, `report.export`, `machine.manage`, `template.manage`, `user.manage`, `audit.view`.
+`report.view`, `report.export`, `machine.manage`, `machine.view`, `utility.manage`, `utility.view`,
+`template.manage`, `user.manage`, `audit.view`.
 
 | Role | Permission |
 |---|---|
@@ -141,13 +143,21 @@ Catatan desain:
 | technician | dashboard.view, pm.fill, pm.sign, pm.history.view, report.view, report.export |
 | user | dashboard.view, pm.acknowledge, pm.history.view, report.view |
 | viewer | dashboard.view, pm.history.view, report.view, report.export |
+| tech-machines | machine.view, pm.fill, pm.sign, pm.history.view, report.view, report.export |
+| tech-utilities | utility.view, pm.fill, pm.sign, pm.history.view, report.view, report.export |
+| tech-all | machine.view, machine.manage, utility.view, utility.manage, template.manage, pm.fill, pm.sign, pm.history.view, report.view, report.export |
+
+Role teknisi scope (`tech-*`) sengaja **tanpa** `dashboard.view`: hanya satu scope aset yang
+terbuka (mesin atau utility). `/form-maintenance` menampilkan kartu di luar scope sebagai abu-abu,
+dan URL langsungnya diblokir lewat middleware `can_any` + `App\Services\AssetScope`.
 
 Tiga permission tanda tangan memetakan langsung ke tiga tahap rantai
 (`SignatureStage`): `technician → pm.sign`, `user → pm.acknowledge`,
 `manager → pm.approve`. `admin` lolos di semua tahap sebagai cadangan.
 
 Penerapan:
-1. **Route:** `->middleware('can:pm.fill')`, `can:dashboard.view`, atau `role:admin|manager`.
+1. **Route:** `->middleware('can:pm.fill')`, `can_any:machine.manage,machine.view` (scope aset),
+   `can_any:utility.view,dashboard.view`, atau `role:admin`.
 2. **Policy:** `PmRecordPolicy` mengatur lima gate:
    - `view` — semua user aktif boleh melihat record.
    - `create` — butuh `pm.fill`.

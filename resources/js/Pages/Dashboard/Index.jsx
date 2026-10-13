@@ -54,6 +54,12 @@ export default function Dashboard({
     reportUtility = { byPeriod: [], byStatus: { done:0,progress:0,todo:0,issue:0,total:0,percent:0 }, totalUnits: 0 },
     reportYears = [],
 }) {
+    // Scope Beranda mengikuti hak akses aset: role teknisi khusus mesin tidak
+    // melihat tab/report Utility, dan sebaliknya. Role general memakai
+    // dashboard.view sehingga tetap melihat keduanya (tidak berubah).
+    const canViewMachines = Boolean(auth?.can?.['machine.manage'] || auth?.can?.['machine.view'] || auth?.can?.['dashboard.view']);
+    const canViewUtilities = Boolean(auth?.can?.['utility.view'] || auth?.can?.['dashboard.view']);
+
     const [filters, setFilters] = useState({
         period: currentPeriod,
         year: currentYear,
@@ -63,7 +69,7 @@ export default function Dashboard({
     });
     const [isLoading, setIsLoading] = useState(false);
     const searchTimer = useRef(null);
-    const [tab, setTab] = useState('mesin');
+    const [tab, setTab] = useState(canViewMachines ? 'mesin' : 'utility');
     // Filter periode bersifat tampilan saja ('all' = ringkasan setahun penuh).
     // Chart "Progress per Periode" tetap menampilkan semua periode sebagai konteks.
     const [periodFilter, setPeriodFilter] = useState('all');
@@ -77,6 +83,16 @@ export default function Dashboard({
             sub: subCategory ?? 'all',
         });
     }, [currentPeriod, currentYear, search, statusFilter, subCategory]);
+
+    // Jaga agar tab yang aktif selalu berada dalam scope role (mis. tab
+    // Utility tersisa dari state lama padahal role tidak boleh membukanya).
+    // Bila role tidak punya scope aset sama sekali, biarkan tab apa adanya
+    // supaya tidak terjadi perpindahan bolak-balik tanpa henti.
+    useEffect(() => {
+        if (!canViewMachines && !canViewUtilities) return;
+        if (tab === 'mesin' && !canViewMachines) setTab('utility');
+        else if (tab === 'utility' && !canViewUtilities) setTab('mesin');
+    }, [tab, canViewMachines, canViewUtilities]);
 
     const applyFilters = (patch) => {
         const next = { ...filters, ...patch };
@@ -225,8 +241,8 @@ export default function Dashboard({
                 </div>
 
                 <div className="flex flex-wrap gap-2 mb-3">
-                    <NeuChip active={tab === 'mesin'} onClick={() => setTab('mesin')}>Mesin</NeuChip>
-                    <NeuChip active={tab === 'utility'} onClick={() => setTab('utility')}>Utility</NeuChip>
+                    {canViewMachines && <NeuChip active={tab === 'mesin'} onClick={() => setTab('mesin')}>Mesin</NeuChip>}
+                    {canViewUtilities && <NeuChip active={tab === 'utility'} onClick={() => setTab('utility')}>Utility</NeuChip>}
                 </div>
 
                 <div className="flex gap-2.5 overflow-x-auto px-1 py-1.5 mb-3" role="group" aria-label="Filter tahun">
@@ -306,7 +322,7 @@ export default function Dashboard({
                     <p className="text-[11px] text-neu-sub">Keterangan: Grafik rekap per {tab === 'utility' ? 'Utility' : 'Mesin'} berdasarkan status PM per periode tahun {filters.year}.</p>
                 </NeuCard>
 
-                {tab === 'mesin' ? null : (
+                {canViewUtilities && tab === 'utility' ? (
                     <NeuCard className="mb-3 p-4">
                         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
                             <div>
@@ -316,7 +332,7 @@ export default function Dashboard({
                             <Link href={route('utility.index')} className="neu-btn">Buka Halaman Utility</Link>
                         </div>
                     </NeuCard>
-                )}
+                ) : null}
             </div>
         </AuthenticatedLayout>
     );

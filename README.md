@@ -154,26 +154,31 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 
 Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 
-| Permission | Admin | Manager | Technician | User | Viewer |
-|---|:---:|:---:|:---:|:---:|:---:|
-| `dashboard.view` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `pm.fill` | ✅ | — | ✅ | — | — |
-| `pm.sign` | ✅ | — | ✅ | — | — |
-| `pm.acknowledge` | ✅ | — | — | ✅ | — |
-| `pm.approve` | ✅ | ✅ | — | — | — |
-| `pm.history.view` | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `report.view` | ✅ | ✅ | ✅ | ✅ | — |
-| `report.export` | ✅ | ✅ | ✅ | — | ✅ |
-| `machine.manage` | ✅ | ✅ | — | — | — |
-| `template.manage` | ✅ | ✅ | — | — | — |
-| `user.manage` | ✅ | — | — | — | — |
-| `audit.view` | ✅ | ✅ | — | — | — |
+| Permission | Admin | Manager | Technician | User | Viewer | tech-machines | tech-utilities | tech-all |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `dashboard.view` | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | — |
+| `pm.fill` | ✅ | — | ✅ | — | — | ✅ | ✅ | ✅ |
+| `pm.sign` | ✅ | — | ✅ | — | — | ✅ | ✅ | ✅ |
+| `pm.acknowledge` | ✅ | — | — | ✅ | — | — | — | — |
+| `pm.approve` | ✅ | ✅ | — | — | — | — | — | — |
+| `pm.history.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `report.view` | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
+| `report.export` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
+| `machine.manage` | ✅ | ✅ | — | — | — | — | — | ✅ |
+| `machine.view` | ✅ | — | — | — | — | ✅ | — | ✅ |
+| `utility.manage` | ✅ | — | — | — | — | — | — | ✅ |
+| `utility.view` | ✅ | — | — | — | — | — | ✅ | ✅ |
+| `template.manage` | ✅ | ✅ | — | — | — | — | — | ✅ |
+| `user.manage` | ✅ | — | — | — | — | — | — | — |
+| `audit.view` | ✅ | ✅ | — | — | — | — | — | — |
 
 **Catatanatan penting:**
 - `pm.sign`, `pm.acknowledge`, `pm.approve` **dipisah per tahap** — bukan satu permission `pm.approve` generik, supaya peran tidak bisa melompat tahap.
 - Manager **tidak** bisa mengisi checklist lapangan (tidak punya `pm.fill`).
 - Halaman **Role** hanya untuk role `admin`; halaman **Pengguna** untuk siapa pun yang punya `user.manage` (hanya admin saat ini).
-- Otorisasi tetap ditegakkan di server lewat **Policy**, bukan hanya dengan menyembunyikan menu.
+- `machine.view` / `utility.view` = **scope** halaman/daftar Mesin & Utility. Role general (Manager ke atas) membuka keduanya lewat baseline `dashboard.view`, jadi tidak perlu `*.view` eksplisit.
+- Role teknisi **tech-machines** / **tech-utilities** sengaja tanpa `dashboard.view`: hanya satu scope terbuka, dan `/form-maintenance` menampilkan kartu di luar scope sebagai **abu-abu** yang tidak bisa diklik maupun dibuka lewat URL. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap).
+- Otorisasi tetap ditegakkan di server lewat **Policy/middleware** (termasuk blokir akses URL langsung ke form PM unit di luar scope), bukan hanya dengan menyembunyikan menu.
 
 ---
 

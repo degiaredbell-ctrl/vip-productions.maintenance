@@ -410,22 +410,27 @@ Otorisasi ditegakkan di tiga lapis. UI hanya kosmetik.
 ```php
 Route::middleware(['auth', 'verified'])->group(function () {
     // …otorisasi per-resource:
-    Route::get('/machines', …)->middleware('can:machine.manage');
+    Route::get('/machines', …)->middleware('can_any:machine.manage,machine.view');
+    Route::get('/utility', …)->middleware('can_any:utility.view,dashboard.view');
+    Route::middleware('can:utility.manage')->group(function () { /* CRUD /utility */ });
     Route::middleware('can:user.manage')->group(function () { /* /admin/users */ });
     Route::middleware('role:admin')->group(function () { /* /admin/roles */ });
-    Route::middleware('can:template.manage')->group(function () { /* /admin/templates */ });
+    Route::middleware('can:template.manage')->group(function () { /* /admin/komponen */ });
     Route::middleware('can:audit.view')->group(function () { /* /admin/audit-logs */ });
 });
 ```
 
 Alias `role` didaftarkan manual di `bootstrap/app.php` (Spatie v6 tidak mendaftarkannya sendiri).
+Alias tambahan **`can_any`** (`App\Http\Middleware\EnsureAnyPermission`) meloloskan request bila user
+memegang **salah satu** permission — dipakai untuk guard scope aset (mesin vs utility) supaya role
+teknisi terbatas (tech-machines/tech-utilities) tidak perlu membawa `dashboard.view`.
 
 ### Lapis 2 — Policy per resource
 
 | Policy | Method |
 |--------|--------|
 | `UserPolicy` | `view/create/update/updatePassword` → `user.manage`; `delete` → `user.manage` **dan bukan diri sendiri** |
-| `MachinePolicy` | `view` → `dashboard.view`; `create/update/delete/restore` → `machine.manage` |
+| `MachinePolicy` | `view` → `dashboard.view`; `create/update/delete/restore` → `machine.manage` (di controller izin kelola kini disesuaikan tipe aset lewat `authorizeType()`, lihat Lapis 3) |
 | `PmRecordPolicy` | `create` → `pm.fill`; `update` → `pm.fill` + `isEditable()` + kepemilikan; `sign/reject` → `SignatureChain` |
 | `RolePolicy` | Didaftarkan manual di `AppServiceProvider` (model Spatie, bukan `App\Models\Role`) |
 
@@ -438,6 +443,13 @@ Beberapa aturan terlalu spesifik untuk ditulis sebagai Policy generik, sehingga 
   yang mengatur role, dan tidak ada halaman lain untuk memulihkannya.
 - `UserController::destroy()` — cek "diri sendiri" **sebelum** `authorize()`, supaya pesan yang
   muncul jelas ("Tidak dapat menghapus akun sendiri") dan bukan 403 yang membingungkan.
+- `MachineController::store/update/destroy/restore` — izin kelola **mengikuti tipe aset**
+  (`authorizeType()`): tipe `utility` wajib `utility.manage`, selain itu `machine.manage`.
+  Dengan begitu satu endpoint tidak bisa dipakai menembus scope (mis. membuat unit utility
+  lewat endpoint mesin), meski tabel `assets` menampung keduanya.
+- `PmRecordController::create/pmHistory` + `MachineController::history` — selain izin route
+  (`pm.fill` / `pm.history.view`), scope tipe unit ditegakkan lewat `App\Services\AssetScope`
+  supaya teknisi mesin tidak membuka form/riwayat unit utility lewat URL langsung.
 
 ### Permission model
 
@@ -445,21 +457,30 @@ Permission originates dari `RoleSeeder`:
 
 | Permission | Pemakai utama |
 |------------|---------------|
-| `dashboard.view` | semua role |
-| `pm.fill` | technician |
-| `pm.sign` | technician |
+| `dashboard.view` | role general (admin, manager, technician, user, viewer) — baseline akses aplikasi |
+| `pm.fill` | technician (termasuk tech-machines/tech-utilities/tech-all) |
+| `pm.sign` | technician (termasuk tech-*) |
 | `pm.acknowledge` | user (PIC) |
 | `pm.approve` | manager (supervisor) |
 | `pm.history.view` | semua role |
-| `report.view` | admin, manager, technician, user |
-| `report.export` | admin, manager, technician, viewer |
-| `machine.manage` | admin, manager |
-| `template.manage` | admin, manager |
+| `report.view` | admin, manager, technician, user, tech-* |
+| `report.export` | admin, manager, technician, viewer, tech-* |
+| `machine.manage` | admin, manager, tech-all |
+| `machine.view` | tech-machines, tech-all (scope halaman/daftar Mesin) |
+| `utility.manage` | admin, tech-all (CRUD Utility) |
+| `utility.view` | tech-utilities, tech-all (scope halaman/daftar Utility) |
+| `template.manage` | admin, manager, tech-all |
 | `user.manage` | admin |
 | `audit.view` | admin, manager |
 
 Tiga permission tanda tangan **sengaja dipisah** (`pm.sign` / `pm.acknowledge` / `pm.approve`)
 supaya role tidak bisa melompat tahap dengan satu permission generik.
+
+**Scope aset.** `machine.view` / `utility.view` menandai scope halaman aset. Role general tetap
+membuka keduanya lewat `dashboard.view`. Role teknisi **tech-machines** / **tech-utilities**
+sengaja **tanpa** `dashboard.view`: hanya satu scope terbuka, `/form-maintenance` menampilkan kartu
+di luar scope sebagai abu-abu, dan URL langsungnya diblokir. **tech-all** memegang `machine.manage`
++ `utility.manage` + `template.manage` (form-maintenance lengkap).
 
 ### Shared props
 
@@ -515,17 +536,25 @@ POST /pm/{record}/sign
 | `/dashboard/export` | GET | `DashboardController@export` | `can:report.export` |
 | `/profile` | GET/PUT/DELETE | `ProfileController` | — |
 | `/approvals` | GET | `ApprovalController@index` | — |
-| `/machines/{machine}/pm` | GET | `PmRecordController@create` | `can:dashboard.view` |
+| `/machines/{machine}/pm` | GET | `PmRecordController@create` | `can:pm.fill` + `AssetScope` (tipe unit) |
+| `/machines/{machine}/pm-history` | GET | `PmRecordController@pmHistory` | `can:pm.history.view` + `AssetScope` (tipe unit) |
 | `/machines/{machine}/pm` | POST | `PmRecordController@store` | `can:pm.fill` + `pm.sign` (dalam FormRequest) |
 | `/pm/{record}/sign` | POST | `PmRecordController@sign` | Policy::sign |
 | `/pm/{record}/reject` | POST | `PmRecordController@reject` | Policy::reject |
 | `/pm/{record}/signature/{stage}` | GET | `PmSignatureController@show` | Policy |
-| `/machines` | GET | `MachineController@index` | `can:machine.manage` |
-| `/machines` | POST | `MachineController@store` | `can:machine.manage` |
-| `/machines/{machine}` | PUT | `MachineController@update` | `can:machine.manage` |
-| `/machines/{machine}` | DELETE | `MachineController@destroy` | `can:machine.manage` |
-| `/machines/{machine}/restore` | PATCH | `MachineController@restore` | `can:machine.manage` |
-| `/machines/{machine}/history` | GET | `MachineController@history` | `can:pm.history.view` |
+| `/machines` | GET | `MachineController@index` | `can_any:machine.manage,machine.view` |
+| `/machines` | POST | `MachineController@store` | `can:machine.manage` + `authorizeType()` |
+| `/machines/{machine}` | PUT | `MachineController@update` | `can:machine.manage` + `authorizeType()` |
+| `/machines/{machine}` | DELETE | `MachineController@destroy` | `can:machine.manage` + `authorizeType()` |
+| `/machines/{machine}/restore` | PATCH | `MachineController@restore` | `can:machine.manage` + `authorizeType()` |
+| `/machines/{machine}/history` | GET | `MachineController@history` | `can:pm.history.view` + `AssetScope` |
+| `/utility` | GET | `UtilityController@index` | `can_any:utility.view,dashboard.view` |
+| `/utility` | POST | `MachineController@store` | `can:utility.manage` + `authorizeType()` |
+| `/utility/{machine}` | PUT | `MachineController@update` | `can:utility.manage` + `authorizeType()` |
+| `/utility/{machine}` | DELETE | `MachineController@destroy` | `can:utility.manage` + `authorizeType()` |
+| `/utility/{machine}/restore` | PATCH | `MachineController@restore` | `can:utility.manage` + `authorizeType()` |
+| `/form-maintenance/mesin` | GET | `DashboardController@formMaintenanceMesin` | `can_any:machine.manage,machine.view,dashboard.view` |
+| `/form-maintenance/utility` | GET | `DashboardController@formMaintenanceUtility` | `can_any:utility.view,dashboard.view` |
 | `/reports` | GET | `ReportController@index` | `can:report.view` |
 | `/reports/export` | GET | `ReportController@export` | `can:report.export` |
 | `/admin/users` | GET | `UserController@index` | `can:user.manage` |

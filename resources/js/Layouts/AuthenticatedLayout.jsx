@@ -67,9 +67,16 @@ export default function Authenticated({ user: userProp, header, children }) {
             show: pending > 0 || can['pm.sign'] || can['pm.acknowledge'] || can['pm.approve'],
         },
         { name: 'Laporan', href: route('reports.index'), path: '/reports', show: can['report.view'] },
-        { name: 'Form Maintenance', href: route('form-maintenance'), path: '/form-maintenance', show: can['machine.manage'] || can['dashboard.view'] || can['template.manage'] },
-        { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] },
-        { name: 'Utility', href: route('utility.index'), path: '/utility', show: can['dashboard.view'] },
+        {
+            name: 'Form Maintenance',
+            href: route('form-maintenance'),
+            path: '/form-maintenance',
+            // Scope aset (machine.view / utility.view) atau baseline
+            // dashboard.view; kartu yang tak terjangkau tampil abu-abu.
+            show: can['machine.manage'] || can['machine.view'] || can['utility.view'] || can['dashboard.view'] || can['template.manage'],
+        },
+        { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] || can['machine.view'] },
+        { name: 'Utility', href: route('utility.index'), path: '/utility', show: can['utility.view'] || can['dashboard.view'] },
         { name: 'PM Records', href: route('admin.pm-records'), path: '/admin/pm-records', show: can['pm.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
         { name: 'Role', href: route('admin.roles.index'), path: '/admin/roles', show: user?.roles?.includes('admin') },

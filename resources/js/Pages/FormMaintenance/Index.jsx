@@ -3,6 +3,12 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 
+// Setiap kartu punya daftar permission; kartu tampil "aktif" bila user punya
+// setidaknya satu, dan tampil abu-abu (tidak bisa diklik) bila tidak. Role
+// teknisi khusus scope (tech-machines/tech-utilities) sengaja tidak membawa
+// `dashboard.view`, jadi helper `hasAny` memberinya view sesuai scope-nya.
+const hasAny = (auth, permissions) => permissions.some((p) => Boolean(auth.can[p]));
+
 const MENU_CARDS = [
     {
         name: 'Mesin',
@@ -13,7 +19,8 @@ const MENU_CARDS = [
             </svg>
         ),
         href: route('form-maintenance.mesin'),
-        permission: 'dashboard.view',
+        permissions: ['machine.manage', 'machine.view', 'dashboard.view'],
+        lockedHint: 'Role Anda tidak memiliki akses ke halaman Mesin.',
         color: 'bg-neu-accent/10 border-neu-accent/20',
     },
     {
@@ -25,7 +32,8 @@ const MENU_CARDS = [
             </svg>
         ),
         href: route('form-maintenance.utility'),
-        permission: 'dashboard.view',
+        permissions: ['utility.view', 'dashboard.view'],
+        lockedHint: 'Role Anda tidak memiliki akses ke halaman Utility.',
         color: 'bg-neu-info/10 border-neu-info/20',
     },
     {
@@ -38,13 +46,15 @@ const MENU_CARDS = [
             </svg>
         ),
         href: route('admin.components'),
-        permission: 'template.manage',
+        permissions: ['template.manage'],
+        lockedHint: 'Role Anda tidak memiliki akses ke master Komponen.',
         color: 'bg-neu-warn/10 border-neu-warn/20',
     },
 ];
 
 export default function FormMaintenanceIndex({ auth }) {
-    const visibleCards = MENU_CARDS.filter(card => auth.can[card.permission]);
+    const cards = MENU_CARDS.map((card) => ({ ...card, allowed: hasAny(auth, card.permissions) }));
+    const hasAnyCard = cards.some((card) => card.allowed);
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -56,29 +66,56 @@ export default function FormMaintenanceIndex({ auth }) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {visibleCards.map((card) => (
-                        <Link key={card.name} href={card.href} className="block">
-                            <NeuCard className={`h-full transition-all duration-200 hover:shadow-neu-up border ${card.color}`}>
+                    {cards.map((card) => {
+                        const content = (
+                            <NeuCard
+                                className={`h-full duration-200 border ${card.color} ${
+                                    card.allowed ? 'transition-all hover:shadow-neu-up' : 'opacity-45 grayscale cursor-not-allowed select-none'
+                                }`}
+                            >
                                 <div className="flex flex-col h-full items-center text-center p-6">
-                                    <div className={`mb-4 p-4 rounded-neu ${card.color.replace('bg-', 'bg-').replace('border-', 'border-')} flex items-center justify-center`}>
+                                    <div className={`mb-4 p-4 rounded-neu ${card.color} flex items-center justify-center`}>
                                         {card.icon}
                                     </div>
                                     <h2 className="text-lg font-bold text-neu-text mb-2">{card.name}</h2>
                                     <p className="text-sm text-neu-sub leading-relaxed">{card.description}</p>
                                     <div className="mt-auto pt-4 w-full">
-                                        <span className="neu-btn w-full justify-center">
-                                            Buka
-                                            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                                            </svg>
-                                        </span>
+                                        {card.allowed ? (
+                                            <span className="neu-btn w-full justify-center">
+                                                Buka
+                                                <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                                                </svg>
+                                            </span>
+                                        ) : (
+                                            <span
+                                                className="neu-btn w-full justify-center !text-neu-sub"
+                                                title={card.lockedHint}
+                                                aria-disabled="true"
+                                            >
+                                                <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                                                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                                                </svg>
+                                                Tidak tersedia
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             </NeuCard>
-                        </Link>
-                    ))}
+                        );
 
-                    {visibleCards.length === 0 && (
+                        return card.allowed ? (
+                            <Link key={card.name} href={card.href} className="block">
+                                {content}
+                            </Link>
+                        ) : (
+                            <div key={card.name} className="block" aria-disabled="true" title={card.lockedHint}>
+                                {content}
+                            </div>
+                        );
+                    })}
+
+                    {!hasAnyCard && (
                         <NeuCard className="col-span-full text-center py-12">
                             <ApplicationLogo className="w-16 h-16 mx-auto mb-4 text-neu-sub" />
                             <p className="text-neu-sub">Tidak ada menu yang tersedia untuk role Anda.</p>
