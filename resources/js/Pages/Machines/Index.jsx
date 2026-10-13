@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react';
-import { Link, router, useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import MachineFields from '@/Components/MachineFields';
-
 
 const EMPTY_MACHINE = {
     code: '',
@@ -48,13 +47,34 @@ const machineToForm = (machine) => ({
     is_active: machine.is_active ? 1 : 0,
 });
 
-export default function Machines({ auth, machines, types, templates, categories, subCategories, trashed }) {
+/** Kelompokkan komponen per kategori supaya tampilannya sama dengan halaman
+ *  Utility (judul kategori + daftar nama komponen). */
+const groupComponents = (components) => {
+    const sections = [];
+    const seen = new Map();
+
+    for (const component of components ?? []) {
+        if (!seen.has(component.category)) {
+            seen.set(component.category, sections.length);
+            sections.push({ category: component.category, items: [] });
+        }
+
+        sections[seen.get(component.category)].items.push(component.name);
+    }
+
+    return sections;
+};
+
+export default function Machines({ auth, machines = [], types = [], templates = [], categories = [], subCategories = [], trashed = [], can = {} }) {
+    const createForm = useForm({ ...EMPTY_MACHINE });
     const editForm = useForm({ ...EMPTY_MACHINE });
 
-    // Daftar mesin sekarang 120+ baris, jadi pencarian dan filter area
-    // dijalankan di sisi klien supaya tidak perlu reload tiap ketikan.
+    // Daftar mesin 120+ baris, jadi pencarian dan filter area dijalankan di
+    // sisi klien supaya tidak perlu reload tiap ketikan.
     const [q, setQ] = useState('');
     const [sub, setSub] = useState('all');
+    const [showCreate, setShowCreate] = useState(false);
+    const [expandedId, setExpandedId] = useState(null);
 
     // Hanya satu mesin yang bisa disunting / menunggu konfirmasi hapus pada
     // satu waktu, supaya daftar tetap ringkas dan tidak ada dua form bertumpuk.
@@ -62,8 +82,6 @@ export default function Machines({ auth, machines, types, templates, categories,
     const [confirmingId, setConfirmingId] = useState(null);
     const [busyId, setBusyId] = useState(null);
     const [showTrashed, setShowTrashed] = useState(false);
-
-
 
     const typeLabels = useMemo(
         () => Object.fromEntries((types ?? []).map((t) => [t.value, t.label])),
@@ -82,6 +100,17 @@ export default function Machines({ auth, machines, types, templates, categories,
                 .some((v) => String(v).toLowerCase().includes(needle));
         });
     }, [machines, q, sub, typeLabels]);
+
+    const submitCreate = (e) => {
+        e.preventDefault();
+        createForm.post(route('machines.store'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                createForm.reset();
+                setShowCreate(false);
+            },
+        });
+    };
 
     const startEdit = (machine) => {
         setConfirmingId(null);
@@ -110,7 +139,7 @@ export default function Machines({ auth, machines, types, templates, categories,
         setConfirmingId(machine.id);
     };
 
-    const destroyMachine = (machine) => {
+    const confirmDelete = (machine) => {
         setBusyId(machine.id);
 
         router.delete(route('machines.destroy', machine.id), {
@@ -120,6 +149,10 @@ export default function Machines({ auth, machines, types, templates, categories,
                 setConfirmingId(null);
             },
         });
+    };
+
+    const cancelDelete = () => {
+        setConfirmingId(null);
     };
 
     const restoreMachine = (machine) => {
@@ -140,7 +173,7 @@ export default function Machines({ auth, machines, types, templates, categories,
     return (
         <AuthenticatedLayout user={auth.user}>
             <div className="page-container">
-                <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center justify-between gap-3 mb-5">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold">Kelola Mesin</h1>
                         <p className="text-sm text-neu-sub">
@@ -148,9 +181,21 @@ export default function Machines({ auth, machines, types, templates, categories,
                             {visible.length !== machines.length && ` · ${visible.length} ditampilkan`}
                         </p>
                     </div>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {can.manage && (
+                            <NeuButton
+                                variant="primary"
+                                onClick={() => {
+                                    if (showCreate) createForm.reset();
+                                    setShowCreate((v) => !v);
+                                }}
+                            >
+                                {showCreate ? 'Tutup' : 'Tambah Mesin'}
+                            </NeuButton>
+                        )}
+                    </div>
                 </div>
 
-                {/* Search + filter area (diletakkan di atas form tambah, sama seperti halaman Utility) */}
                 <div className="mb-4">
                     <input
                         type="search"
@@ -167,57 +212,62 @@ export default function Machines({ auth, machines, types, templates, categories,
                     role="group"
                     aria-label="Filter area"
                 >
-                    <NeuChip
-                        active={sub === 'all'}
-                        onClick={() => setSub('all')}
-                        aria-label="Semua area"
-                    >
+                    <NeuChip active={sub === 'all'} onClick={() => setSub('all')} aria-label="Semua area">
                         Semua Area
                     </NeuChip>
                     {(subCategories ?? []).map((s) => (
-                        <NeuChip
-                            key={s}
-                            active={sub === s}
-                            onClick={() => setSub(s)}
-                            aria-label={`Area ${s}`}
-                        >
+                        <NeuChip key={s} active={sub === s} onClick={() => setSub(s)} aria-label={`Area ${s}`}>
                             {s}
                         </NeuChip>
                     ))}
                 </div>
 
-                {/* Machine list */}
+                {can.manage && showCreate && (
+                    <NeuCard className="mb-4">
+                        <h2 className="text-sm font-semibold mb-3">Tambah Mesin</h2>
+                        <form className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3" onSubmit={submitCreate}>
+                            <MachineFields
+                                data={createForm.data}
+                                setData={createForm.setData}
+                                clearErrors={createForm.clearErrors}
+                                errors={createForm.errors}
+                                types={types}
+                                templates={templates}
+                                categories={categories}
+                                subCategories={subCategories}
+                                onSubCategoryChange={applySubCategory(createForm.setData)}
+                                idPrefix="mesin-baru"
+                            />
+                            <div className="sm:col-span-2 flex flex-wrap justify-end gap-2">
+                                <NeuButton
+                                    type="button"
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        createForm.reset();
+                                        setShowCreate(false);
+                                    }}
+                                >
+                                    Batal
+                                </NeuButton>
+                                <NeuButton type="submit" size="sm" disabled={createForm.processing}>
+                                    {createForm.processing ? 'Menyimpan...' : 'Simpan Mesin'}
+                                </NeuButton>
+                            </div>
+                        </form>
+                    </NeuCard>
+                )}
+
                 <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-4 xl:grid-cols-3 xl:gap-x-5">
-                    {visible.length > 0 ? visible.map((machine) => (
-                        <div key={machine.id} data-machine-card={machine.id} className="mb-4">
-                            {editingId === machine.id ? (
-                                <div className="p-3.5 rounded-[20px] shadow-neu-in">
-                                    <h3 className="font-bold text-sm mb-3">Ubah Mesin</h3>
-                                    <form onSubmit={submitEdit} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                        <MachineFields
-                                            data={editForm.data}
-                                            setData={editForm.setData}
-                                            clearErrors={editForm.clearErrors}
-                                            errors={editForm.errors}
-                                            types={types}
-                                            templates={templates}
-                                            categories={categories}
-                                            subCategories={subCategories}
-                                            onSubCategoryChange={applySubCategory(editForm.setData)}
-                                            idPrefix={`ubah-${machine.id}`}
-                                        />
-                                        <div className="sm:col-span-2 flex gap-2">
-                                            <NeuButton type="submit" variant="primary" disabled={editForm.processing}>
-                                                {editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
-                                            </NeuButton>
-                                            <NeuButton onClick={cancelEdit} disabled={editForm.processing}>
-                                                Batal
-                                            </NeuButton>
-                                        </div>
-                                    </form>
-                                </div>
-                            ) : (
-                                <div className="p-3.5 rounded-[20px] shadow-neu-up">
+                    {visible.length > 0 ? visible.map((machine) => {
+                        const expanded = expandedId === machine.id;
+                        const sections = groupComponents(machine.components);
+                        const isEditing = editingId === machine.id;
+                        const isConfirming = confirmingId === machine.id;
+
+                        return (
+                            <div key={machine.id} data-machine-card={machine.id} className="mb-4">
+                                <NeuCard className={`transition-all ${expanded ? 'shadow-neu-in' : ''}`}>
                                     <div className="flex items-center gap-3.5">
                                         <span className="neu-inset w-12 h-12 flex-none grid place-items-center font-bold text-sm text-neu-accent">
                                             {machine.sub_category ?? machine.code}
@@ -238,104 +288,119 @@ export default function Machines({ auth, machines, types, templates, categories,
                                         </NeuPill>
                                     </div>
 
-                                    {confirmingId === machine.id ? (
-                                        <div className="mt-3 neu-inset rounded-neu-sm px-3.5 py-3 flex flex-wrap items-center gap-2">
-                                            <p className="text-xs font-bold text-neu-bad flex-1 min-w-[14rem]">
-                                                Hapus mesin ini dari daftar? Riwayat tetap tersimpan dan bisa dipulihkan.
-                                            </p>
-                                            <NeuButton
-                                                onClick={() => destroyMachine(machine)}
-                                                disabled={busyId === machine.id}
-                                                className="!text-neu-bad"
-                                            >
-                                                {busyId === machine.id ? 'Menghapus...' : 'Ya, hapus'}
-                                            </NeuButton>
-                                            <NeuButton onClick={() => setConfirmingId(null)} disabled={busyId === machine.id}>
-                                                Batal
-                                            </NeuButton>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-3 flex items-center gap-2 justify-end">
-                                            <Link
-                                                href={route('machines.history', { machine: machine.id })}
-                                                className="neu-btn !min-h-[36px] !px-3 !py-1.5 text-xs"
-                                            >
-                                                Riwayat
-                                            </Link>
-
-                                            <NeuButton
-                                                onClick={() => startEdit(machine)}
-                                                className="!min-h-[36px] !px-3 !py-1.5 text-xs"
-                                            >
-                                                Ubah
-                                            </NeuButton>
-                                            <NeuButton
-                                                onClick={() => askDelete(machine)}
-                                                className="!min-h-[36px] !px-3 !py-1.5 text-xs !text-neu-bad"
-                                            >
-                                                Hapus
-                                            </NeuButton>
+                                    {expanded && (
+                                        <div className="mt-3 space-y-2.5">
+                                            {sections.length > 0 ? sections.map((section) => (
+                                                <div key={section.category}>
+                                                    <p className="text-[11px] font-bold uppercase tracking-wide text-neu-sub mb-1">{section.category}</p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {section.items.map((name) => (
+                                                            <span key={name} className="neu-inset rounded-neu-sm px-2.5 py-1 text-xs">{name}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                <p className="text-xs text-neu-sub">Belum ada komponen maintenance.</p>
+                                            )}
                                         </div>
                                     )}
-                                </div>
-                            )}
-                        </div>
-                    )) : (
+
+                                    <div className="mt-3 flex flex-wrap items-center gap-2 justify-end">
+                                        {can.fill && (
+                                            <NeuButton href={route('machines.pm.create', { machine: machine.id })} size="sm">Isi PM</NeuButton>
+                                        )}
+                                        {can.history && (
+                                            <NeuButton href={route('machines.history', { machine: machine.id })} size="sm">Riwayat</NeuButton>
+                                        )}
+                                        {can.manage && (
+                                            <NeuButton size="sm" variant="ghost" onClick={() => startEdit(machine)}>Ubah</NeuButton>
+                                        )}
+                                        {can.manage && (
+                                            <NeuButton size="sm" variant="ghost" className="!text-neu-bad" onClick={() => askDelete(machine)}>Hapus</NeuButton>
+                                        )}
+                                        <NeuChip size="sm" active={expanded} onClick={() => setExpandedId(expanded ? null : machine.id)} aria-label="Lihat komponen maintenance">
+                                            {expanded ? 'Tutup' : `Komponen${machine.component_count > 0 ? ` (${machine.component_count})` : ''}`}
+                                        </NeuChip>
+                                    </div>
+
+                                    {isEditing && (
+                                        <div className="mt-4 pt-4 border-t border-neu-border/70">
+                                            <h3 className="text-sm font-semibold mb-3">Ubah Mesin</h3>
+                                            <form className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3" onSubmit={submitEdit}>
+                                                <MachineFields
+                                                    data={editForm.data}
+                                                    setData={editForm.setData}
+                                                    clearErrors={editForm.clearErrors}
+                                                    errors={editForm.errors}
+                                                    types={types}
+                                                    templates={templates}
+                                                    categories={categories}
+                                                    subCategories={subCategories}
+                                                    onSubCategoryChange={applySubCategory(editForm.setData)}
+                                                    idPrefix={`mesin-ubah-${machine.id}`}
+                                                />
+                                                <div className="sm:col-span-2 flex flex-wrap gap-2 justify-end">
+                                                    <NeuButton type="button" size="sm" variant="ghost" onClick={cancelEdit}>Batal</NeuButton>
+                                                    <NeuButton type="submit" size="sm" disabled={editForm.processing}>
+                                                        {editForm.processing ? 'Menyimpan...' : 'Simpan Perubahan'}
+                                                    </NeuButton>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    )}
+
+                                    {isConfirming && (
+                                        <div className="mt-4 pt-4 border-t border-neu-border/70">
+                                            <p className="text-sm mb-3">Yakin ingin menghapus mesin <b>{machine.code}</b> — {machine.name}?</p>
+                                            <div className="flex gap-2 justify-end">
+                                                <NeuButton type="button" size="sm" variant="ghost" onClick={cancelDelete}>Batal</NeuButton>
+                                                <NeuButton type="button" size="sm" variant="bad" className="!text-neu-bad" onClick={() => confirmDelete(machine)} disabled={busyId === machine.id}>Hapus</NeuButton>
+                                            </div>
+                                        </div>
+                                    )}
+                                </NeuCard>
+                            </div>
+                        );
+                    }) : (
                         <p className="text-neu-sub text-center py-6 sm:col-span-2 xl:col-span-3">Tidak ada mesin yang cocok.</p>
                     )}
                 </div>
 
-                {/* Soft delete disembunyikan dari daftar aktif, jadi mesin yang
-                    sengaja dilepas harus tetap bisa ditemukan dan dikembalikan
-                    dari halaman ini. */}
                 {trashedList.length > 0 && (
-                    <NeuCard className="mt-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <div>
-                                <h2 className="font-bold text-sm">Mesin Dihapus</h2>
-                                <p className="text-xs text-neu-sub">
-                                    {trashedList.length} mesin disembunyikan dari daftar aktif.
-                                </p>
-                            </div>
-                            <NeuButton
-                                onClick={() => setShowTrashed((v) => !v)}
-                                className="!min-h-[36px] !px-3 !py-1.5 text-xs"
-                            >
-                                {showTrashed ? 'Sembunyikan' : 'Lihat & Pulihkan'}
+                    <div className="mt-6">
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-sm font-semibold">Mesin yang dihapus</h2>
+                            <NeuButton type="button" variant="ghost" size="sm" onClick={() => setShowTrashed((v) => !v)}>
+                                {showTrashed ? 'Sembunyikan' : `Tampilkan (${trashedList.length})`}
                             </NeuButton>
                         </div>
-
                         {showTrashed && (
-                            <ul className="mt-3 space-y-2">
+                            <div className="grid grid-cols-1 gap-0 sm:grid-cols-2 sm:gap-x-4 xl:grid-cols-3 xl:gap-x-5">
                                 {trashedList.map((machine) => (
-                                    <li
-                                        key={machine.id}
-                                        data-trashed-machine={machine.id}
-                                        className="neu-inset rounded-neu-sm px-3.5 py-2.5 flex items-center gap-3"
-                                    >
-                                        <div className="min-w-0 flex-1">
-                                            <b className="block text-sm truncate">{machine.name}</b>
-                                            <span className="block text-xs text-neu-sub truncate">
-                                                {machine.code} · dihapus {machine.deleted_at}
-                                            </span>
-                                        </div>
-                                        <NeuButton
-                                            onClick={() => restoreMachine(machine)}
-                                            disabled={busyId === machine.id}
-                                            className="!min-h-[36px] !px-3 !py-1.5 text-xs"
-                                        >
-                                            {busyId === machine.id ? 'Memulihkan...' : 'Pulihkan'}
-                                        </NeuButton>
-                                    </li>
+                                    <div key={machine.id} className="mb-4">
+                                        <NeuCard className="opacity-80">
+                                            <div className="flex items-start gap-3.5">
+                                                <span className="neu-inset w-12 h-12 flex-none grid place-items-center font-bold text-sm text-neu-accent">
+                                                    {machine.code?.slice(-4) ?? '—'}
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <b className="block text-sm truncate">{machine.name}</b>
+                                                    <span className="block text-xs text-neu-sub truncate">{machine.code} · Dihapus {machine.deleted_at}</span>
+                                                </div>
+                                                {can.manage && (
+                                                    <NeuButton type="button" size="sm" variant="ghost" onClick={() => restoreMachine(machine)} disabled={busyId === machine.id}>
+                                                        {busyId === machine.id ? 'Memulihkan...' : 'Pulihkan'}
+                                                    </NeuButton>
+                                                )}
+                                            </div>
+                                        </NeuCard>
+                                    </div>
                                 ))}
-                            </ul>
+                            </div>
                         )}
-                    </NeuCard>
+                    </div>
                 )}
             </div>
-
-
-
         </AuthenticatedLayout>
     );
 }

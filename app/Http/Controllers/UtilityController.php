@@ -18,13 +18,15 @@ class UtilityController extends Controller
 {
     public function index(Request $request): Response
     {
-        $utilities = Machine::with('template.items')
+        $utilities = Machine::with(['template.items', 'components'])
             ->where('type', MachineType::Utility->value)
             ->orderBy('sort_no')
             ->orderBy('code')
             ->get()
             ->map(function (Machine $machine) {
-                $items = $machine->template?->items ?? collect();
+                // Sumber komponen yang sama dengan form PM: master komponen
+                // (pivot) atau item template lama sebagai cadangan.
+                $components = $machine->effectiveComponents();
 
                 return [
                     'id' => $machine->id,
@@ -37,11 +39,8 @@ class UtilityController extends Controller
                     'week_group' => $machine->week_group,
                     'template_id' => $machine->template_id,
                     'is_active' => $machine->is_active,
-                    'component_count' => $items->count(),
-                    'components' => $items->map(fn ($item) => [
-                        'name' => $item->name,
-                        'category' => $item->category,
-                    ])->values(),
+                    'component_count' => $components->count(),
+                    'components' => $components,
                 ];
             });
 

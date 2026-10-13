@@ -49,6 +49,34 @@ class Machine extends Model
         return $this->hasMany(PmRecord::class);
     }
 
+    /**
+     * Komponen yang benar-benar dipakai form PM untuk unit ini: master komponen
+     * (pivot `component_machine`) bila sudah ditugaskan, atau item template lama
+     * sebagai cadangan untuk data yang belum ikut termigrasi. Halaman Mesin dan
+     * Utility memakai ini supaya daftar yang tampil sama dengan checklist yang
+     * akan diisi teknisi.
+     *
+     * @return \Illuminate\Support\Collection<int, array{name:string, category:?string}>
+     */
+    public function effectiveComponents(): \Illuminate\Support\Collection
+    {
+        if ($this->components->isNotEmpty()) {
+            return $this->components
+                ->map(fn (Component $component) => [
+                    'name' => $component->name,
+                    'category' => $component->category,
+                ])
+                ->values();
+        }
+
+        return ($this->template?->items ?? collect())
+            ->map(fn ($item) => [
+                'name' => $item->name,
+                'category' => $item->category,
+            ])
+            ->values();
+    }
+
     public function currentPmRecord(): HasOne
     {
         return $this->hasOne(PmRecord::class)->latest();

@@ -28,7 +28,7 @@ class MachineController extends Controller
 
     public function index(Request $request): Response
     {
-        $machines = Machine::with('template')
+        $machines = Machine::with(['template.items', 'components'])
             // Halaman ini khusus mesin produksi; utility dikelola lewat
             // halaman "Utility" terpisah.
             ->where('type', '!=', MachineType::Utility->value)
@@ -36,6 +36,11 @@ class MachineController extends Controller
             ->orderBy('code')
             ->get()
             ->map(function ($m) {
+                // Komponen efektif: master komponen yang ditugaskan ke unit ini
+                // (pivot), atau item template lama bila belum termigrasi —
+                // sumber yang sama dengan form PM.
+                $components = $m->effectiveComponents();
+
                 return [
                     'id' => $m->id,
                     'code' => $m->code,
@@ -48,6 +53,8 @@ class MachineController extends Controller
                     'is_active' => $m->is_active,
                     'template_id' => $m->template_id,
                     'template_name' => $m->template?->name,
+                    'component_count' => $components->count(),
+                    'components' => $components,
                 ];
             });
 
@@ -63,6 +70,8 @@ class MachineController extends Controller
                 'name' => $m->name,
                 'deleted_at' => $m->deleted_at?->format('d M Y H:i'),
             ]);
+
+        $user = $request->user();
 
         return Inertia::render('Machines/Index', [
             'machines' => $machines,
@@ -92,6 +101,15 @@ class MachineController extends Controller
                 ->pluck('sub_category')
                 ->values()
                 ->all(),
+            'can' => [
+                'fill' => $user->can('pm.fill'),
+                'history' => $user->can('pm.history.view'),
+                // Halaman ini sendiri sudah dibatasi `machine.manage`, jadi
+                // nilainya selalu benar bagi yang bisa membukanya. Tetap dikirim
+                // eksplisit supaya kontrol CRUD di UI memakai syarat yang sama
+                // dengan halaman Utility.
+                'manage' => $user->can('machine.manage'),
+            ],
         ]);
     }
 

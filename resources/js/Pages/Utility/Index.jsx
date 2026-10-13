@@ -165,7 +165,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                 {showCreate ? 'Tutup' : 'Tambah Utility'}
                             </NeuButton>
                         )}
-                        <NeuButton onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} variant="ghost">Kembali ke atas</NeuButton>
+                        
                     </div>
                 </div>
 
@@ -263,7 +263,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                             <NeuButton size="sm" variant="ghost" onClick={() => startEdit(unit)}>Ubah</NeuButton>
                                         )}
                                         {can.manage && (
-                                            <NeuButton size="sm" variant="ghost" onClick={() => askDelete(unit)}>Hapus</NeuButton>
+                                            <NeuButton size="sm" variant="ghost" className="!text-neu-bad" onClick={() => askDelete(unit)}>Hapus</NeuButton>
                                         )}
                                         <NeuChip size="sm" active={expanded} onClick={() => setExpandedId(expanded ? null : unit.id)} aria-label="Lihat komponen maintenance">
                                             {expanded ? 'Tutup' : `Komponen${unit.component_count > 0 ? ` (${unit.component_count})` : ''}`}
@@ -301,7 +301,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                             <p className="text-sm mb-3">Yakin ingin menghapus utility <b>{unit.code}</b> — {unit.name}?</p>
                                             <div className="flex gap-2 justify-end">
                                                 <NeuButton type="button" size="sm" variant="ghost" onClick={cancelDelete}>Batal</NeuButton>
-                                                <NeuButton type="button" size="sm" variant="bad" onClick={() => confirmDelete(unit)} disabled={busyId === unit.id}>Hapus</NeuButton>
+                                                <NeuButton type="button" size="sm" variant="bad" className="!text-neu-bad" onClick={() => confirmDelete(unit)} disabled={busyId === unit.id}>Hapus</NeuButton>
                                             </div>
                                         </div>
                                     )}
