@@ -83,7 +83,7 @@ export default function Roles({ auth, roles = [], permissions = [] }) {
                             required
                         />
                         <NeuButton type="submit" variant="primary" disabled={createForm.processing} className="self-start">
-                            {createForm.processing ? 'Menambahkan...' : '+ Tambah Role'}
+                            {createForm.processing ? 'Menambahkan...' : '+'}
                         </NeuButton>
                     </form>
                     {createForm.errors.name && (

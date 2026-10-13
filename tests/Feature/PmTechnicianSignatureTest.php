@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Actions\Pm\RejectPmRecord;
 use App\Actions\Pm\SignPmRecord;
+use App\Enums\MachineType;
 use App\Enums\PmStatus;
 use App\Enums\Period;
 use App\Enums\SignatureStage;
@@ -389,6 +390,43 @@ class PmTechnicianSignatureTest extends TestCase
         // Nama teknisi manual harus ikut tampil supaya yang sudah mengisi
         // checklist bisa dibandingkan dengan nama yang akan menandatangani.
         $this->assertSame('Budi Santoso', $props['technician_name']);
+    }
+
+    public function test_daftar_persetujuan_menandai_kategori_mesin_dan_utility(): void
+    {
+        // Antrean menggabungkan PM mesin produksi dan unit utility dalam satu
+        // daftar, jadi tiap record wajib membawa kategori unitnya supaya UI
+        // bisa membedakan keduanya (kunci untuk pewarnaan, label untuk teks).
+        $this->store($this->user('technician'));
+
+        $utility = Machine::create([
+            'code' => 'UTL-TST-001',
+            'name' => 'Chiller Uji',
+            'type' => MachineType::Utility->value,
+            'week_group' => 1,
+            'is_active' => true,
+            'sort_no' => 2,
+        ]);
+
+        $this->actingAs($this->user('technician'))->post(
+            route('machines.pm.store', $utility),
+            $this->payload(['machine_id' => $utility->id]),
+        )->assertRedirect();
+
+        $records = $this->actingAs($this->pic)
+            ->withHeaders([
+                'X-Inertia' => 'true',
+                'X-Inertia-Version' => Inertia::getVersion(),
+            ])
+            ->get(route('approvals.index'))
+            ->json('props.records');
+
+        $byCode = collect($records)->keyBy('code');
+
+        $this->assertSame('machine', $byCode['TST-001']['category']);
+        $this->assertSame('Mesin', $byCode['TST-001']['category_label']);
+        $this->assertSame('utility', $byCode['UTL-TST-001']['category']);
+        $this->assertSame('Utility', $byCode['UTL-TST-001']['category_label']);
     }
 
     public function test_tahap_pic_tetap_berjalan_kalau_endpoint_dipanggil_langsung(): void

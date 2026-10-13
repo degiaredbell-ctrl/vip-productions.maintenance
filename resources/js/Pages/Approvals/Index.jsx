@@ -113,7 +113,7 @@ export default function Approvals({ auth, records, years, year, period, periods,
                             </NeuCard>
                         ) : (
                             /*
-                                Empat kolom ini muat di layar sempit, tapi tetap
+                                Lima kolom ini muat di layar sempit, tapi tetap
                                 dirakit ulang jadi kartu di bawah 1024px oleh
                                 `.neu-table-wrap`: `thead` disembunyikan, tiap sel
                                 jadi blok penuh, dan nama kolomnya dipindahkan ke
@@ -134,6 +134,7 @@ export default function Approvals({ auth, records, years, year, period, periods,
                                     <thead>
                                         <tr>
                                             <th scope="col">Mesin</th>
+                                            <th scope="col">Kategori</th>
                                             <th scope="col">Periode</th>
                                             <th scope="col">Status</th>
                                             <th scope="col">Aksi</th>

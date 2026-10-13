@@ -3,6 +3,14 @@ import NeuPill from '@/Components/NeuPill';
 
 const STATUS_VARIANTS = { todo: 'todo', progress: 'progress', done: 'done', issue: 'issue' };
 
+// Kategori unit dibedakan lewat warna teks sekaligus warna latar: mesin
+// produksi biru, unit utility oranye. Approver jadi bisa memindai antrean
+// tanpa harus membaca kode unit satu per satu.
+const CATEGORY_STYLES = {
+    machine: 'text-neu-info bg-neu-info/15 ring-neu-info/30',
+    utility: 'text-neu-warn bg-neu-warn/15 ring-neu-warn/30',
+};
+
 /**
  * Satu baris antrean persetujuan.
  *
@@ -37,6 +45,14 @@ export default function ApprovalRow({ record }) {
                         </span>
                     </div>
                 </div>
+            </td>
+
+            <td data-label="Kategori">
+                <span
+                    className={`inline-flex items-center rounded-[10px] px-2.5 py-1 text-[11px] font-bold ring-1 ring-inset ${CATEGORY_STYLES[record.category] ?? 'text-neu-sub bg-neu-bg ring-neu-dark/40'}`}
+                >
+                    {record.category_label}
+                </span>
             </td>
 
             <td data-label="Periode & Teknisi">

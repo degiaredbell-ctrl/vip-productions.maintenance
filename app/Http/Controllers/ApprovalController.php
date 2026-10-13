@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MachineType;
 use App\Enums\Period;
 use App\Enums\PmDisplayStatus;
 use App\Enums\SignatureStage;
@@ -83,6 +84,12 @@ class ApprovalController extends Controller
         $display = PmDisplayStatus::fromPmStatus($record->status);
         $awaiting = $record->status->awaiting();
 
+        // Kategori baris: unit utility dikelola terpisah dari mesin produksi,
+        // jadi approver perlu tahu ini PM unit mana. Dikirim sebagai pasangan
+        // kunci+label seperti status/period supaya pewarnaan di UI memakai
+        // kunci yang stabil, bukan teks tampilannya.
+        $isUtility = $record->machine?->type === MachineType::Utility->value;
+
         return [
             'id' => $record->id,
             'machine_id' => $record->machine_id,
@@ -90,6 +97,8 @@ class ApprovalController extends Controller
             'name' => $record->machine?->name,
             'location' => $record->machine?->location,
             'sub_category' => $record->machine?->sub_category,
+            'category' => $isUtility ? 'utility' : 'machine',
+            'category_label' => $isUtility ? 'Utility' : 'Mesin',
             'period' => $record->period,
             'period_label' => Period::tryFrom($record->period)?->label() ?? $record->period,
             'year' => $record->year,
