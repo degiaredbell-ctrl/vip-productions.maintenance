@@ -9,6 +9,10 @@ import ApprovalRow from '@/Pages/Approvals/ApprovalRow';
 export default function Approvals({ auth, records, years, year, period, periods, myStages, hasStages }) {
     const [selectedYear, setSelectedYear] = useState(year);
     const [selectedPeriod, setSelectedPeriod] = useState(period);
+    // Switch kategori PM: default "Mesin". Daftar difilter di sisi klien
+    // supaya perpindahan Mesin/Utility terasa instan — semua record untuk
+    // tahun/periode ini sudah terkirim dalam satu muatan.
+    const [category, setCategory] = useState('machine');
 
     useEffect(() => {
         setSelectedYear(year);
@@ -22,6 +26,10 @@ export default function Approvals({ auth, records, years, year, period, periods,
             replace: true,
         });
     };
+
+    const machineCount = records.filter((record) => record.category === 'machine').length;
+    const utilityCount = records.filter((record) => record.category === 'utility').length;
+    const visibleRecords = records.filter((record) => record.category === category);
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -101,14 +109,33 @@ export default function Approvals({ auth, records, years, year, period, periods,
                             ))}
                         </div>
 
+                        <div
+                            className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-1 lg:flex-nowrap lg:overflow-x-auto"
+                            role="group"
+                            aria-label="Filter kategori"
+                        >
+                            <NeuChip
+                                active={category === 'machine'}
+                                onClick={() => setCategory('machine')}
+                            >
+                                Mesin ({machineCount})
+                            </NeuChip>
+                            <NeuChip
+                                active={category === 'utility'}
+                                onClick={() => setCategory('utility')}
+                            >
+                                Utility ({utilityCount})
+                            </NeuChip>
+                        </div>
+
                         <p className="text-xs text-neu-sub mb-3">
-                            {records.length} PM menunggu tindakan Anda
+                            {visibleRecords.length} PM {category === 'utility' ? 'Utility' : 'Mesin'} menunggu tindakan Anda
                         </p>
 
-                        {records.length === 0 ? (
+                        {visibleRecords.length === 0 ? (
                             <NeuCard>
                                 <p className="text-sm text-neu-sub text-center py-4">
-                                    Tidak ada PM yang menunggu persetujuan Anda pada filter ini.
+                                    Tidak ada PM {category === 'utility' ? 'Utility' : 'Mesin'} yang menunggu persetujuan Anda pada filter ini.
                                 </p>
                             </NeuCard>
                         ) : (
@@ -141,7 +168,7 @@ export default function Approvals({ auth, records, years, year, period, periods,
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {records.map((record) => (
+                                        {visibleRecords.map((record) => (
                                             <ApprovalRow key={record.id} record={record} />
                                         ))}
                                     </tbody>
