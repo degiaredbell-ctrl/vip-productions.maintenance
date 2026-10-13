@@ -11,6 +11,7 @@ use App\Http\Controllers\PmRecordController;
 use App\Http\Controllers\PmSignatureController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SparePartController;
 use App\Http\Controllers\UtilityController;
 use Illuminate\Support\Facades\Route;
 
@@ -113,6 +114,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/utility/{machine}/restore', [MachineController::class, 'restore'])
             ->name('utility.restore')
             ->whereNumber('machine');
+    });
+
+    // Suku Cadang: master suku cadang + transaksi stok (barang masuk/keluar).
+    // Semua user yang login boleh melihat; kelola & unggah CSV hanya pemegang
+    // `sparepart.manage` (Admin & tech-all).
+    Route::get('/suku-cadang', [SparePartController::class, 'index'])
+        ->name('spareparts.index')
+        ->middleware('can:sparepart.view');
+    Route::get('/suku-cadang/{sparePart}/movements', [SparePartController::class, 'movements'])
+        ->name('spareparts.movements')
+        ->middleware('can:sparepart.view');
+
+    Route::middleware('can:sparepart.manage')->group(function () {
+        Route::post('/suku-cadang', [SparePartController::class, 'store'])->name('spareparts.store');
+        Route::post('/suku-cadang/import', [SparePartController::class, 'import'])->name('spareparts.import');
+        Route::put('/suku-cadang/{sparePart}', [SparePartController::class, 'update'])->name('spareparts.update');
+        Route::delete('/suku-cadang/{sparePart}', [SparePartController::class, 'destroy'])->name('spareparts.destroy');
+        Route::patch('/suku-cadang/{sparePart}/restore', [SparePartController::class, 'restore'])
+            ->name('spareparts.restore')
+            ->whereNumber('sparePart');
+        Route::post('/suku-cadang/{sparePart}/movements', [SparePartController::class, 'storeMovement'])
+            ->name('spareparts.movements.store');
     });
 
     // Reports

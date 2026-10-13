@@ -21,7 +21,7 @@ Untuk panduan setup, lihat [README.md](README.md).
 9. [Alur Request Utama](#9-alur-request-utama)
 10. [Frontend](#10-frontend)
 11. [Ekspor](#11-ekspor)
-12. [Impor Mesin](#12-impor-mesin)
+12. [Impor CSV](#12-impor-csv)
 13. [Audit Log](#13-audit-log)
 14. [Keamanan](#14-keamanan)
 15. [Deployment](#15-deployment)
@@ -147,6 +147,7 @@ app/
 │       ├── ApprovalController.php       Antrean per permission
 │       ├── ReportController.php         Statistik + export
 │       ├── ProfileController.php
+│       ├── SparePartController.php      Master suku cadang + transaksi stok + impor
 │       └── Admin/
 │           ├── UserController.php       CRUD pengguna + ganti password
 │           ├── RoleController.php       CRUD role (authorizeResource)
@@ -171,12 +172,14 @@ app/
 │   ├── DashboardService.php  Agregasi status mesin + filter
 │   ├── ReportService.php     Kepatuhan, top part, ringkasan aksi
 │   ├── AuditLogService.php   Penulis audit log
-│   └── MachineImportService.php  Impor CSV idempoten
+│   ├── MachineImportService.php  Impor CSV mesin idempoten
+│   └── SparePartImportService.php Impor CSV suku cadang idempoten (toleran header dua-baris & koma)
 │
 ├── Exports/                  Maatwebsite Excel mapping
 ├── Models/                   Eloquent + cast/relasi
 └── Console/Commands/
-    └── ImportMachinesCommand.php
+    ├── ImportMachinesCommand.php
+    └── ImportSparePartsCommand.php
 ```
 
 ### Kenapa Enum dipakai di mana-mana
@@ -253,6 +256,19 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 │  is_active           │         │  sort_no                    │
 │  deleted_at (soft)   │         └──────────────────────────────┘
 └──────────────────────┘
+
+┌──────────────────────────────┐        ┌───────────────────────────────┐
+│         spare_parts          │        │     spare_part_movements      │
+│  code UNIQUE                 │◀───────│  spare_part_id (cascade)      │
+│  category, name, brand, type │        │  user_id (nullOnDelete)       │
+│  description, unit           │        │  type (in/out)                │
+│  qty, stock, stock_start     │        │  qty                          │
+│  stock_in/out(_log)          │        │  moved_at                     │
+│  min_stock, supplier         │        │  note                         │
+│  needed_for, note            │        └───────────────────────────────┘
+│  location_code, location     │
+│  sort_no, deleted_at (soft)  │  ← global, TIDAK terikat ke machines
+└──────────────────────────────┘
 ```
 
 ★ = snapshot, sengaja diduplikasi agar jejaknya tidak hilang saat akun dihapus.
@@ -267,6 +283,8 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 | `pm_record_items/revisions/signatures.pm_record_id` | `cascade` | Data turunan dari record |
 | `machines.template_id` | `nullOnDelete` | Hapus template tidak boleh menghapus mesin |
 | `audit_logs.user_id` | `nullOnDelete`** | Log harus bertahan setelah pelaku keluar |
+| `spare_part_movements.spare_part_id` | `cascade` | Riwayat transaksi tidak bermakna tanpa suku cadangnya |
+| `spare_part_movements.user_id` | **`nullOnDelete`** | Riwayat stok tetap terbaca meski akun pelakunya dihapus |
 
 ### Index
 
@@ -275,6 +293,8 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 - `pm_record_items`: `pm_record_id`
 - `pm_signatures`: `signed_by`, unique `(pm_record_id, stage)`
 - `audit_logs`: `(subject_type, subject_id)`
+- `spare_parts`: unique `code`, `category`, `name`, `location_code`, `(category, name)`
+- `spare_part_movements`: `(spare_part_id, moved_at)`
 
 ---
 
@@ -470,6 +490,8 @@ Permission originates dari `RoleSeeder`:
 | `utility.manage` | admin, tech-all (CRUD Utility) |
 | `utility.view` | tech-utilities, tech-all (scope halaman/daftar Utility) |
 | `template.manage` | admin, manager, tech-all |
+| `sparepart.view` | **semua role** — suku cadang global, di luar scope Mesin/Utility |
+| `sparepart.manage` | admin, tech-all (CRUD + transaksi stok + impor) |
 | `user.manage` | admin |
 | `audit.view` | admin, manager |
 
@@ -566,6 +588,14 @@ POST /pm/{record}/sign
 | `/admin/templates` | GET/POST | `TemplateController` | `can:template.manage` |
 | `/admin/templates/{template}` | DELETE | `TemplateController@destroy` | `can:template.manage` |
 | `/admin/audit-logs` | GET | `AuditLogController@index` | `can:audit.view` |
+| `/suku-cadang` | GET | `SparePartController@index` | `can:sparepart.view` |
+| `/suku-cadang` | POST | `SparePartController@store` | `can:sparepart.manage` |
+| `/suku-cadang/import` | POST | `SparePartController@import` | `can:sparepart.manage` (unggah CSV) |
+| `/suku-cadang/{sparePart}` | PUT | `SparePartController@update` | `can:sparepart.manage` |
+| `/suku-cadang/{sparePart}` | DELETE | `SparePartController@destroy` | `can:sparepart.manage` (soft delete) |
+| `/suku-cadang/{sparePart}/restore` | PATCH | `SparePartController@restore` | `can:sparepart.manage` |
+| `/suku-cadang/{sparePart}/movements` | GET | `SparePartController@movements` | `can:sparepart.view` (JSON riwayat) |
+| `/suku-cadang/{sparePart}/movements` | POST | `SparePartController@storeMovement` | `can:sparepart.manage` |
 
 ---
 
@@ -623,6 +653,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
 | `/admin/templates` | `Admin/Templates` | Template checklist per jenis |
 | `/admin/audit-logs` | `Admin/AuditLogs` | 100 log terbaru |
+| `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV |
 | `/profile` | `Profile/Edit` | Info akun, ganti password, hapus akun |
 
 ---
@@ -641,7 +672,9 @@ cetak identik dengan tabel di layar dan tidak menyesatkan.
 
 ---
 
-## 12. Impor Mesin
+## 12. Impor CSV
+
+### Impor Mesin
 
 ```
 php artisan machines:import [--purge] [--force]
@@ -667,6 +700,48 @@ Keputusan desain:
   beserta riwayat PM-nya. Karena itu ada `--force` untuk CI/non-interaktif.
 - Dibungkus `DB::transaction()` agar impor gagal di tengah tidak meninggalkan data setengah jadi.
 
+### Impor Suku Cadang
+
+```
+php artisan spare-parts:import [path?] [--purge]
+```
+
+Sumber data: `references/suku_cadang.csv` (jalur `base_path('references/suku_cadang.csv')`),
+atau file apa pun lewat argumen `path`. Halaman `/suku-cadang` juga bisa **mengunggah CSV**
+lewat `POST /suku-cadang/import`; keduanya memakai `SparePartImportService` yang sama.
+
+Pemetaan 21 kolom nyata CSV → tabel `spare_parts`:
+
+| Posisi CSV | Kolom tabel |
+|-----------|-------------|
+| `Code.asset` | `code` (unik) |
+| `CATEGORY DEVICE` | `category` |
+| `Suku Cadang` | `name` |
+| `MEREK` / `TYPE` / `Desc` | `brand` / `type` / `description` |
+| `Last - Modified` / `Ket. Last - Modified` | `last_modified` / `last_modified_note` |
+| `UNIT` | `unit` |
+| `QTY` | `qty` |
+| `STOK AKHIR` | `stock` |
+| `BARANG KELUAR` / `Log.Barang Keluar` / `BARANG MASUK` | `stock_out` / `stock_out_log` / `stock_in` |
+| `STOK AWAL` / `MIN` | `stock_start` / `min_stock` |
+| `SUPLIER` / `Kebutuhan Untuk` / `Penjelasan` | `supplier` / `needed_for` / `note` |
+| `Code.loc` / `LOC` | `location_code` / `location` |
+
+Keputusan desain (parser sengaja dibuat toleran karena CSV berasal dari spreadsheet):
+
+- **BOM UTF-8 dibuang lebih dulu.** BOM tepat di depan tanda kutip pembuka membuat `fgetcsv`
+  tidak mengenali kutip, sehingga header dua-baris terbelah jadi dua record dan baris keduanya
+  (`STOK AKHIR…`) ikut terbaca sebagai data. Setelah BOM dibuang, header terbaca sebagai satu field
+  dan dikenali lewat kata kunci `Code.asset` / `stok akhir`.
+- **Header memuat 22 nama tetapi data hanya 21 kolom** — ada kolom `Log.Barang Masuk` tanpa data.
+  Pemetaan mengikuti urutan kolom nyata (21), yang tanpa kolom tersebut.
+- **Koma tanpa kutip di nama barang** (mis. `"...380VAC/220VDC, 10A"`) menggeser kolom jadi 22.
+  Baris 22 kolom dideteksi dan dua kolom nama digabung kembali dengan `, `.
+- **Idempoten** — dicocokkan berdasarkan `code`; baris yang sudah ada di-update, bukan diduplikasi.
+- **`--purge`** menghapus permanen suku cadang yang tidak ada di CSV (riwayat transaksinya ikut
+  terhapus via cascade).
+- Dibungkus `DB::transaction()`.
+
 ---
 
 ## 13. Audit Log
@@ -691,6 +766,7 @@ Action yang tercatat:
 | | `sign.{stage}` (mis. `pm.sign.pic`) | `Actions/Pm/SignPmRecord` |
 | | `reject` | `Actions/Pm/RejectPmRecord` |
 | `user.*` | `create`, `update`, `password`, `delete` | `Admin/UserController` |
+| `sparepart.*` | `create`, `update`, `delete`, `restore`, `movement`, `import` | `SparePartController` |
 
 > **Cakupan saat ini:** perubahan pada **template checklist** dan **role/permission** belum
 > tercatat di audit log. Keduanya baru bisa ditambah dengan satu baris
@@ -827,7 +903,7 @@ Health check Laravel tersedia di `/up` (dikonfigurasi lewat `withRouting(health:
 
 | Jenis | Tool | Cakupan |
 |-------|------|---------|
-| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile |
+| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile, Mesin/Utility, PM & rantai tanda tangan, Suku Cadang (impor CSV, CRUD, transaksi stok, pembatasan akses) |
 | Manual terotomasi | Playwright (via Docker image `mcr.microsoft.com/playwright`) | Sweep 9 halaman: login nyata, cek blank page, error console, HTTP 5xx |
 | Fungsional | Skrip Playwright ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda |
 

@@ -95,12 +95,13 @@ Nilai utama yang dibawa produk ini:
 - Laporan kepatuhan, top part, ringkasan aksi
 - Ekspor XLSX & PDF
 - Impor mesin dari CSV
+- Suku Cadang (global): master, transaksi stok masuk/keluar, riwayat transaksi, impor/unggah CSV
 
 ### Tidak Termasuk (v1)
 - Notifikasi email/WhatsApp otomatis
 - Aplikasi mobile native
 - Integrasi dengan sistem ERP / sensor IoT
-- Perhitungan downtime, spare part inventory, atau biaya maintenance
+- Perhitungan downtime atau biaya maintenance
 
 ---
 
@@ -234,6 +235,20 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-AUD-04 | Halaman audit log menampilkan 100 log terbaru |
 | REQ-AUD-05 | Hanya permission `audit.view` dapat membuka halaman audit log |
 
+### 6.12 Suku Cadang (REQ-SPARE)
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-SPARE-01 | Sistem menyediakan master suku cadang global (tidak terikat unit Mesin/Utility) berisi kode, kategori, nama, merek, type, deskripsi, satuan, stok, stok awal/minimum, supplier, kebutuhan untuk, dan lokasi |
+| REQ-SPARE-02 | Pemegang `sparepart.manage` dapat menambah, mengubah, dan menghapus (soft delete) suku cadang |
+| REQ-SPARE-03 | Pemegang `sparepart.manage` dapat mencatat transaksi **barang masuk** dan **barang keluar**; stok terkini menyesuaikan otomatis |
+| REQ-SPARE-04 | Barang keluar yang melebihi stok tersedia ditolak dengan pesan validasi |
+| REQ-SPARE-05 | Riwayat transaksi per suku cadang menampilkan tipe, jumlah, tanggal, catatan, dan pelaku |
+| REQ-SPARE-06 | Daftar dapat dicari dan difilter berdasarkan kategori, lokasi, serta status (stok menipis / habis) |
+| REQ-SPARE-07 | Master dapat diimpor massal dari CSV (`spare-parts:import`) dan lewat **unggah CSV** di halaman; impor bersifat idempoten berdasarkan kode |
+| REQ-SPARE-08 | Semua user login dapat melihat daftar; hanya pemegang `sparepart.manage` dapat mengelola |
+| REQ-SPARE-09 | Aksi create/update/delete/restore/transaksi/impor suku cadang tercatat di audit log |
+
 ---
 
 ## 7. Aturan Bisnis
@@ -313,6 +328,8 @@ Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 | `utility.manage` | ✅ | — | — | — | — | — | — | ✅ |
 | `utility.view` | ✅ | — | — | — | — | — | ✅ | ✅ |
 | `template.manage` | ✅ | ✅ | — | — | — | — | — | ✅ |
+| `sparepart.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `sparepart.manage` | ✅ | — | — | — | — | — | — | ✅ |
 | `user.manage` | ✅ | — | — | — | — | — | — | — |
 | `audit.view` | ✅ | ✅ | — | — | — | — | — | — |
 
@@ -322,6 +339,7 @@ Prinsip:
 - Role `manager` tidak memegang `pm.fill` (tidak melakukan pekerjaan lapangan).
 - `machine.view` / `utility.view` adalah **scope** halaman/daftar aset; role general membukanya lewat baseline `dashboard.view`.
 - Role teknisi **tech-machines** / **tech-utilities** tanpa `dashboard.view` → hanya satu scope terbuka; kartu di luar scope pada `/form-maintenance` tampil abu-abu dan URL langsungnya diblokir. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap termasuk Komponen).
+- **Suku Cadang** berdiri di luar scope Mesin/Utility: `sparepart.view` untuk **semua** role, `sparepart.manage` (CRUD + transaksi + impor) hanya Admin & **tech-all**.
 
 ---
 
@@ -355,6 +373,8 @@ machines ──> checklist_templates   (template_id, nullOnDelete)
 
 users >── roles >── permissions     (Spatie: model_has_roles, roles, permissions)
 audit_logs ──> users (user_id, nullOnDelete)
+
+spare_parts ──< spare_part_movements ──> users (user_id, nullOnDelete)
 ```
 
 Constraint kunci:
@@ -362,6 +382,8 @@ Constraint kunci:
 - `pm_signatures`: **unique** (`pm_record_id`, `stage`) — satu tanda tangan per tahap.
 - `machines.code`: **unique**.
 - `machines`: soft delete (`deleted_at`).
+- `spare_parts.code`: **unique**; soft delete (`deleted_at`).
+- `spare_part_movements`: mencatat setiap transaksi stok dan mengubah `spare_parts.stock` secara atomik (`type` = `in`/`out`); `spare_parts` bersifat global, tidak ada relasi ke `machines`.
 
 Rincian lengkap ada di [Architecture.md](Architecture.md).
 
@@ -403,6 +425,13 @@ Fitur dianggap selesai bila seluruh butir di bawah ini terpenuhi dan **diverifik
 - [ ] Mesin dapat dihapus dan dipulihkan.
 - [ ] Riwayat PM tetap ada setelah mesin di-soft-delete.
 
+### Suku cadang
+- [ ] `spare-parts:import` dan unggah CSV sama-sama idempoten berdasarkan kode (baris dengan kode sama diperbarui, bukan diduplikasi).
+- [ ] Transaksi barang masuk menambah stok, barang keluar mengurangi stok.
+- [ ] Barang keluar melebihi stok ditolak dan stok tidak berubah.
+- [ ] Filter stok menipis/habis menampilkan baris yang sesuai.
+- [ ] Role tanpa `sparepart.manage` hanya bisa melihat; aksi kelola ditolak server (403).
+
 ### Umum
 - [ ] Tidak ada halaman yang tampil blank (React error) setelah login pada 9 route utama.
 - [ ] Tidak ada error console atau respons HTTP 5xx pada seluruh halaman.
@@ -415,11 +444,15 @@ Fitur dianggap selesai bila seluruh butir di bawah ini terpenuhi dan **diverifik
 - Notifikasi otomatis (email/WhatsApp) untuk pengingat persetujuan atau PM jatuh tempo.
 - Aplikasi mobile native.
 - Integrasi ERP, sistem aset, atau sensor IoT.
-- Manajemen spare part & inventaris.
 - Perhitungan downtime, biaya, atau ROI maintenance.
 - Multi-tenancy / multi-cabang.
 - SSO / LDAP.
 - Workflow approval yang dapat dikonfigurasi bebas (rantai 3 tahap bersifat tetap).
+
+> **Catatan revisi:** manajemen suku cadang/inventaris yang semula di luar
+> lingkup v1 kini **termasuk** (lihat §5 Termasuk & §6.12 REQ-SPARE). Ruang
+> lingkupnya dibatasi pada master + transaksi stok masuk/keluar; perhitungan
+> biaya, depresiasi, dan integrasi ERP tetap di luar lingkup.
 
 ---
 
@@ -464,6 +497,7 @@ Fitur dianggap selesai bila seluruh butir di bawah ini terpenuhi dan **diverifik
 | REQ-ROLE-* | `Admin/RoleController`, `RolePolicy`, `Pages/Admin/Roles.jsx` |
 | REQ-RPT-* | `ReportController`, `ReportService`, `Exports/*`, `views/reports/pdf.blade.php` |
 | REQ-AUD-* | `AuditLogService`, `Admin/AuditLogController`, `Pages/Admin/AuditLogs.jsx` |
+| REQ-SPARE-* | `SparePartController`, `SparePartImportService`, `Console/Commands/ImportSparePartsCommand`, `Pages/SpareParts/Index.jsx` |
 
 ---
 

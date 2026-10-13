@@ -23,6 +23,8 @@ class RoleSeeder extends Seeder
             'pm.sign', 'pm.acknowledge', 'pm.approve',
             // Admin bisa kelola (CRUD) semua PM Record
             'pm.manage',
+            // Suku Cadang: view untuk semua yang login, manage untuk Admin & tech-all.
+            'sparepart.view', 'sparepart.manage',
         ];
 
         foreach ($permissions as $perm) {
@@ -34,12 +36,12 @@ class RoleSeeder extends Seeder
             // mana pun bila belum ada orang lain yang menanganinya.
             'admin' => [...$permissions, 'pm.manage'],
             // Atasan = tahap 3. Tidak boleh mengisi checklist lapangan.
-            'manager' => ['dashboard.view', 'pm.approve', 'pm.history.view', 'report.view', 'report.export', 'machine.manage', 'template.manage', 'audit.view'],
+            'manager' => ['dashboard.view', 'pm.approve', 'pm.history.view', 'report.view', 'report.export', 'machine.manage', 'template.manage', 'audit.view', 'sparepart.view'],
             // Technician mengisi checklist (pm.fill) lalu menandatanganinya (pm.sign).
-            'technician' => ['dashboard.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
+            'technician' => ['dashboard.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export', 'sparepart.view'],
             // User = tahap 2 (User PIC): menyetujui sebagai diketahui.
-            'user' => ['dashboard.view', 'pm.acknowledge', 'pm.history.view', 'report.view'],
-            'viewer' => ['dashboard.view', 'pm.history.view', 'report.view', 'report.export'],
+            'user' => ['dashboard.view', 'pm.acknowledge', 'pm.history.view', 'report.view', 'sparepart.view'],
+            'viewer' => ['dashboard.view', 'pm.history.view', 'report.view', 'report.export', 'sparepart.view'],
             // ------------------------------------------------------------------
             // Role teknisi berbasis scope. Sengaja TANPA `dashboard.view` supaya
             // menu/halaman di luar scope-nya ikut tertutup (guard & navigasi
@@ -48,13 +50,13 @@ class RoleSeeder extends Seeder
             // Teknisi khusus Mesin: hanya halaman/daftar mesin, isi PM, riwayat,
             // dan laporan. Tidak bisa membuka /utility maupun form maintenance
             // utility (kartu tampil abu-abu dan URL langsung diblokir).
-            'tech-machines' => ['machine.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
+            'tech-machines' => ['machine.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export', 'sparepart.view'],
             // Teknisi khusus Utility: kebalikan dari tech-machines.
-            'tech-utilities' => ['utility.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
+            'tech-utilities' => ['utility.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export', 'sparepart.view'],
             // Teknisi full: mesin & utility boleh CRUD (+utility.manage /
             // machine.manage), form-maintenance lengkap termasuk kartu Komponen
             // (template.manage).
-            'tech-all' => ['machine.view', 'machine.manage', 'utility.view', 'utility.manage', 'template.manage', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
+            'tech-all' => ['machine.view', 'machine.manage', 'utility.view', 'utility.manage', 'template.manage', 'sparepart.view', 'sparepart.manage', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
         ];
 
         foreach ($roles as $roleName => $rolePerms) {

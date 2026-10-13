@@ -123,11 +123,20 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - **Ekspor XLSX** (Maatwebsite Excel) dan **PDF** (DomPDF)
 
 ### 11. Audit Log
-- Mencatat aksi penting: `machine.create`, `machine.update`, `machine.delete`, `machine.restore`, `pm.submit`, `pm.sign.{stage}`, `pm.reject`, `user.create`, `user.update`, `user.password`, `user.delete`
+- Mencatat aksi penting: `machine.create`, `machine.update`, `machine.delete`, `machine.restore`, `pm.submit`, `pm.sign.{stage}`, `pm.reject`, `user.create`, `user.update`, `user.password`, `user.delete`, `sparepart.create`, `sparepart.update`, `sparepart.delete`, `sparepart.restore`, `sparepart.movement`, `sparepart.import`
 - Menyimpan user pelaku, subject, perubahan (JSON), dan IP
 - 100 log terbaru per halaman
 
-### 12. UI / UX
+### 12. Suku Cadang
+- Master suku cadang **global** (tidak terikat unit Mesin/Utility): `Code.asset`, kategori, nama, merek, type, deskripsi, satuan, stok, stok awal/minimum, supplier, kebutuhan untuk, dan lokasi
+- **Transaksi stok masuk/keluar** — stok terkini menyesuaikan otomatis; barang keluar melebihi stok ditolak
+- **Riwayat transaksi** per suku cadang (tipe, jumlah, tanggal, catatan, pelaku)
+- Pencarian + filter kategori, lokasi, dan status (**stok menipis / habis**)
+- **Impor massal dari CSV** (`spare-parts:import`) + **unggah CSV** lewat halaman — idempoten (baris dicocokkan berdasarkan kode)
+- **Soft delete** (hapus dari daftar; pulih lewat `restore`/impor ulang)
+- Semua user login boleh **melihat**; **kelola** (CRUD, transaksi, impor) hanya pemegang `sparepart.manage` (Admin & tech-all)
+
+### 13. UI / UX
 - Design system **Neumorphism** (`NeuCard`, `NeuButton`, `NeuInput`, `NeuPill`, `NeuRing`, `NeuToast`, `NeuTrack`, `NeuBars`, `NeuSignaturePad`)
 - Sidebar responsif (desktop + mobile)
 - Toast notifikasi untuk setiap aksi sukses/gagal
@@ -169,6 +178,8 @@ Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 | `utility.manage` | ✅ | — | — | — | — | — | — | ✅ |
 | `utility.view` | ✅ | — | — | — | — | — | ✅ | ✅ |
 | `template.manage` | ✅ | ✅ | — | — | — | — | — | ✅ |
+| `sparepart.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `sparepart.manage` | ✅ | — | — | — | — | — | — | ✅ |
 | `user.manage` | ✅ | — | — | — | — | — | — | — |
 | `audit.view` | ✅ | ✅ | — | — | — | — | — | — |
 
@@ -178,6 +189,7 @@ Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 - Halaman **Role** hanya untuk role `admin`; halaman **Pengguna** untuk siapa pun yang punya `user.manage` (hanya admin saat ini).
 - `machine.view` / `utility.view` = **scope** halaman/daftar Mesin & Utility. Role general (Manager ke atas) membuka keduanya lewat baseline `dashboard.view`, jadi tidak perlu `*.view` eksplisit.
 - Role teknisi **tech-machines** / **tech-utilities** sengaja tanpa `dashboard.view`: hanya satu scope terbuka, dan `/form-maintenance` menampilkan kartu di luar scope sebagai **abu-abu** yang tidak bisa diklik maupun dibuka lewat URL. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap).
+- **Suku Cadang** tidak terikat scope Mesin/Utility: `sparepart.view` diberikan ke **semua** role (semua user login boleh melihat), sedangkan `sparepart.manage` hanya Admin & **tech-all**.
 - Otorisasi tetap ditegakkan di server lewat **Policy/middleware** (termasuk blokir akses URL langsung ke form PM unit di luar scope), bukan hanya dengan menyembunyikan menu.
 
 ---
@@ -278,6 +290,9 @@ Dari `UserSeeder`, seluruh akun memakai password **`password`**.
 | `php artisan machines:import` | Impor mesin dari `references/data.csv` |
 | `php artisan machines:import --purge` | Impor + hapus permanen mesin yang tidak ada di CSV (**riwayat PM ikut terhapus**) |
 | `php artisan machines:import --purge --force` | Sama seperti di atas tanpa konfirmasi interaktif |
+| `php artisan spare-parts:import` | Impor suku cadang dari `references/suku_cadang.csv` |
+| `php artisan spare-parts:import {path?}` | Impor dari file CSV lain |
+| `php artisan spare-parts:import --purge` | Impor + hapus permanen suku cadang yang tidak ada di CSV |
 | `php artisan test` | Jalankan test suite |
 
 > **Catatan test suite.** Database test **dipaksa ke sqlite in-memory** oleh
@@ -296,17 +311,19 @@ Dari `UserSeeder`, seluruh akun memakai password **`password`**.
 ```
 app/
 ├── Actions/Pm/            SubmitPmRecord, SignPmRecord, RejectPmRecord
-├── Console/Commands/      ImportMachinesCommand
+├── Console/Commands/      ImportMachinesCommand, ImportSparePartsCommand
 ├── Enums/                 PmStatus, SignatureStage, Period, Role, MachineType, PmDisplayStatus
 ├── Exports/               MachineStatusExport, PmReportExport (XLSX)
 ├── Http/
-│   ├── Controllers/       Dashboard, Machine, PmRecord, Approval, Report, Profile, Admin/*
+│   ├── Controllers/       Dashboard, Machine, PmRecord, Approval, Report, Profile, SparePart, Admin/*
 │   └── Requests/          Form Request untuk validasi
 ├── Models/                User, Machine, PmRecord, PmRecordItem, PmRecordRevision,
-│                          PmSignature, ChecklistTemplate, ChecklistTemplateItem, AuditLog
+│                          PmSignature, ChecklistTemplate, ChecklistTemplateItem, AuditLog,
+│                          SparePart, SparePartMovement
 ├── Policies/              UserPolicy, MachinePolicy, PmRecordPolicy, RolePolicy
 └── Services/              SignatureChain, SignatureStorage, AuditLogService,
-                           DashboardService, ReportService, PeriodService, MachineImportService
+                           DashboardService, ReportService, PeriodService,
+                           MachineImportService, SparePartImportService
 
 database/
 ├── migrations/            Skema tabel
@@ -314,6 +331,7 @@ database/
 
 references/                 Material desain awal (ARSIP — lihat catatan di bawah)
 ├── data.csv               Sumber data mesin (121 baris) untuk `machines:import`
+├── suku_cadang.csv        Sumber data suku cadang untuk `spare-parts:import`
 ├── PRD.md                 Spesifikasi desain awal — sudah digantikan PRD.md di root
 ├── Architecture.md        Rancangan arsitektur awal — digantikan Architecture.md di root
 ├── Agent.md               Catatan untuk AI agent

@@ -77,6 +77,7 @@ export default function Authenticated({ user: userProp, header, children }) {
         },
         { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] || can['machine.view'] },
         { name: 'Utility', href: route('utility.index'), path: '/utility', show: can['utility.view'] || can['dashboard.view'] },
+        { name: 'Suku Cadang', href: route('spareparts.index'), path: '/suku-cadang', show: can['sparepart.view'] },
         { name: 'PM Records', href: route('admin.pm-records'), path: '/admin/pm-records', show: can['pm.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
         { name: 'Role', href: route('admin.roles.index'), path: '/admin/roles', show: user?.roles?.includes('admin') },
