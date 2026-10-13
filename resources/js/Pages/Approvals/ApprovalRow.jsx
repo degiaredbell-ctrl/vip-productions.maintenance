@@ -60,7 +60,10 @@ export default function ApprovalRow({ record }) {
                     {record.period_label} {record.year}
                 </span>
                 <span className="block text-xs text-neu-sub break-words">
-                    {record.technician_name ?? 'Tanpa teknisi'}
+                    Teknisi:{' '}
+                    <span className={record.technician_name ? 'text-neu-accent font-semibold' : ''}>
+                        {record.technician_name ?? 'Tanpa teknisi'}
+                    </span>
                 </span>
                 {/*
                     Technician menunjuk User PIC sebelum submit. Ditampilkan di
