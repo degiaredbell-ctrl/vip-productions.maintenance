@@ -111,8 +111,15 @@
         @apply neu-btn bg-neu-accent text-white shadow-[4px_4px_10px_#C3CAD6,-4px_-4px_10px_#FFFFFF] active:shadow-[inset_3px_3px_7px_rgba(0,0,0,0.3)];
     }
 
+    /*
+        Tombol primary: hijau penuh + teks putih saat diam, lalu dibalik saat
+        hover jadi permukaan putih + teks hijau. Kebalikan ini sama dengan hover
+        chip, jadi tombol aksi utama dan chip terasa satu bahasa desain. Latar
+        putih + bayangan neumorfis tetap dipertahankan supaya terasa terangkat,
+        bukan sekadar berganti warna teks.
+    */
     .neu-btn-primary:hover:not(:disabled) {
-        @apply bg-neu-accent brightness-95 shadow-[5px_5px_12px_#C3CAD6,-5px_-5px_12px_#FFFFFF];
+        @apply bg-neu-light text-neu-accent shadow-[5px_5px_12px_#C3CAD6,-5px_-5px_12px_#FFFFFF];
     }
 
     /*
