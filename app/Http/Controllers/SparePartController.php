@@ -153,6 +153,41 @@ class SparePartController extends Controller
         return back()->with('success', "Suku cadang {$snapshot['code']} dihapus dari daftar.");
     }
 
+    /**
+     * Hapus massal: menerima daftar id, soft delete semuanya, dan mencatatnya
+     * di audit log sebagai satu aksi `sparepart.delete` dengan penanda bulk.
+     */
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer'],
+        ]);
+
+        $parts = SparePart::whereIn('id', $validated['ids'])
+            ->get(['id', 'code', 'name']);
+
+        if ($parts->isEmpty()) {
+            return back()->with('error', 'Tidak ada suku cadang yang dipilih.');
+        }
+
+        $items = $parts->map(fn (SparePart $part) => [
+            'id' => $part->id,
+            'code' => $part->code,
+            'name' => $part->name,
+        ])->all();
+
+        SparePart::whereIn('id', $parts->pluck('id'))->delete();
+
+        AuditLogService::record('sparepart.delete', SparePart::class, null, [
+            'bulk' => true,
+            'count' => count($items),
+            'items' => $items,
+        ]);
+
+        return back()->with('success', count($items).' suku cadang dihapus dari daftar.');
+    }
+
     public function restore(Request $request, int $sparePart): RedirectResponse
     {
         $trashed = SparePart::onlyTrashed()->find($sparePart);

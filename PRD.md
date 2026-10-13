@@ -241,6 +241,7 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 |----|-----------|
 | REQ-SPARE-01 | Sistem menyediakan master suku cadang global (tidak terikat unit Mesin/Utility) berisi kode, kategori, nama, merek, type, deskripsi, satuan, stok, stok awal/minimum, supplier, kebutuhan untuk, dan lokasi |
 | REQ-SPARE-02 | Pemegang `sparepart.manage` dapat menambah, mengubah, dan menghapus (soft delete) suku cadang |
+| REQ-SPARE-02a | Pemegang `sparepart.manage` dapat **menghapus massal** beberapa suku cadang sekaligus lewat pilihan checkbox pada tabel |
 | REQ-SPARE-03 | Pemegang `sparepart.manage` dapat mencatat transaksi **barang masuk** dan **barang keluar**; stok terkini menyesuaikan otomatis |
 | REQ-SPARE-04 | Barang keluar yang melebihi stok tersedia ditolak dengan pesan validasi |
 | REQ-SPARE-05 | Riwayat transaksi per suku cadang menampilkan tipe, jumlah, tanggal, catatan, dan pelaku |
@@ -431,6 +432,7 @@ Fitur dianggap selesai bila seluruh butir di bawah ini terpenuhi dan **diverifik
 - [ ] Barang keluar melebihi stok ditolak dan stok tidak berubah.
 - [ ] Filter stok menipis/habis menampilkan baris yang sesuai.
 - [ ] Role tanpa `sparepart.manage` hanya bisa melihat; aksi kelola ditolak server (403).
+- [ ] Hapus massal menghapus semua baris yang dipilih dan mengabaikan id yang tidak ada.
 
 ### Umum
 - [ ] Tidak ada halaman yang tampil blank (React error) setelah login pada 9 route utama.

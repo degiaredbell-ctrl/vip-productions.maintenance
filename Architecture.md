@@ -591,6 +591,7 @@ POST /pm/{record}/sign
 | `/suku-cadang` | GET | `SparePartController@index` | `can:sparepart.view` |
 | `/suku-cadang` | POST | `SparePartController@store` | `can:sparepart.manage` |
 | `/suku-cadang/import` | POST | `SparePartController@import` | `can:sparepart.manage` (unggah CSV) |
+| `/suku-cadang/bulk` | DELETE | `SparePartController@bulkDestroy` | `can:sparepart.manage` (hapus massal) |
 | `/suku-cadang/{sparePart}` | PUT | `SparePartController@update` | `can:sparepart.manage` |
 | `/suku-cadang/{sparePart}` | DELETE | `SparePartController@destroy` | `can:sparepart.manage` (soft delete) |
 | `/suku-cadang/{sparePart}/restore` | PATCH | `SparePartController@restore` | `can:sparepart.manage` |
@@ -653,7 +654,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
 | `/admin/templates` | `Admin/Templates` | Template checklist per jenis |
 | `/admin/audit-logs` | `Admin/AuditLogs` | 100 log terbaru |
-| `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV |
+| `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV, hapus massal |
 | `/profile` | `Profile/Edit` | Info akun, ganti password, hapus akun |
 
 ---
@@ -766,7 +767,7 @@ Action yang tercatat:
 | | `sign.{stage}` (mis. `pm.sign.pic`) | `Actions/Pm/SignPmRecord` |
 | | `reject` | `Actions/Pm/RejectPmRecord` |
 | `user.*` | `create`, `update`, `password`, `delete` | `Admin/UserController` |
-| `sparepart.*` | `create`, `update`, `delete`, `restore`, `movement`, `import` | `SparePartController` |
+| `sparepart.*` | `create`, `update`, `delete` (tunggal & massal, ditandai `bulk`), `restore`, `movement`, `import` | `SparePartController` |
 
 > **Cakupan saat ini:** perubahan pada **template checklist** dan **role/permission** belum
 > tercatat di audit log. Keduanya baru bisa ditambah dengan satu baris
@@ -903,7 +904,7 @@ Health check Laravel tersedia di `/up` (dikonfigurasi lewat `withRouting(health:
 
 | Jenis | Tool | Cakupan |
 |-------|------|---------|
-| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile, Mesin/Utility, PM & rantai tanda tangan, Suku Cadang (impor CSV, CRUD, transaksi stok, pembatasan akses) |
+| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile, Mesin/Utility, PM & rantai tanda tangan, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses) |
 | Manual terotomasi | Playwright (via Docker image `mcr.microsoft.com/playwright`) | Sweep 9 halaman: login nyata, cek blank page, error console, HTTP 5xx |
 | Fungsional | Skrip Playwright ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda |
 

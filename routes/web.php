@@ -124,18 +124,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:sparepart.view');
     Route::get('/suku-cadang/{sparePart}/movements', [SparePartController::class, 'movements'])
         ->name('spareparts.movements')
+        ->whereNumber('sparePart')
         ->middleware('can:sparepart.view');
 
     Route::middleware('can:sparepart.manage')->group(function () {
         Route::post('/suku-cadang', [SparePartController::class, 'store'])->name('spareparts.store');
         Route::post('/suku-cadang/import', [SparePartController::class, 'import'])->name('spareparts.import');
-        Route::put('/suku-cadang/{sparePart}', [SparePartController::class, 'update'])->name('spareparts.update');
-        Route::delete('/suku-cadang/{sparePart}', [SparePartController::class, 'destroy'])->name('spareparts.destroy');
+        // Hapus massal: didaftarkan SEBELUM route {sparePart} supaya "bulk"
+        // tidak ditangkap sebagai ID (lihat juga whereNumber di bawah).
+        Route::delete('/suku-cadang/bulk', [SparePartController::class, 'bulkDestroy'])->name('spareparts.bulk-destroy');
+        Route::put('/suku-cadang/{sparePart}', [SparePartController::class, 'update'])
+            ->name('spareparts.update')
+            ->whereNumber('sparePart');
+        Route::delete('/suku-cadang/{sparePart}', [SparePartController::class, 'destroy'])
+            ->name('spareparts.destroy')
+            ->whereNumber('sparePart');
         Route::patch('/suku-cadang/{sparePart}/restore', [SparePartController::class, 'restore'])
             ->name('spareparts.restore')
             ->whereNumber('sparePart');
         Route::post('/suku-cadang/{sparePart}/movements', [SparePartController::class, 'storeMovement'])
-            ->name('spareparts.movements.store');
+            ->name('spareparts.movements.store')
+            ->whereNumber('sparePart');
     });
 
     // Reports

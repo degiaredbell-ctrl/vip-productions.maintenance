@@ -6,6 +6,8 @@ import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import Modal from '@/Components/Modal';
+import Checkbox from '@/Components/Checkbox';
+import { EditIcon, HistoryIcon, MinusIcon, PlusIcon, TrashIcon } from '@/Components/Icon';
 
 const EMPTY = {
     code: '', name: '', category: '', brand: '', type: '', description: '',
@@ -35,6 +37,11 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
     const [editingId, setEditingId] = useState(null);
     const [confirmingId, setConfirmingId] = useState(null);
 
+    // Pilihan baris untuk hapus massal (menyimpan id suku cadang).
+    const [selected, setSelected] = useState([]);
+    const [bulkConfirmOpen, setBulkConfirmOpen] = useState(false);
+    const [bulkProcessing, setBulkProcessing] = useState(false);
+
     const [movePart, setMovePart] = useState(null);
     const [historyPart, setHistoryPart] = useState(null);
     const [historyRows, setHistoryRows] = useState([]);
@@ -59,6 +66,39 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
                 .some((v) => String(v).toLowerCase().includes(needle));
         });
     }, [parts, q, category, location, status]);
+
+    const selectedSet = useMemo(() => new Set(selected), [selected]);
+    const selectedCount = selected.length;
+    // "Pilih semua" hanya mencakup baris yang sedang tampil (setelah filter),
+    // supaya aksi massal tidak menyentuh data yang tidak terlihat.
+    const allFilteredSelected = filtered.length > 0 && filtered.every((p) => selectedSet.has(p.id));
+
+    const toggleOne = (id) => {
+        setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    };
+
+    const toggleAllFiltered = () => {
+        const ids = filtered.map((p) => p.id);
+        setSelected((prev) => {
+            if (allFilteredSelected) {
+                return prev.filter((id) => !ids.includes(id));
+            }
+            const merged = new Set(prev);
+            ids.forEach((id) => merged.add(id));
+            return [...merged];
+        });
+    };
+
+    const confirmBulkDelete = () => {
+        if (selectedCount === 0) return;
+        setBulkProcessing(true);
+        router.delete(route('spareparts.bulk-destroy'), {
+            data: { ids: selected },
+            preserveScroll: true,
+            onSuccess: () => { setSelected([]); setBulkConfirmOpen(false); },
+            onFinish: () => setBulkProcessing(false),
+        });
+    };
 
     const openCreate = () => {
         setEditingId(null);
@@ -216,6 +256,27 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
                     ))}
                 </div>
 
+                {can.manage && selectedCount > 0 && (
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-neu-sm bg-neu-bg px-4 py-3 shadow-neu-in">
+                        <span className="text-sm font-semibold">{selectedCount} suku cadang dipilih</span>
+                        <div className="flex flex-wrap gap-2">
+                            <NeuButton type="button" size="sm" variant="ghost" onClick={() => setSelected([])}>
+                                Batal pilih
+                            </NeuButton>
+                            <NeuButton
+                                type="button"
+                                size="sm"
+                                className="!px-2.5 !text-neu-bad"
+                                title="Hapus terpilih"
+                                aria-label={`Hapus ${selectedCount} suku cadang terpilih`}
+                                onClick={() => setBulkConfirmOpen(true)}
+                            >
+                                <TrashIcon />
+                            </NeuButton>
+                        </div>
+                    </div>
+                )}
+
                 {filtered.length === 0 ? (
                     <NeuCard>
                         <p className="text-sm text-neu-sub text-center py-4">
@@ -230,7 +291,19 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
                             <caption className="sr-only">Daftar suku cadang beserta stok terkini.</caption>
                             <thead>
                                 <tr>
-                                    <th scope="col">Kode</th>
+                                    <th scope="col">
+                                        <div className="flex items-center gap-2">
+                                            {can.manage && (
+                                                <Checkbox
+                                                    checked={allFilteredSelected}
+                                                    onChange={toggleAllFiltered}
+                                                    aria-label="Pilih semua baris yang tampil"
+                                                    title="Pilih semua"
+                                                />
+                                            )}
+                                            <span>Kode</span>
+                                        </div>
+                                    </th>
                                     <th scope="col">Suku Cadang</th>
                                     <th scope="col">Kategori</th>
                                     <th scope="col">Stok</th>
@@ -243,7 +316,16 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
                                 {filtered.map((part) => (
                                     <tr key={part.id}>
                                         <td data-label="Kode" className="neu-cell-lead">
-                                            <b className="text-sm">{part.code}</b>
+                                            <div className="flex items-center gap-2">
+                                                {can.manage && (
+                                                    <Checkbox
+                                                        checked={selectedSet.has(part.id)}
+                                                        onChange={() => toggleOne(part.id)}
+                                                        aria-label={`Pilih ${part.code}`}
+                                                    />
+                                                )}
+                                                <b className="text-sm">{part.code}</b>
+                                            </div>
                                         </td>
                                         <td data-label="Suku Cadang">
                                             <b className="block text-sm break-words">{part.name}</b>
@@ -279,15 +361,58 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
                                             <div className="flex flex-wrap gap-2">
                                                 {can.manage && (
                                                     <>
-                                                        <NeuButton size="sm" onClick={() => openMove(part, 'in')}>Masuk</NeuButton>
-                                                        <NeuButton size="sm" onClick={() => openMove(part, 'out')}>Keluar</NeuButton>
+                                                        <NeuButton
+                                                            size="sm"
+                                                            className="!px-2.5"
+                                                            title="Barang masuk"
+                                                            aria-label={`Catat barang masuk untuk ${part.code}`}
+                                                            onClick={() => openMove(part, 'in')}
+                                                        >
+                                                            <PlusIcon />
+                                                        </NeuButton>
+                                                        <NeuButton
+                                                            size="sm"
+                                                            className="!px-2.5"
+                                                            title="Barang keluar"
+                                                            aria-label={`Catat barang keluar untuk ${part.code}`}
+                                                            onClick={() => openMove(part, 'out')}
+                                                        >
+                                                            <MinusIcon />
+                                                        </NeuButton>
                                                     </>
                                                 )}
-                                                <NeuButton size="sm" variant="ghost" onClick={() => openHistory(part)}>Riwayat</NeuButton>
+                                                <NeuButton
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="!px-2.5"
+                                                    title="Riwayat stok"
+                                                    aria-label={`Riwayat stok ${part.code}`}
+                                                    onClick={() => openHistory(part)}
+                                                >
+                                                    <HistoryIcon />
+                                                </NeuButton>
                                                 {can.manage && (
                                                     <>
-                                                        <NeuButton size="sm" variant="ghost" onClick={() => openEdit(part)}>Ubah</NeuButton>
-                                                        <NeuButton size="sm" variant="ghost" onClick={() => setConfirmingId(part.id)}>Hapus</NeuButton>
+                                                        <NeuButton
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="!px-2.5"
+                                                            title="Ubah"
+                                                            aria-label={`Ubah ${part.code}`}
+                                                            onClick={() => openEdit(part)}
+                                                        >
+                                                            <EditIcon />
+                                                        </NeuButton>
+                                                        <NeuButton
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="!px-2.5 !text-neu-bad"
+                                                            title="Hapus"
+                                                            aria-label={`Hapus ${part.code}`}
+                                                            onClick={() => setConfirmingId(part.id)}
+                                                        >
+                                                            <TrashIcon />
+                                                        </NeuButton>
                                                     </>
                                                 )}
                                             </div>
@@ -442,7 +567,29 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
                     </p>
                     <div className="flex justify-end gap-2">
                         <NeuButton type="button" variant="ghost" onClick={() => setConfirmingId(null)}>Batal</NeuButton>
-                        <NeuButton type="button" variant="bad" onClick={() => confirmDelete(confirmingId)}>Hapus</NeuButton>
+                        <NeuButton type="button" variant="bad" className="!text-neu-bad" onClick={() => confirmDelete(confirmingId)}>Hapus</NeuButton>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* Konfirmasi hapus massal */}
+            <Modal show={bulkConfirmOpen} onClose={() => setBulkConfirmOpen(false)} maxWidth="md">
+                <div className="p-5">
+                    <h3 className="text-lg font-bold mb-2">Hapus {selectedCount} suku cadang?</h3>
+                    <p className="text-sm text-neu-sub mb-4">
+                        Suku cadang yang dipilih akan dihapus dari daftar. Tindakan ini bisa dipulihkan lewat impor ulang CSV.
+                    </p>
+                    <div className="flex justify-end gap-2">
+                        <NeuButton type="button" variant="ghost" onClick={() => setBulkConfirmOpen(false)}>Batal</NeuButton>
+                        <NeuButton
+                            type="button"
+                            variant="bad"
+                            className="!text-neu-bad"
+                            disabled={bulkProcessing}
+                            onClick={confirmBulkDelete}
+                        >
+                            {bulkProcessing ? 'Menghapus…' : 'Hapus'}
+                        </NeuButton>
                     </div>
                 </div>
             </Modal>

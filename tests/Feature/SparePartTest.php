@@ -127,6 +127,58 @@ class SparePartTest extends TestCase
         ])->assertSessionHasErrors('code');
     }
 
+    public function test_admin_dapat_hapus_massal(): void
+    {
+        $admin = $this->user('admin');
+
+        $a = SparePart::create(['code' => 'SPA', 'name' => 'A', 'stock' => 0]);
+        $b = SparePart::create(['code' => 'SPB', 'name' => 'B', 'stock' => 0]);
+        $c = SparePart::create(['code' => 'SPC', 'name' => 'C', 'stock' => 0]);
+
+        $this->actingAs($admin)
+            ->delete(route('spareparts.bulk-destroy'), ['ids' => [$a->id, $b->id]])
+            ->assertRedirect();
+
+        $this->assertSoftDeleted('spare_parts', ['id' => $a->id]);
+        $this->assertSoftDeleted('spare_parts', ['id' => $b->id]);
+        $this->assertNotSoftDeleted('spare_parts', ['id' => $c->id]);
+    }
+
+    public function test_hapus_massal_mengabaikan_id_yang_tidak_ada(): void
+    {
+        $admin = $this->user('admin');
+
+        $a = SparePart::create(['code' => 'SPA', 'name' => 'A', 'stock' => 0]);
+
+        $this->actingAs($admin)
+            ->delete(route('spareparts.bulk-destroy'), ['ids' => [$a->id, 999999]])
+            ->assertRedirect();
+
+        $this->assertSoftDeleted('spare_parts', ['id' => $a->id]);
+    }
+
+    public function test_hapus_massal_tanpa_id_ditolak(): void
+    {
+        $admin = $this->user('admin');
+
+        $this->actingAs($admin)
+            ->delete(route('spareparts.bulk-destroy'), ['ids' => []])
+            ->assertSessionHasErrors('ids');
+    }
+
+    public function test_tech_machines_tidak_bisa_hapus_massal(): void
+    {
+        $technician = $this->user('tech-machines');
+
+        $a = SparePart::create(['code' => 'SPA', 'name' => 'A', 'stock' => 0]);
+
+        $this->actingAs($technician)
+            ->delete(route('spareparts.bulk-destroy'), ['ids' => [$a->id]])
+            ->assertForbidden();
+
+        $this->assertNotSoftDeleted('spare_parts', ['id' => $a->id]);
+    }
+
     public function test_viewer_bisa_melihat_tetapi_tidak_bisa_mengelola(): void
     {
         $viewer = $this->user('viewer');

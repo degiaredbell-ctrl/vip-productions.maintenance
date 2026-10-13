@@ -133,7 +133,8 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - **Riwayat transaksi** per suku cadang (tipe, jumlah, tanggal, catatan, pelaku)
 - Pencarian + filter kategori, lokasi, dan status (**stok menipis / habis**)
 - **Impor massal dari CSV** (`spare-parts:import`) + **unggah CSV** lewat halaman — idempoten (baris dicocokkan berdasarkan kode)
-- **Soft delete** (hapus dari daftar; pulih lewat `restore`/impor ulang)
+- **Soft delete** (hapus dari daftar; pulih lewat `restore`/impor ulang) — termasuk **hapus massal** lewat checkbox baris
+- Tombol aksi berupa ikon (masuk `+`, keluar `−`, riwayat, ubah, hapus) agar tabel lebih ringkas
 - Semua user login boleh **melihat**; **kelola** (CRUD, transaksi, impor) hanya pemegang `sparepart.manage` (Admin & tech-all)
 
 ### 13. UI / UX
