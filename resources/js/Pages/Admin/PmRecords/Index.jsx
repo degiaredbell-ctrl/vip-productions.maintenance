@@ -90,7 +90,7 @@ export default function AdminPmRecordsIndex({ auth, records, filters, years, per
             <div className="page-container">
                 <div className="mb-6">
                     <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
-                    <h1 className="text-xl sm:text-2xl font-bold">Kelola PM Records (Admin)</h1>
+                    <h1 className="text-xl sm:text-2xl font-bold">PM Records (Admin)</h1>
                     <p className="text-neu-sub text-sm mt-1">Lihat, filter, dan hapus semua PM Record di sistem</p>
                 </div>
 

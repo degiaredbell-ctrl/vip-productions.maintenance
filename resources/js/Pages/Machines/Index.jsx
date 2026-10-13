@@ -175,7 +175,7 @@ export default function Machines({ auth, machines = [], types = [], templates = 
             <div className="page-container">
                 <div className="flex items-center justify-between gap-3 mb-5">
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold">Kelola Mesin</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold">Machines</h1>
                         <p className="text-sm text-neu-sub">
                             {machines.length} mesin terdaftar
                             {visible.length !== machines.length && ` · ${visible.length} ditampilkan`}
@@ -213,7 +213,7 @@ export default function Machines({ auth, machines = [], types = [], templates = 
                     aria-label="Filter area"
                 >
                     <NeuChip active={sub === 'all'} onClick={() => setSub('all')} aria-label="Semua area">
-                        Semua Area
+                        SemuaKelola Mesin Area
                     </NeuChip>
                     {(subCategories ?? []).map((s) => (
                         <NeuChip key={s} active={sub === s} onClick={() => setSub(s)} aria-label={`Area ${s}`}>

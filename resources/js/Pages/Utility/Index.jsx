@@ -150,7 +150,7 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
             <div className="page-container">
                 <div className="flex items-center justify-between gap-3 mb-5">
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold">Utility</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold">Utilities</h1>
                         <p className="text-sm text-neu-sub">{utilities.length} unit utility terdaftar{visible.length !== utilities.length && ` · ${visible.length} ditampilkan`}</p>
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2">

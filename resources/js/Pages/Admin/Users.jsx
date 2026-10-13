@@ -204,7 +204,7 @@ export default function AdminUsers({ auth, users, roles }) {
                         </div>
                         <div className="sm:col-span-2">
                             <NeuButton type="submit" variant="primary" disabled={createForm.processing}>
-                                {createForm.processing ? 'Menambahkan...' : '+ Tambah Pengguna'}
+                                {createForm.processing ? 'Menambahkan...' : 'Tambah Pengguna'}
                             </NeuButton>
                         </div>
                     </form>
