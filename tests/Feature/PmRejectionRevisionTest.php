@@ -93,6 +93,7 @@ class PmRejectionRevisionTest extends TestCase
                     'spec' => 'A-32',
                     'actual' => 'Perlu ganti',
                     'act_replace' => true,
+                    'replace_note' => 'Belt A-32',
                 ],
             ],
         ], $overrides));
@@ -272,6 +273,11 @@ class PmRejectionRevisionTest extends TestCase
         $this->assertTrue((bool) $props['items'][0]['act_clean']);
         $this->assertTrue((bool) $props['items'][1]['act_replace']);
         $this->assertFalse((bool) $props['items'][0]['act_replace']);
+        $this->assertSame(
+            'Belt A-32',
+            $props['items'][1]['replace_note'],
+            'Catatan bagian yang diganti harus terbawa ke form revisi.',
+        );
     }
 
     public function test_pic_terpilih_lama_tetap_terpilih_tapi_bisa_diganti(): void
@@ -330,7 +336,7 @@ class PmRejectionRevisionTest extends TestCase
             'general_note' => 'Catatan umum awal',
             'items' => [
                 ['item_name' => 'Cek oli', 'category' => 'Mekanik', 'spec' => '5W-30', 'actual' => 'Sudah diganti', 'act_clean' => true],
-                ['item_name' => 'Cek belt', 'category' => 'Mekanik', 'spec' => 'A-32', 'actual' => 'Sudah diganti', 'act_replace' => true],
+                ['item_name' => 'Cek belt', 'category' => 'Mekanik', 'spec' => 'A-32', 'actual' => 'Sudah diganti', 'act_replace' => true, 'replace_note' => 'Belt A-32'],
             ],
         ])->assertRedirect();
 

@@ -13,7 +13,7 @@ class PmRecordItem extends Model
     protected $fillable = [
         'pm_record_id', 'item_name', 'category', 'spec', 'actual',
         'act_clean', 'act_repair', 'act_lubricate', 'act_replace',
-        'final_condition', 'parts_replaced',
+        'final_condition', 'parts_replaced', 'replace_note',
     ];
 
     protected $casts = [

@@ -236,6 +236,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
           │  act_lubricate  │      │  image_path         │
           │  act_replace    │      │  UNIQUE(record,stage)
           │  parts_replaced │      └──────────────────────┘
+          │  replace_note  │
           └─────────────────┘
                     ┌──────────────────┐
                     │pm_record_revisions│
@@ -526,6 +527,7 @@ GET  /machines/{machine}/pm?period=&year=
 
 POST /machines/{machine}/pm
    ├─ FormRequest: validasi item[], actual, aksi, parts_replaced
+   │    └─ replace_note WAJIB bila act_replace dicentang (detail bagian diganti)
    ├─ FormRequest: technician_name WAJIB + signature WAJIB (data URL PNG)
    ├─ authorize: pm.fill DAN pm.sign
    │    └─ record existing harus lolos Policy::update (belum terkunci)

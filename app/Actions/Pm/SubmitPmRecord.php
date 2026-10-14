@@ -52,7 +52,7 @@ class SubmitPmRecord
             // Simpan snapshot item lama supaya riwayat revisi tetap ada.
             if ($record->wasRecentlyCreated === false && $record->items()->exists()) {
                 $oldItems = $record->items->map(function ($item) {
-                    return $item->only(['item_name', 'category', 'spec', 'actual', 'act_clean', 'act_repair', 'act_lubricate', 'act_replace', 'final_condition', 'parts_replaced']);
+                    return $item->only(['item_name', 'category', 'spec', 'actual', 'act_clean', 'act_repair', 'act_lubricate', 'act_replace', 'final_condition', 'parts_replaced', 'replace_note']);
                 })->toArray();
 
                 PmRecordRevision::create([
@@ -85,6 +85,7 @@ class SubmitPmRecord
                     'act_replace' => $item['act_replace'] ?? false,
                     'final_condition' => $item['final_condition'] ?? null,
                     'parts_replaced' => $item['parts_replaced'] ?? 0,
+                    'replace_note' => $item['replace_note'] ?? null,
                 ]);
             }
 

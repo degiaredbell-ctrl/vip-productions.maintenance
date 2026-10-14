@@ -69,6 +69,10 @@ class StorePmRecordRequest extends FormRequest
             'items.*.act_replace' => ['boolean'],
             'items.*.final_condition' => ['nullable', 'string', 'max:50'],
             'items.*.parts_replaced' => ['integer', 'min:0'],
+            // Detail bagian yang diganti. Panjang dibatasi 255 mengikuti kolom
+            // `replace_note`; kewajiban mengisinya saat "Ganti" dicentang
+            // diperiksa per-item di withValidator() di bawah.
+            'items.*.replace_note' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -80,6 +84,25 @@ class StorePmRecordRequest extends FormRequest
 
             if ($period && PeriodService::isFuturePeriod($period, $year)) {
                 $validator->errors()->add('period', 'Periode masa depan tidak dapat diisi.');
+            }
+
+            // Ketika teknisi mencentang aksi "Ganti", wajib menjelaskan bagian
+            // apa yang diganti. Tanpa ini riwayat PM hanya menampilkan tanda
+            // centang tanpa keterangan komponen yang benar-benar diganti.
+            foreach ((array) $this->input('items', []) as $index => $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $replace = filter_var($item['act_replace'] ?? false, FILTER_VALIDATE_BOOLEAN);
+                $note = trim((string) ($item['replace_note'] ?? ''));
+
+                if ($replace && $note === '') {
+                    $validator->errors()->add(
+                        "items.{$index}.replace_note",
+                        'Detail bagian yang diganti wajib diisi ketika aksi "Ganti" dipilih.',
+                    );
+                }
             }
         });
     }

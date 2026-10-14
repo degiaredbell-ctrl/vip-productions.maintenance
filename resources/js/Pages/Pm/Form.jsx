@@ -49,7 +49,15 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
     const toggleAction = (index, action) => {
         const newItems = [...formItems];
-        newItems[index] = { ...newItems[index], [action]: !newItems[index][action] };
+        const updated = { ...newItems[index], [action]: !newItems[index][action] };
+
+        // Saat "Ganti" dimatikan, catatan detailnya ikut dikosongkan supaya
+        // tidak tersimpan catatan pergantian pada item yang tidak diganti.
+        if (action === 'act_replace' && !updated.act_replace) {
+            updated.replace_note = '';
+        }
+
+        newItems[index] = updated;
         setFormItems(newItems);
         setData('items', newItems);
     };
@@ -86,6 +94,16 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         const incomplete = formItems.some(item => !item.actual);
         if (incomplete) {
             setError('Lengkapi semua nilai Aktual');
+            return;
+        }
+
+        // Aksi "Ganti" wajib disertai keterangan bagian yang diganti, supaya
+        // riwayat PM tidak sekadar menampilkan centang tanpa detail komponen.
+        const missingReplaceNote = formItems.some(
+            (item) => item.act_replace && !String(item.replace_note ?? '').trim(),
+        );
+        if (missingReplaceNote) {
+            setError('Isi detail bagian yang diganti untuk setiap item dengan aksi "Ganti".');
             return;
         }
 
@@ -352,6 +370,44 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                             </NeuChip>
                                         ))}
                                     </div>
+
+                                    {/*
+                                        Catatan pergantian hanya muncul ketika aksi
+                                        "Ganti" dicentang, dan wajib diisi: inilah
+                                        yang menjelaskan bagian mana yang diganti,
+                                        bukan sekadar tandai "Ganti" tanpa keterangan.
+                                    */}
+                                    {item.act_replace && (
+                                        <div className="mt-3.5">
+                                            <label
+                                                htmlFor={`replace-note-${index}`}
+                                                className="block text-xs text-neu-sub mb-1.5"
+                                            >
+                                                Detail Bagian yang Diganti{' '}
+                                                <span className="text-neu-bad">*</span>
+                                            </label>
+                                            <textarea
+                                                id={`replace-note-${index}`}
+                                                value={item.replace_note ?? ''}
+                                                onChange={(e) => {
+                                                    updateItem(index, 'replace_note', e.target.value);
+                                                    if (error) setError('');
+                                                }}
+                                                placeholder="Contoh: Bearing 6204, seal pompa"
+                                                rows={2}
+                                                maxLength={255}
+                                                disabled={readOnly}
+                                                className={`neu-input min-h-[64px] resize-y ${
+                                                    error && !String(item.replace_note ?? '').trim()
+                                                        ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]'
+                                                        : ''
+                                                }`}
+                                            />
+                                            <p className="text-xs text-neu-sub mt-1">
+                                                Sebutkan komponen yang diganti supaya riwayat PM jelas.
+                                            </p>
+                                        </div>
+                                    )}
                                 </NeuCard>
                             </div>
                         );

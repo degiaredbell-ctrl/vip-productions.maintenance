@@ -272,6 +272,7 @@ class MachineController extends Controller
                             'act_replace' => $item->act_replace,
                             'final_condition' => $item->final_condition,
                             'parts_replaced' => $item->parts_replaced,
+                            'replace_note' => $item->replace_note,
                         ];
                     }),
                 ];

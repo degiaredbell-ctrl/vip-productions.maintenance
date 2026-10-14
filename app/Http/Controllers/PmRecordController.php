@@ -58,6 +58,9 @@ class PmRecordController extends Controller
                     'act_replace' => $item->act_replace,
                     'final_condition' => $item->final_condition,
                     'parts_replaced' => $item->parts_replaced,
+                    // Detail bagian yang diganti ikut terbawa supaya revisi
+                    // tidak menghapus catatan pergantian yang sudah ditulis.
+                    'replace_note' => $item->replace_note,
                 ];
             })->toArray();
         } elseif ($machine->components->isNotEmpty()) {
@@ -73,6 +76,7 @@ class PmRecordController extends Controller
                     'act_replace' => false,
                     'final_condition' => '',
                     'parts_replaced' => 0,
+                    'replace_note' => '',
                 ];
             })->toArray();
         } else {
@@ -88,6 +92,7 @@ class PmRecordController extends Controller
                     'act_replace' => false,
                     'final_condition' => '',
                     'parts_replaced' => 0,
+                    'replace_note' => '',
                 ];
             })->toArray() : [];
         }

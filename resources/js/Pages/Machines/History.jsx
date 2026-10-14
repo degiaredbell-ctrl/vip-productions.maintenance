@@ -90,7 +90,7 @@ export default function History({ auth, machine, records, returnTo }) {
                                                 <span className="text-neu-text">{item.item_name}</span>
                                                 <span className="text-neu-sub">
                                                     {item.actual}
-                                                    {item.act_replace && ` · ${item.parts_replaced} part`}
+                                                    {item.act_replace && item.replace_note && ` · Ganti: ${item.replace_note}`}
                                                 </span>
                                             </div>
                                         ))}

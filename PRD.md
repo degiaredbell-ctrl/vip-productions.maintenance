@@ -161,7 +161,7 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | ID | Kebutuhan |
 |----|-----------|
 | REQ-PM-01 | Technisi dapat membuka form PM untuk mesin + periode + tahun tertentu |
-| REQ-PM-02 | Item checklist memuat nilai aktual, aksi (bersihkan/perbaiki/lumasi/ganti), kondisi akhir, dan jumlah part |
+| REQ-PM-02 | Item checklist memuat nilai aktual, aksi (bersihkan/perbaiki/lumasi/ganti), kondisi akhir, dan jumlah part; memilih aksi "ganti" mewajibkan catatan detail bagian yang diganti |
 | REQ-PM-03 | Record dapat menyimpan catatan umum |
 | REQ-PM-04 | Form yang sudah memiliki record menampilkan data sebelumnya, bukan template kosong |
 | REQ-PM-05 | Periode terkunci/masa depan tidak dapat diisi |

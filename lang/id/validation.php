@@ -214,6 +214,7 @@ return [
         'items.*.actual' => 'nilai aktual',
         'items.*.final_condition' => 'kondisi akhir',
         'items.*.parts_replaced' => 'jumlah part diganti',
+        'items.*.replace_note' => 'detail bagian yang diganti',
         'role' => 'peran',
         'email' => 'email',
         'password' => 'kata sandi',
