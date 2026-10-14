@@ -7,7 +7,7 @@ import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import Modal from '@/Components/Modal';
 import Checkbox from '@/Components/Checkbox';
-import { EditIcon, HistoryIcon, MinusIcon, PlusIcon, TrashIcon } from '@/Components/Icon';
+import { DownloadIcon, EditIcon, HistoryIcon, MinusIcon, PlusIcon, TrashIcon } from '@/Components/Icon';
 
 const EMPTY = {
     code: '', name: '', category: '', brand: '', type: '', description: '',
@@ -216,7 +216,11 @@ export default function SparePartsIndex({ auth, parts = [], categories = [], loc
                                 onChange={onFile}
                             />
                             <NeuButton type="button" variant="ghost" onClick={() => fileRef.current?.click()}>
-                                Unggah CSV
+                                Template .csv
+                            </NeuButton>
+                            <NeuButton native href={route('spareparts.template')} variant="ghost">
+                                <DownloadIcon />
+                                Unduh Template
                             </NeuButton>
                             <NeuButton type="button" variant="primary" onClick={openCreate}>
                                 Tambah Suku Cadang

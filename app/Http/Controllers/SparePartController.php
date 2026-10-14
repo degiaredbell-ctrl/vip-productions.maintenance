@@ -14,6 +14,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Halaman "Suku Cadang": master suku cadang beserta transaksi stok
@@ -305,6 +306,37 @@ class SparePartController extends Controller
         ]);
 
         return back()->with('success', "Impor selesai: {$report['created']} baru, {$report['updated']} diperbarui dari {$report['total']} baris.".($report['skipped'] > 0 ? " {$report['skipped']} baris dilewati." : ''));
+    }
+
+    /**
+     * Unduh template CSV (header saja) untuk diisi lalu diunggah kembali lewat
+     * `POST /suku-cadang/import`.
+     *
+     * Header memakai urutan 21 kolom nyata yang dikenali SparePartImportService
+     * (lihat konstanta COLUMNS di service tersebut — pemetaan mengikuti posisi,
+     * bukan nama). Saat file hasil isian diunggah, baris header ini otomatis
+     * dilewati karena memuat "Code.asset".
+     */
+    public function template(): StreamedResponse
+    {
+        $columns = [
+            'Code.asset', 'CATEGORY DEVICE', 'Suku Cadang', 'MEREK', 'TYPE', 'Desc',
+            'Last - Modified', 'Ket. Last - Modified', 'UNIT', 'QTY', 'STOK AKHIR',
+            'BARANG KELUAR', 'Log.Barang Keluar', 'BARANG MASUK', 'STOK AWAL', 'MIN',
+            'SUPLIER', 'Kebutuhan Untuk', 'Penjelasan', 'Code.loc', 'LOC',
+        ];
+
+        return response()->streamDownload(function () use ($columns) {
+            $handle = fopen('php://output', 'w');
+
+            // BOM UTF-8 supaya Excel membaca karakter khusus dengan benar.
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, $columns);
+
+            fclose($handle);
+        }, 'template-suku-cadang.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
     }
 
     /**

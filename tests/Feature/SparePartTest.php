@@ -284,4 +284,55 @@ class SparePartTest extends TestCase
         $this->assertSame('Filter Oli', $part->name);
         $this->assertSame('BOSCH', $part->brand);
     }
+
+    public function test_template_csv_dapat_diunduh_oleh_pengelola(): void
+    {
+        $admin = $this->user('admin');
+
+        $response = $this->actingAs($admin)->get(route('spareparts.template'));
+
+        $response->assertOk();
+        $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+        $content = $response->streamedContent();
+
+        // Nama berkas memakai urutan 21 kolom nyata dan baris header harus bisa
+        // dikenali parser (memuat "Code.asset").
+        $this->assertStringContainsString('Code.asset', $content);
+        $this->assertStringContainsString('Suku Cadang', $content);
+        $this->assertStringContainsString('LOC', $content);
+    }
+
+    public function test_template_csv_dapat_diisi_dan_diunggah_kembali(): void
+    {
+        $admin = $this->user('admin');
+
+        // Ambil template, isi satu baris data, lalu unggah lagi — persis alur
+        // yang dipakai user. Baris header template harus dilewati otomatis.
+        $content = $this->actingAs($admin)->get(route('spareparts.template'))->streamedContent();
+        $content .= "TPL001,Filter,Filter Udara,BOSCH,F-99,Desc,,,pcs,1,4,,,,\n";
+
+        $path = tempnam(sys_get_temp_dir(), 'spare-template').'.csv';
+        file_put_contents($path, $content);
+
+        $file = new \Illuminate\Http\UploadedFile($path, 'template-suku-cadang.csv', 'text/csv', null, true);
+
+        $this->actingAs($admin)->post(route('spareparts.import'), ['file' => $file])
+            ->assertRedirect();
+
+        @unlink($path);
+
+        $part = SparePart::where('code', 'TPL001')->firstOrFail();
+        $this->assertSame('Filter Udara', $part->name);
+        $this->assertSame('BOSCH', $part->brand);
+        $this->assertSame(4, $part->stock);
+        $this->assertSame('pcs', $part->unit);
+    }
+
+    public function test_template_tidak_bisa_diunduh_tanpa_izin_kelola(): void
+    {
+        $viewer = $this->user('viewer');
+
+        $this->actingAs($viewer)->get(route('spareparts.template'))->assertForbidden();
+    }
 }

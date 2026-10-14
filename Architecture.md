@@ -591,6 +591,7 @@ POST /pm/{record}/sign
 | `/suku-cadang` | GET | `SparePartController@index` | `can:sparepart.view` |
 | `/suku-cadang` | POST | `SparePartController@store` | `can:sparepart.manage` |
 | `/suku-cadang/import` | POST | `SparePartController@import` | `can:sparepart.manage` (unggah CSV) |
+| `/suku-cadang/template` | GET | `SparePartController@template` | `can:sparepart.manage` (unduh template CSV) |
 | `/suku-cadang/bulk` | DELETE | `SparePartController@bulkDestroy` | `can:sparepart.manage` (hapus massal) |
 | `/suku-cadang/{sparePart}` | PUT | `SparePartController@update` | `can:sparepart.manage` |
 | `/suku-cadang/{sparePart}` | DELETE | `SparePartController@destroy` | `can:sparepart.manage` (soft delete) |
@@ -654,7 +655,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
 | `/admin/templates` | `Admin/Templates` | Template checklist per jenis |
 | `/admin/audit-logs` | `Admin/AuditLogs` | 100 log terbaru |
-| `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV, hapus massal |
+| `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV, unduh template CSV, hapus massal |
 | `/profile` | `Profile/Edit` | Info akun, ganti password, hapus akun |
 
 ---
@@ -710,6 +711,9 @@ php artisan spare-parts:import [path?] [--purge]
 Sumber data: `references/suku_cadang.csv` (jalur `base_path('references/suku_cadang.csv')`),
 atau file apa pun lewat argumen `path`. Halaman `/suku-cadang` juga bisa **mengunggah CSV**
 lewat `POST /suku-cadang/import`; keduanya memakai `SparePartImportService` yang sama.
+Tombol **Unduh Template** di halaman itu memanggil `GET /suku-cadang/template` yang
+mengembalikan CSV berisi baris header (tanpa data) dengan urutan 21 kolom di bawah, siap
+diisi lalu diunggah kembali.
 
 Pemetaan 21 kolom nyata CSV → tabel `spare_parts`:
 

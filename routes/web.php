@@ -130,6 +130,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:sparepart.manage')->group(function () {
         Route::post('/suku-cadang', [SparePartController::class, 'store'])->name('spareparts.store');
         Route::post('/suku-cadang/import', [SparePartController::class, 'import'])->name('spareparts.import');
+        // Template CSV untuk diisi lalu diunggah lewat route `import` di atas.
+        Route::get('/suku-cadang/template', [SparePartController::class, 'template'])->name('spareparts.template');
         // Hapus massal: didaftarkan SEBELUM route {sparePart} supaya "bulk"
         // tidak ditangkap sebagai ID (lihat juga whereNumber di bawah).
         Route::delete('/suku-cadang/bulk', [SparePartController::class, 'bulkDestroy'])->name('spareparts.bulk-destroy');
