@@ -460,10 +460,21 @@ class PmRecordController extends Controller
             $query->where('year', $year);
         }
 
-        // Filter: tipe mesin (mesin/utility)
+        // Filter: kategori tipe (Mesin/Utility).
+        //
+        // "generic" dari halaman admin adalah penanda bucket "Mesin", BUKAN
+        // MachineType::Generic ("Umum"). Bucket itu harus sama dengan tab Mesin
+        // di dashboard/report, yaitu SEMUA unit kecuali Utility. Kalau nilainya
+        // dipakai langsung sebagai `where('type', 'generic')`, mesin bertipe
+        // filling/labeling/tom/inject_blow dll. ikut hilang dari daftar — itu
+        // sebabnya halaman ini hanya menampilkan 3 dari 11 record mesin.
         if ($type = $request->query('type')) {
-            $query->whereHas('machine', function ($mq) use ($type) {
-                $mq->where('type', $type);
+            $isUtility = $type === MachineType::Utility->value;
+
+            $query->whereHas('machine', function ($mq) use ($isUtility) {
+                $isUtility
+                    ? $mq->where('type', MachineType::Utility->value)
+                    : $mq->where('type', '!=', MachineType::Utility->value);
             });
         }
 

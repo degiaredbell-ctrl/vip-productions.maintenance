@@ -32,6 +32,16 @@ class PmRecordPolicy
     }
 
     /**
+     * Hard delete permanen sebuah PM Record (halaman admin). Hanya pemegang
+     * `pm.manage` yang boleh, sejalan dengan middleware `can:pm.manage` pada
+     * route /admin/pm-records.
+     */
+    public function delete(User $user, PmRecord $record): bool
+    {
+        return $user->can('pm.manage');
+    }
+
+    /**
      * Satu sumber aturan untuk "apakah user ini boleh menandatangani / menolak
      * record ini", dipakai juga oleh halaman Persetujuan supaya badge antrean
      * dan daftar yang diklik tidak bisa berbeda dengan yang diizinkan server.
