@@ -6,6 +6,7 @@ import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import MachineFields from '@/Components/MachineFields';
+import ComponentAssignModal from '@/Components/ComponentAssignModal';
 
 const EMPTY_MACHINE = {
     code: '',
@@ -48,7 +49,7 @@ const machineToForm = (machine) => ({
 });
 
 /** Kelompokkan komponen per kategori supaya tampilannya sama dengan halaman
- *  Utility (judul kategori + daftar nama komponen). */
+ *  Utility (judul kategori + daftar komponen beserta standarnya). */
 const groupComponents = (components) => {
     const sections = [];
     const seen = new Map();
@@ -59,15 +60,17 @@ const groupComponents = (components) => {
             sections.push({ category: component.category, items: [] });
         }
 
-        sections[seen.get(component.category)].items.push(component.name);
+        sections[seen.get(component.category)].items.push(component);
     }
 
     return sections;
 };
 
-export default function Machines({ auth, machines = [], types = [], templates = [], categories = [], subCategories = [], trashed = [], can = {} }) {
+export default function Machines({ auth, machines = [], allComponents = [], types = [], templates = [], categories = [], subCategories = [], trashed = [], can = {} }) {
     const createForm = useForm({ ...EMPTY_MACHINE });
     const editForm = useForm({ ...EMPTY_MACHINE });
+    // Unit yang sedang disunting komponennya (modal Edit Komponen).
+    const [componentsTarget, setComponentsTarget] = useState(null);
 
     // Daftar mesin 120+ baris, jadi pencarian dan filter area dijalankan di
     // sisi klien supaya tidak perlu reload tiap ketikan.
@@ -294,13 +297,26 @@ export default function Machines({ auth, machines = [], types = [], templates = 
                                                 <div key={section.category}>
                                                     <p className="text-[11px] font-bold uppercase tracking-wide text-neu-sub mb-1">{section.category}</p>
                                                     <div className="flex flex-wrap gap-1.5">
-                                                        {section.items.map((name) => (
-                                                            <span key={name} className="neu-inset rounded-neu-sm px-2.5 py-1 text-xs">{name}</span>
-                                                        ))}
+                                                        {section.items.map((component) => {
+                                                            const standard = component.standard || component.spec;
+                                                            return (
+                                                                <span key={component.id ?? component.name} className="neu-inset rounded-neu-sm px-2.5 py-1 text-xs">
+                                                                    {component.name}
+                                                                    {standard && <span className="text-neu-sub"> · {standard}</span>}
+                                                                </span>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )) : (
                                                 <p className="text-xs text-neu-sub">Belum ada komponen maintenance.</p>
+                                            )}
+                                            {can.manage && (
+                                                <div className="flex justify-end">
+                                                    <NeuButton size="sm" variant="ghost" onClick={() => setComponentsTarget(machine)}>
+                                                        Edit Komponen
+                                                    </NeuButton>
+                                                </div>
                                             )}
                                         </div>
                                     )}
@@ -401,6 +417,14 @@ export default function Machines({ auth, machines = [], types = [], templates = 
                     </div>
                 )}
             </div>
+
+            <ComponentAssignModal
+                show={Boolean(componentsTarget)}
+                onClose={() => setComponentsTarget(null)}
+                unit={componentsTarget}
+                allComponents={allComponents}
+                action={componentsTarget ? route('machines.components.update', componentsTarget.id) : '#'}
+            />
         </AuthenticatedLayout>
     );
 }

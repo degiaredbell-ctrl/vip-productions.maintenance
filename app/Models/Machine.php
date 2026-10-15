@@ -39,7 +39,7 @@ class Machine extends Model
     public function components(): BelongsToMany
     {
         return $this->belongsToMany(Component::class, 'component_machine')
-            ->withPivot('sort_no')
+            ->withPivot('sort_no', 'standard')
             ->orderBy('component_machine.sort_no')
             ->withTimestamps();
     }
@@ -56,23 +56,36 @@ class Machine extends Model
      * Utility memakai ini supaya daftar yang tampil sama dengan checklist yang
      * akan diisi teknisi.
      *
-     * @return \Illuminate\Support\Collection<int, array{name:string, category:?string}>
+     * `standard` adalah nilai acuan PER UNIT (kolom pivot `standard`), sedangkan
+     * `spec` adalah standar bawaan master komponen. UI memakai
+     * `standard ?? spec` sehingga unit yang belum diisi standar tetap menampilkan
+     * spesifikasi master.
+     *
+     * @return \Illuminate\Support\Collection<int, array{id:?int, name:string, category:?string, standard:?string, spec:?string}>
      */
     public function effectiveComponents(): \Illuminate\Support\Collection
     {
         if ($this->components->isNotEmpty()) {
             return $this->components
                 ->map(fn (Component $component) => [
+                    'id' => $component->id,
                     'name' => $component->name,
                     'category' => $component->category,
+                    'standard' => $component->pivot->standard,
+                    'spec' => $component->spec,
                 ])
                 ->values();
         }
 
         return ($this->template?->items ?? collect())
             ->map(fn ($item) => [
+                'id' => null,
                 'name' => $item->name,
                 'category' => $item->category,
+                // Item template lama tidak punya pivot, jadi standarnya hanya
+                // spesifikasi item itu sendiri.
+                'standard' => null,
+                'spec' => $item->spec,
             ])
             ->values();
     }

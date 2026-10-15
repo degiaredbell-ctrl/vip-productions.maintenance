@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\MachineType;
 use App\Models\ChecklistTemplate;
+use App\Models\Component;
 use App\Models\Machine;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -40,6 +41,8 @@ class UtilityController extends Controller
                     'is_active' => $machine->is_active,
                     'component_count' => $components->count(),
                     'components' => $components,
+                    // Id komponen yang ditugaskan (pivot) untuk modal Edit Komponen.
+                    'component_ids' => $machine->components->pluck('id')->all(),
                 ];
             });
 
@@ -67,6 +70,7 @@ class UtilityController extends Controller
 
         return Inertia::render('Utility/Index', [
             'utilities' => $utilities,
+            'allComponents' => Component::options(),
             'trashed' => $trashed,
             'types' => collect(MachineType::cases())
                 ->filter(fn ($t) => $t === MachineType::Utility)

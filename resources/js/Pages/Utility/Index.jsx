@@ -6,6 +6,7 @@ import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import MachineFields from '@/Components/MachineFields';
+import ComponentAssignModal from '@/Components/ComponentAssignModal';
 
 const EMPTY_UTILITY = {
     code: '',
@@ -52,14 +53,16 @@ const groupComponents = (components) => {
             seen.set(component.category, sections.length);
             sections.push({ category: component.category, items: [] });
         }
-        sections[seen.get(component.category)].items.push(component.name);
+        sections[seen.get(component.category)].items.push(component);
     }
     return sections;
 };
 
-export default function UtilityIndex({ auth, utilities = [], types = [], templates = [], categories = [], subCategories = [], trashed = [], can = {} }) {
+export default function UtilityIndex({ auth, utilities = [], allComponents = [], types = [], templates = [], categories = [], subCategories = [], trashed = [], can = {} }) {
     const createForm = useForm({ ...EMPTY_UTILITY });
     const editForm = useForm({ ...EMPTY_UTILITY });
+    // Unit yang sedang disunting komponennya (modal Edit Komponen).
+    const [componentsTarget, setComponentsTarget] = useState(null);
 
     const [q, setQ] = useState('');
     const [sub, setSub] = useState('all');
@@ -241,13 +244,26 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                                                 <div key={section.category}>
                                                     <p className="text-[11px] font-bold uppercase tracking-wide text-neu-sub mb-1">{section.category}</p>
                                                     <div className="flex flex-wrap gap-1.5">
-                                                        {section.items.map((name) => (
-                                                            <span key={name} className="neu-inset rounded-neu-sm px-2.5 py-1 text-xs">{name}</span>
-                                                        ))}
+                                                        {section.items.map((component) => {
+                                                            const standard = component.standard || component.spec;
+                                                            return (
+                                                                <span key={component.id ?? component.name} className="neu-inset rounded-neu-sm px-2.5 py-1 text-xs">
+                                                                    {component.name}
+                                                                    {standard && <span className="text-neu-sub"> · {standard}</span>}
+                                                                </span>
+                                                            );
+                                                        })}
                                                     </div>
                                                 </div>
                                             )) : (
                                                 <p className="text-xs text-neu-sub">Belum ada komponen maintenance.</p>
+                                            )}
+                                            {can.manage && (
+                                                <div className="flex justify-end">
+                                                    <NeuButton size="sm" variant="ghost" onClick={() => setComponentsTarget(unit)}>
+                                                        Edit Komponen
+                                                    </NeuButton>
+                                                </div>
                                             )}
                                         </div>
                                     )}
@@ -344,6 +360,14 @@ export default function UtilityIndex({ auth, utilities = [], types = [], templat
                     </div>
                 )}
             </div>
+
+            <ComponentAssignModal
+                show={Boolean(componentsTarget)}
+                onClose={() => setComponentsTarget(null)}
+                unit={componentsTarget}
+                allComponents={allComponents}
+                action={componentsTarget ? route('utility.components.update', componentsTarget.id) : '#'}
+            />
         </AuthenticatedLayout>
     );
 }

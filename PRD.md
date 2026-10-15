@@ -160,6 +160,10 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-COMP-05 | Form PM me-generate item dari komponen yang ditugaskan ke unit; item template lama dipakai hanya bila unit belum punya komponen |
 | REQ-COMP-06 | Data item template lama dimigrasikan ke master komponen oleh `ComponentMigrationService` |
 | REQ-COMP-07 | Hanya pemegang `template.manage` yang dapat mengelola Komponen (URL lama `/admin/templates` dialihkan ke `/admin/komponen`) |
+| REQ-COMP-08 | Dari halaman **Mesin** maupun **Utility**, tombol **Komponen → Edit Komponen** membuka modal multi-select: centang beberapa komponen sekaligus lalu isi nilai **Standar** untuk tiap komponen |
+| REQ-COMP-09 | Nilai Standar disimpan **per unit** (kolom `standard` pada pivot `component_machine`), sehingga komponen yang sama dapat punya standar berbeda di unit berbeda |
+| REQ-COMP-10 | Bila Standar per unit kosong, form PM dan daftar komponen memakai `components.spec` (standar bawaan master) sebagai nilai cadangan |
+| REQ-COMP-11 | Edit Komponen di halaman Mesin butuh `machine.manage`; di halaman Utility butuh `utility.manage` |
 
 ### 6.5 Pengisian PM (REQ-PM)
 
@@ -361,6 +365,7 @@ Prinsip:
 - `machine.view` / `utility.view` adalah **scope** halaman/daftar aset; role general membukanya lewat baseline `dashboard.view`.
 - Role teknisi **tech-machines** / **tech-utilities** tanpa `dashboard.view` → hanya satu scope terbuka; kartu di luar scope pada `/form-maintenance` tampil abu-abu dan URL langsungnya diblokir. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap termasuk Komponen).
 - **Suku Cadang** berdiri di luar scope Mesin/Utility: `sparepart.view` untuk **semua** role, `sparepart.manage` (CRUD + transaksi + impor) hanya Admin & **tech-all**.
+- **Edit Komponen + Standar per unit** dari halaman Mesin/Utility mengikuti izin kelola aset: `machine.manage` (Mesin) / `utility.manage` (Utility) — jadi Manager boleh menyunting komponen Mesin namun tidak Utility, sedangkan **tech-all** boleh keduanya.
 
 ---
 
@@ -390,7 +395,7 @@ users ──< pm_records (technician_id, pic_user_id) ──< pm_record_items
                     └ (approved_by)
 
 assets (model Machine; Mesin + Utility) ──< pm_records
-assets ──< component_machine >── components     (many-to-many, urutan per unit)
+assets ──< component_machine >── components     (many-to-many, urutan + standar per unit)
 assets ──> checklist_templates (template_id, nullOnDelete) — cadangan data lama
 checklist_templates ──< checklist_template_items
 
@@ -406,7 +411,7 @@ Constraint kunci:
 - `pm_signatures`: **unique** (`pm_record_id`, `stage`) — satu tanda tangan per tahap.
 - `assets.code`: **unique** (tabel `assets` menampung Mesin dan Utility).
 - `assets`: soft delete (`deleted_at`).
-- `component_machine`: **unique** (`component_id`, `machine_id`) — penugasan komponen per unit.
+- `component_machine`: **unique** (`component_id`, `machine_id`) — penugasan komponen per unit. Kolom `standard` (nullable) menyimpan nilai acuan **per unit**; bila NULL, form PM/daftar memakai `components.spec`.
 - `spare_parts.code`: **unique**; soft delete (`deleted_at`).
 - `spare_part_movements`: mencatat setiap transaksi stok dan mengubah `spare_parts.stock` secara atomik (`type` = `in`/`out`); `spare_parts` bersifat global, tidak ada relasi ke `assets`.
 

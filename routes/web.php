@@ -91,6 +91,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('machines.restore')
         ->whereNumber('machine')
         ->middleware('can:machine.manage');
+    // Edit komponen + standar per unit (pivot) dari halaman Mesin.
+    Route::put('/machines/{machine}/components', [MachineController::class, 'updateComponents'])
+        ->name('machines.components.update')
+        ->middleware('can:machine.manage');
     Route::get('/machines/{machine}/history', [MachineController::class, 'history'])
         ->name('machines.history')
         ->middleware('can:pm.history.view');
@@ -115,6 +119,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/utility/{machine}/restore', [MachineController::class, 'restore'])
             ->name('utility.restore')
             ->whereNumber('machine');
+        // Edit komponen + standar per unit (pivot) dari halaman Utility.
+        Route::put('/utility/{machine}/components', [MachineController::class, 'updateComponents'])
+            ->name('utility.components.update');
     });
 
     // Suku Cadang: master suku cadang + transaksi stok (barang masuk/keluar).

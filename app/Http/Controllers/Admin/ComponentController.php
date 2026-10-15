@@ -129,11 +129,20 @@ class ComponentController extends Controller
 
         $machine = Machine::findOrFail($validated['machine_id']);
 
+        // Lindungi standar per unit: `sync` menulis ulang baris pivot, jadi bila
+        // di sini hanya `sort_no` yang dikirim, nilai `standard` yang sudah diisi
+        // lewat halaman Mesin/Utility akan ikut terhapus. Bawa ulang nilai lama
+        // untuk komponen yang tetap ditugaskan.
+        $existingStandards = $machine->components->pluck('pivot.standard', 'id');
+
         $sync = [];
         $order = 1;
 
         foreach (array_values(array_unique($validated['component_ids'] ?? [])) as $componentId) {
-            $sync[$componentId] = ['sort_no' => $order++];
+            $sync[$componentId] = [
+                'sort_no' => $order++,
+                'standard' => $existingStandards[$componentId] ?? null,
+            ];
         }
 
         $machine->components()->sync($sync);

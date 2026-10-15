@@ -105,6 +105,7 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 ### 7. Komponen / Parts
 - **Master komponen** (nama, kategori, spesifikasi, urutan) — pengganti template checklist per jenis mesin
 - **Penugasan ke unit** Mesin/Utility lewat relasi banyak-ke-banyak: satu komponen bisa dipakai banyak unit, dan tiap unit punya urutan komponen sendiri
+- **Edit Komponen + Standar per unit** langsung dari halaman **`/machines`** dan **`/utility`** (tombol `Komponen → Edit Komponen`): pilih beberapa komponen sekaligus (multi-select) lalu isi nilai **Standar**. Standar disimpan per unit, jadi komponen yang sama bisa berbeda standar antar unit; bila kosong, form PM memakai spesifikasi master komponen
 - Halaman **`/admin/komponen`** (permission `template.manage`) untuk mengelola master + penugasan; URL lama `/admin/templates` dialihkan ke sini
 - Form PM menyusun item dari komponen unit; **item template lama hanya cadangan** untuk data yang belum termigrasi (oleh `ComponentMigrationService`)
 

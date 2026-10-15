@@ -68,7 +68,9 @@ class PmRecordController extends Controller
                 return [
                     'item_name' => $component->name,
                     'category' => $component->category,
-                    'spec' => $component->spec,
+                    // Standar per unit (pivot) menang atas spesifikasi master;
+                    // kalau unit belum diisi standar, pakai spec komponen.
+                    'spec' => $component->pivot->standard ?: $component->spec,
                     'actual' => '',
                     'act_clean' => false,
                     'act_repair' => false,

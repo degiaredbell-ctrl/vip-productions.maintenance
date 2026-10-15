@@ -7,6 +7,7 @@ use App\Enums\SignatureStage;
 use App\Http\Requests\StoreMachineRequest;
 use App\Http\Requests\UpdateMachineRequest;
 use App\Models\ChecklistTemplate;
+use App\Models\Component;
 use App\Models\Machine;
 use App\Models\PmRecord;
 use App\Models\User;
@@ -57,6 +58,9 @@ class MachineController extends Controller
                     'template_name' => $m->template?->name,
                     'component_count' => $components->count(),
                     'components' => $components,
+                    // Id komponen yang benar-benar ditugaskan (pivot) dipakai
+                    // modal "Edit Komponen" untuk menandai centang awal.
+                    'component_ids' => $m->components->pluck('id')->all(),
                 ];
             });
 
@@ -77,6 +81,7 @@ class MachineController extends Controller
 
         return Inertia::render('Machines/Index', [
             'machines' => $machines,
+            'allComponents' => Component::options(),
             'trashed' => $trashed,
             'types' => collect(MachineType::cases())
                 ->reject(fn ($t) => $t === MachineType::Utility)
@@ -222,6 +227,51 @@ class MachineController extends Controller
         ]);
 
         return back()->with('success', "Mesin {$trashed->code} berhasil dipulihkan.");
+    }
+
+    /**
+     * Simpan komponen + standar per unit dari halaman Mesin/Utility.
+     *
+     * Penugasan ditulis utuh (sync), jadi menghapus centang otomatis melepas
+     * komponen. `standard` kosong disimpan NULL supaya form PM/daftar jatuh ke
+     * spesifikasi master komponen.
+     */
+    public function updateComponents(Request $request, Machine $machine): RedirectResponse
+    {
+        $this->authorizeType($request->user(), $machine->type);
+
+        $validated = $request->validate([
+            'items' => ['array'],
+            'items.*.id' => ['required', 'integer', 'exists:components,id'],
+            'items.*.standard' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $sync = [];
+        $order = 1;
+
+        foreach ($validated['items'] ?? [] as $item) {
+            $standard = trim((string) ($item['standard'] ?? ''));
+
+            $sync[(int) $item['id']] = [
+                'sort_no' => $order++,
+                'standard' => $standard !== '' ? $standard : null,
+            ];
+        }
+
+        $machine->components()->sync($sync);
+
+        AuditLogService::record('machine.components.update', Machine::class, $machine->id, [
+            'code' => $machine->code,
+            'name' => $machine->name,
+            'components' => collect($sync)->map(fn ($row, $id) => [
+                'id' => $id,
+                'standard' => $row['standard'],
+            ])->values()->all(),
+        ]);
+
+        $count = count($sync);
+
+        return back()->with('success', "Komponen {$machine->code} — {$machine->name} diperbarui ({$count} komponen).");
     }
 
     public function history(Request $request, Machine $machine): Response

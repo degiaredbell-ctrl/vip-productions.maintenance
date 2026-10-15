@@ -311,7 +311,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 
 - `assets`: `(is_active, week_group)`, `(is_active, sub_category)`, unique `code`
 - `components`: `(category, name)`
-- `component_machine`: unique `(component_id, machine_id)`, `(machine_id, sort_no)`
+- `component_machine`: unique `(component_id, machine_id)`, `(machine_id, sort_no)`; kolom `standard` (nullable) = standar per unit
 - `pm_records`: `(year, period, status)`, `(machine_id, year)`, unique `(machine_id, year, period)`
 - `pm_record_items`: `pm_record_id`
 - `pm_signatures`: `signed_by`, unique `(pm_record_id, stage)`
@@ -327,12 +327,23 @@ Sejak refactor aset, item yang diperiksa saat PM tidak lagi ditentukan lewat
 
 - `components` — daftar tunggal komponen (nama, kategori, spesifikasi, urutan).
 - `component_machine` — pivot many-to-many; satu komponen bisa dipakai banyak
-  Mesin/Utility, dan tiap unit punya urutan komponen sendiri (`sort_no`).
+  Mesin/Utility, dan tiap unit punya urutan komponen sendiri (`sort_no`) serta
+  **standar per unit** (`standard`, nullable).
 - Halaman **`/admin/komponen`** (`Admin/Components.jsx`) mengelola master dan
   penugasannya; URL lama `/admin/templates` diarahkan ke sini.
+- **Edit Komponen + Standar per unit** juga tersedia langsung dari halaman
+  **`/machines`** dan **`/utility`**: tombol `Komponen → Edit Komponen` membuka
+  `ComponentAssignModal.jsx` (multi-select + input standar) yang menyimpan lewat
+  `PUT /machines/{machine}/components` (`machines.components.update`) atau
+  `PUT /utility/{machine}/components` (`utility.components.update`), ditangani
+  `MachineController@updateComponents`.
+- `standard` kosong disimpan `NULL` supaya form PM/daftar jatuh ke
+  `components.spec`; karena itu UI memakai `standard ?? spec` (isi sebagai nilai,
+  spec master sebagai placeholder/cadangan).
 - Saat halaman PM dimuat, `Machine::effectiveComponents()` memilih: snapshot
   record lama → komponen pivot unit → item template lama (cadangan). Ini menjaga
-  form unit yang belum termigrasi tidak kosong.
+  form unit yang belum termigrasi tidak kosong. Untuk sumber pivot, `spec` pada
+  item PM diisi `pivot.standard ?: component.spec`.
 - `ComponentMigrationService` memindahkan data template lama ke `components` dan
   mengikatnya ke unit saat migrasi dijalankan.
 
@@ -567,6 +578,7 @@ GET  /machines/{machine}/pm?period=&year=
    ├─ resolve period & year (query, default = periode berjalan)
    ├─ cari record existing (machine, year, period) → item dari record (snapshot)
    ├─ kalau tidak ada → item dari master Komponen unit (pivot)
+   │    ├─ spec item = pivot.standard ?: components.spec (standar per unit)
    │    └─ item template lama dipakai hanya bila unit belum punya komponen
    └─ teruskan filter Beranda yang sedang aktif ke "Kembali"/redirect
 
@@ -618,12 +630,14 @@ POST /pm/{record}/sign
 | `/machines/{machine}` | PUT | `MachineController@update` | `can:machine.manage` + `authorizeType()` |
 | `/machines/{machine}` | DELETE | `MachineController@destroy` | `can:machine.manage` + `authorizeType()` |
 | `/machines/{machine}/restore` | PATCH | `MachineController@restore` | `can:machine.manage` + `authorizeType()` |
+| `/machines/{machine}/components` | PUT | `MachineController@updateComponents` | `can:machine.manage` + `authorizeType()` |
 | `/machines/{machine}/history` | GET | `MachineController@history` | `can:pm.history.view` + `AssetScope` |
 | `/utility` | GET | `UtilityController@index` | `can_any:utility.view,dashboard.view` |
 | `/utility` | POST | `MachineController@store` | `can:utility.manage` + `authorizeType()` |
 | `/utility/{machine}` | PUT | `MachineController@update` | `can:utility.manage` + `authorizeType()` |
 | `/utility/{machine}` | DELETE | `MachineController@destroy` | `can:utility.manage` + `authorizeType()` |
 | `/utility/{machine}/restore` | PATCH | `MachineController@restore` | `can:utility.manage` + `authorizeType()` |
+| `/utility/{machine}/components` | PUT | `MachineController@updateComponents` | `can:utility.manage` + `authorizeType()` |
 | `/form-maintenance/mesin` | GET | `DashboardController@formMaintenanceMesin` | `can_any:machine.manage,machine.view,dashboard.view` |
 | `/form-maintenance/utility` | GET | `DashboardController@formMaintenanceUtility` | `can_any:utility.view,dashboard.view` |
 | `/reports` | GET | `ReportController@index` | `can:report.view` |
@@ -687,6 +701,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `useSignatureActions` | Logika approve/tolak (nama manual, canvas, catatan, request). Dipakai bersama oleh `SignatureActions` dan `Approvals/ApprovalRow` supaya tidak ada jalur validating mandatory yang berbeda |
 | `Approvals/ApprovalRow` | Satu baris tabel antrean: kolom Nama Penanda Tangan dan Tanda Tangan terpisah |
 | `MachineFields` | Form input mesin (dipakai bersama create/edit) |
+| `ComponentAssignModal` | Modal "Edit Komponen" di halaman Mesin/Utility: multi-select komponen + input Standar per unit |
 
 ### Layout
 
@@ -706,13 +721,13 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ekspor |
 | `/approvals` | `Approvals/Index` | Antrean per permission, stepper, tabel nama + signature per baris |
 | `/reports` | `Reports/Index` | Kepatuhan, top part, ringkasan aksi, ekspor |
-| `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore |
+| `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore, Edit Komponen + Standar per unit |
 | `/machines/{machine}/history` | `Machines/History` | Riwayat PM mesin |
 | `/machines/{machine}/pm` | `Pm/Form` | Checklist + tanda tangan |
 | `/form-maintenance` | `FormMaintenance/Index` | Kartu pilih scope Mesin/Utility |
 | `/form-maintenance/mesin` | `FormMaintenance/Mesin` | Daftar mesin + status PM per periode |
 | `/form-maintenance/utility` | `FormMaintenance/Utility` | Daftar unit utility + status PM per periode |
-| `/utility` | `Utility/Index` | Daftar unit utility + komponen maintenance |
+| `/utility` | `Utility/Index` | Daftar unit utility + komponen maintenance, Edit Komponen + Standar per unit |
 | `/admin/users` | `Admin/Users` | CRUD pengguna + ganti password + pencarian |
 | `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
 | `/admin/komponen` | `Admin/Components` | Master Komponen + penugasan ke Mesin/Utility |
@@ -1030,7 +1045,7 @@ Tanpa entri itu, jadwal `02:00` tidak berjalan; tombol **Buat Backup Sekarang** 
 
 | Jenis | Tool | Cakupan |
 |-------|------|---------|
-| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile & tanda tangan tersimpan, Mesin/Utility (termasuk master Komponen + penugasan), PM & rantai tanda tangan, Admin PM Records, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses), Activity Logs (akses + filter + pencarian), Backup & Restore (akses + guard konfirmasi) |
+| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile & tanda tangan tersimpan, Mesin/Utility (termasuk master Komponen + penugasan + Edit Komponen/Standar per unit), PM & rantai tanda tangan, Admin PM Records, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses), Activity Logs (akses + filter + pencarian), Backup & Restore (akses + guard konfirmasi) |
 | Unit | PHPUnit 11 (`tests/Unit`) | Pemecah skrip SQL `BackupService::splitStatements` (kutip, backtick, komentar, dump bawaan aplikasi) |
 | Manual terotomasi | Puppeteer (`pptr-test.mjs`) | Sweep halaman: login nyata, cek blank page, error console, HTTP 5xx |
 | Fungsional | Skrip Puppeteer ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda |
