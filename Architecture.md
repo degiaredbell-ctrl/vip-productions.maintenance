@@ -22,12 +22,13 @@ Untuk panduan setup, lihat [README.md](README.md).
 10. [Frontend](#10-frontend)
 11. [Ekspor](#11-ekspor)
 12. [Impor CSV](#12-impor-csv)
-13. [Audit Log](#13-audit-log)
-14. [Keamanan](#14-keamanan)
-15. [Deployment](#15-deployment)
-16. [Testing](#16-testing)
-17. [Trade-off & Keputusan Desain](#17-trade-off--keputusan-desain)
-18. [Known Limitations](#18-known-limitations)
+13. [Activity Logs](#13-activity-logs)
+14. [Backup & Restore](#14-backup--restore)
+15. [Keamanan](#15-keamanan)
+16. [Deployment](#16-deployment)
+17. [Testing](#17-testing)
+18. [Trade-off & Keputusan Desain](#18-trade-off--keputusan-desain)
+19. [Known Limitations](#19-known-limitations)
 
 ---
 
@@ -155,7 +156,8 @@ app/
 │           ├── UserController.php       CRUD pengguna + ganti password
 │           ├── RoleController.php       CRUD role (authorizeResource)
 │           ├── ComponentController.php  Master Komponen + penugasan ke Mesin/Utility
-│           └── AuditLogController.php   100 log terbaru
+│           ├── ActivityLogController.php Activity Logs (cari/filter/paginasi + detail)
+│           └── BackupController.php     Backup & Restore database (khusus Admin)
 │
 ├── Actions/Pm/              use-case satu proses bisnis
 │   ├── SubmitPmRecord.php    draft → submitted
@@ -177,14 +179,16 @@ app/
 │   ├── DashboardService.php  Agregasi status mesin + filter
 │   ├── ReportService.php     Kepatuhan, top part, ringkasan aksi
 │   ├── AuditLogService.php   Penulis audit log
+│   ├── BackupService.php     Dump/restore database via PDO (tanpa biner mysqldump)
 │   ├── MachineImportService.php  Impor CSV mesin idempoten
 │   └── SparePartImportService.php Impor CSV suku cadang idempoten (toleran header dua-baris & koma)
 │
 ├── Exports/                  Maatwebsite Excel mapping
-├── Models/                   Eloquent + cast/relasi (Machine memakai tabel `assets`; + Component)
+├── Models/                   Eloquent + cast/relasi (Machine memakai tabel `assets`; + Component; + Backup)
 └── Console/Commands/
     ├── ImportMachinesCommand.php
-    └── ImportSparePartsCommand.php
+    ├── ImportSparePartsCommand.php
+    └── BackupDatabaseCommand.php   backup:database (manual/scheduled + prune)
 ```
 
 ### Kenapa Enum dipakai di mana-mana
@@ -225,7 +229,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
                     │  year, period         │   │  subject_* │
                     │  status               │   │  changes   │
                     │  technician_id        │   │  ip        │
-                    │  technician_name ★    │   │  ip        │
+                    │  technician_name ★    │   │  created_at│
                     │  pic_user_id (null)   │   └────────────┘
                     │  approved_by (null)   │
                     │  general_note         │
@@ -299,6 +303,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 | `machines.template_id` | `nullOnDelete` | Hapus template tidak boleh menghapus mesin (kolom warisan; item PM kini dari `components`) |
 | `component_machine.component_id/machine_id` | `cascade` | Penugasan komponen tidak bermakna bila komponen atau unitnya hilang |
 | `audit_logs.user_id` | **`nullOnDelete`** | Log harus bertahan setelah pelaku keluar |
+| `backups.created_by` | **`nullOnDelete`** | Riwayat backup tetap ada meski akun pembuatnya dihapus |
 | `spare_part_movements.spare_part_id` | `cascade` | Riwayat transaksi tidak bermakna tanpa suku cadangnya |
 | `spare_part_movements.user_id` | **`nullOnDelete`** | Riwayat stok tetap terbaca meski akun pelakunya dihapus |
 
@@ -311,6 +316,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 - `pm_record_items`: `pm_record_id`
 - `pm_signatures`: `signed_by`, unique `(pm_record_id, stage)`
 - `audit_logs`: `(subject_type, subject_id)`
+- `backups`: `created_at`
 - `spare_parts`: unique `code`, `category`, `name`, `location_code`, `(category, name)`
 - `spare_part_movements`: `(spare_part_id, moved_at)`
 
@@ -472,7 +478,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:user.manage')->group(function () { /* /admin/users */ });
     Route::middleware('role:admin')->group(function () { /* /admin/roles */ });
     Route::middleware('can:template.manage')->group(function () { /* /admin/komponen */ });
-    Route::middleware('can:audit.view')->group(function () { /* /admin/audit-logs */ });
+    Route::middleware('can:activity.view')->group(function () { /* /admin/activity-logs */ });
+    Route::middleware('can:backup.manage')->group(function () { /* /admin/backups */ });
 });
 ```
 
@@ -530,7 +537,8 @@ Permission berasal dari `RoleSeeder`:
 | `sparepart.manage` | admin, tech-all (CRUD + transaksi stok + impor) |
 | `pm.manage` | admin (halaman Admin PM Records — lihat semua record + hapus permanen) |
 | `user.manage` | admin |
-| `audit.view` | admin, manager |
+| `activity.view` | admin, manager (halaman Activity Logs) |
+| `backup.manage` | admin (Backup & Restore database) |
 
 Tiga permission tanda tangan **sengaja dipisah** (`pm.sign` / `pm.acknowledge` / `pm.approve`)
 supaya role tidak bisa melompat tahap dengan satu permission generik.
@@ -629,7 +637,13 @@ POST /pm/{record}/sign
 | `/admin/komponen` | GET/POST/PUT/DELETE | `Admin\ComponentController` | `can:template.manage` |
 | `/admin/komponen/penugasan` | POST | `Admin\ComponentController@assign` | `can:template.manage` |
 | `/admin/templates` | GET | redirect → `/admin/komponen` | `can:template.manage` |
-| `/admin/audit-logs` | GET | `AuditLogController@index` | `can:audit.view` |
+| `/admin/activity-logs` | GET | `Admin\ActivityLogController@index` | `can:activity.view` |
+| `/admin/backups` | GET | `Admin\BackupController@index` | `can:backup.manage` |
+| `/admin/backups` | POST | `Admin\BackupController@store` | `can:backup.manage` |
+| `/admin/backups/{backup}/download` | GET | `Admin\BackupController@download` | `can:backup.manage` |
+| `/admin/backups/{backup}/restore` | POST | `Admin\BackupController@restore` | `can:backup.manage` |
+| `/admin/backups/restore-upload` | POST | `Admin\BackupController@uploadRestore` | `can:backup.manage` |
+| `/admin/backups/{backup}` | DELETE | `Admin\BackupController@destroy` | `can:backup.manage` |
 | `/admin/pm-records` | GET | `PmRecordController@adminIndex` | `can:pm.manage` |
 | `/admin/pm-records/{record}` | DELETE | `PmRecordController@adminDestroy` | `can:pm.manage` |
 | `/suku-cadang` | GET | `SparePartController@index` | `can:sparepart.view` |
@@ -703,7 +717,8 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
 | `/admin/komponen` | `Admin/Components` | Master Komponen + penugasan ke Mesin/Utility |
 | `/admin/pm-records` | `Admin/PmRecords/Index` | Semua PM Record: filter, cari, hapus permanen |
-| `/admin/audit-logs` | `Admin/AuditLogs` | 100 log terbaru |
+| `/admin/activity-logs` | `Admin/ActivityLogs` | Activity Logs: cari, filter aksi/pelaku/tanggal, statistik, detail perubahan |
+| `/admin/backups` | `Admin/Backups` | Backup & Restore database: buat, unduh, pulihkan, unggah, hapus |
 | `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV, unduh template CSV, hapus massal |
 | `/profile` | `Profile/Edit` | Info akun, ganti password, tanda tangan tersimpan, hapus akun |
 
@@ -798,7 +813,10 @@ Keputusan desain (parser sengaja dibuat toleran karena CSV berasal dari spreadsh
 
 ---
 
-## 13. Audit Log
+## 13. Activity Logs
+
+Backing store tetap bernama `audit_logs` (model `AuditLog`, service `AuditLogService`), tetapi
+permukaan fitur di UI kini bernama **Activity Logs** dengan permission `activity.view`.
 
 `AuditLogService::record($action, $subjectType, $subjectId, $changes)` menulis:
 
@@ -821,6 +839,7 @@ Action yang tercatat:
 | | `reject` | `Actions/Pm/RejectPmRecord` |
 | `user.*` | `create`, `update`, `password`, `delete` | `Admin/UserController` |
 | `sparepart.*` | `create`, `update`, `delete` (tunggal & massal, ditandai `bulk`), `restore`, `movement`, `import` | `SparePartController` |
+| `backup.*` | `create`, `restore`, `delete` | `Admin/BackupController` |
 
 > **Cakupan saat ini:** perubahan pada **template checklist** dan **role/permission** belum
 > tercatat di audit log. Keduanya baru bisa ditambah dengan satu baris
@@ -829,11 +848,54 @@ Action yang tercatat:
 **Aturan privasi:** aksi `user.password` **tidak pernah** menulis nilai password, hanya nama & email
 sasaran supaya jejaknya tetap bisa ditelusuri. Password lama pun tidak ikut.
 
-Halaman audit log menampilkan **100 log terbaru** dengan urutan `created_at` descending.
+Halaman Activity Logs (`Admin/ActivityLogs`) menampilkan log berurutan `created_at` descending,
+**dipaginasi 25 per halaman**, dengan **pencarian** (aksi/pelaku/subjek/IP) dan **filter** aksi,
+pelaku, serta rentang tanggal (`from`/`to`). Setiap baris bisa dibuka untuk melihat **detail
+perubahan** (JSON `changes`), disertai kartu statistik (total, hari ini, pelaku aktif).
 
 ---
 
-## 14. Keamanan
+## 14. Backup & Restore
+
+Fitur cadangkan/pulihkan **database** (khusus Admin, permission `backup.manage`).
+
+### Mengapa murni PDO, bukan `mysqldump`
+
+Implementasi awal memanggil biner `mysqldump`/`mysql`. Itu gagal di deployment Docker:
+image `php:8.3-fpm-alpine` memakai klien MariaDB, sementara server dananya **MySQL 8** dengan
+autentikasi `caching_sha2_password` — plugin-nya tidak ada di klien Alpine
+(`Plugin caching_sha2_password could not be loaded`). `BackupService` karena itu melakukan
+dump dan restore **lewat koneksi PDO aplikasi** (`DB::connection()`), yang sudah menangani
+autentikasi, charset, dan opsi koneksi dengan benar. Tidak ada ketergantungan biner eksternal.
+
+### Alur
+
+| Langkah | Detail |
+|---------|--------|
+| Buat | Enumerasi tabel (`SHOW FULL TABLES`, hanya `BASE TABLE`), lalu per tabel tulis `DROP TABLE IF EXISTS`, `SHOW CREATE TABLE`, dan `INSERT` per baris |
+| Escaping | Nilai di-quote dengan `PDO::quote` (setara `mysql_real_escape_string`) sehingga newline/quote/backslash aman dan tiap pernyataan tetap satu baris |
+| Simpan | File `.sql` di disk privat **`backups`** (`storage/app/backups`), tidak diekspos web |
+| Prune | `backup.keep` (default 30) backup terbaru dipertahankan; sisanya beserta filenya dihapus |
+| Pulihkan | File dibaca, dipecah menjadi pernyataan oleh `splitStatements()` (menghormati kutip, backtick, komentar baris/blok), lalu dieksekusi satu per satu via `PDO::exec` setelah `FOREIGN_KEY_CHECKS=0` |
+
+### Pengaman restore
+
+- **Backup tersimpan**: wajib mengetik ulang **nama berkas** yang persis sebelum tombol aktif.
+- **Unggahan `.sql`**: wajib mencentang pernyataan bahwa data akan ditimpa.
+- Setiap aksi (`backup.create`, `backup.restore`, `backup.delete`) dicatat di Activity Logs.
+- `restorePath()` juga dipakai bersama oleh restore tersimpan dan restore unggahan, jadi hanya ada
+  satu jalur eksekusi.
+
+### Konfigurasi & penjadwalan
+
+`config/backup.php`: `disk` (default `backups`), `keep` (default 30), `schedule` (default `02:00`).
+`routes/console.php` menjadwalkan `backup:database --type=scheduled --prune` setiap hari pada
+`config('backup.schedule')`. Karena container **tidak** menjalankan cron, scheduler harus
+diaktifkan dari host (lihat [Deployment](#16-deployment) dan README).
+
+---
+
+## 15. Keamanan
 
 | Aspek | Implementasi |
 |-------|--------------|
@@ -858,7 +920,7 @@ dipakai di lingkungan nyata.
 
 ---
 
-## 15. Deployment
+## 16. Deployment
 
 ### Arsitektur container
 
@@ -936,9 +998,11 @@ runtime, dan menyertakannya membuat build context gagal di
 | Volume | Jenis | Isi |
 |--------|-------|-----|
 | `app_public` | named (shared app ↔ nginx) | build assets Vite + `img/` + symlink `storage` |
-| `./storage` | bind mount host | logs, sessions, cache, `app/public/signatures` |
+| `./storage` | bind mount host | logs, sessions, cache, `app/public/signatures`, `app/backups` |
 
-`storage/` di-bind mount agar log dan tanda tangan tetap ada setelah container di-recreate.
+`storage/` di-bind mount agar log, tanda tangan, **dan file backup database** tetap ada setelah
+container di-recreate. Image **tidak** menjalankan `migrate` saat start — langkah migrasi dijalankan
+terpisah (lihat Operasional).
 
 ### Operasional
 
@@ -951,15 +1015,25 @@ docker compose exec app php artisan migrate --force
 
 Health check Laravel tersedia di `/up` (dikonfigurasi lewat `withRouting(health:)`).
 
+**Backup harian otomatis.** Container tidak menyertakan cron, jadi scheduler harus dijalankan dari
+host, misalnya:
+
+```bash
+* * * * * docker exec -u www-data vip_app php artisan schedule:run >> /dev/null 2>&1
+```
+
+Tanpa entri itu, jadwal `02:00` tidak berjalan; tombol **Buat Backup Sekarang** tetap berfungsi.
+
 ---
 
-## 16. Testing
+## 17. Testing
 
 | Jenis | Tool | Cakupan |
 |-------|------|---------|
-| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile & tanda tangan tersimpan, Mesin/Utility (termasuk master Komponen + penugasan), PM & rantai tanda tangan, Admin PM Records, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses) |
-| Manual terotomasi | Playwright (via Docker image `mcr.microsoft.com/playwright`) | Sweep 9 halaman: login nyata, cek blank page, error console, HTTP 5xx |
-| Fungsional | Skrip Playwright ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda |
+| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile & tanda tangan tersimpan, Mesin/Utility (termasuk master Komponen + penugasan), PM & rantai tanda tangan, Admin PM Records, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses), Activity Logs (akses + filter + pencarian), Backup & Restore (akses + guard konfirmasi) |
+| Unit | PHPUnit 11 (`tests/Unit`) | Pemecah skrip SQL `BackupService::splitStatements` (kutip, backtick, komentar, dump bawaan aplikasi) |
+| Manual terotomasi | Puppeteer (`pptr-test.mjs`) | Sweep halaman: login nyata, cek blank page, error console, HTTP 5xx |
+| Fungsional | Skrip Puppeteer ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda |
 
 Pola verifikasi yang dipakai: **perilaku server, bukan tampilan UI** — misalnya memastikan role
 pengguna tetap `admin` setelah percobaan demote, dan akun tetap ada setelah percobaan self-delete.
@@ -967,7 +1041,7 @@ UI bisa-disable tombol, jadi hanya state server yang membuktikan guard bekerja.
 
 ---
 
-## 17. Trade-off & Keputusan Desain
+## 18. Trade-off & Keputusan Desain
 
 | Keputusan | Alasan | Konsekuensi |
 |-----------|--------|-------------|
@@ -988,7 +1062,7 @@ UI bisa-disable tombol, jadi hanya state server yang membuktikan guard bekerja.
 
 ---
 
-## 18. Known Limitations
+## 19. Known Limitations
 
 Hal-hal yang diketahui ada di sistem ini dan perlu dipertimbangkan:
 
@@ -996,8 +1070,10 @@ Hal-hal yang diketahui ada di sistem ini dan perlu dipertimbangkan:
    Ini penyebab utama "perubahan frontend tidak muncul".
 2. **Tidak ada notifikasi otomatis** (email/WhatsApp) untuk pengingat persetujuan atau PM jatuh tempo.
 3. **Rantai 3 tahap bersifat hardcoded** di enum, belum bisa dikonfigurasi per unit.
-4. **Audit log tidak bisa difilter** (hanya 100 terbaru) dan tidak bisa dihapus dari UI.
-5. **Tidak ada scheduled job** — tidak ada pengingat otomatis; semua dipicu manual.
+4. **Activity Logs bersifat append-only** — tidak bisa dihapus dari UI. Kini sudah bisa dicari,
+   difilter (aksi/pelaku/rentang tanggal), dan dipaginasi 25 per halaman.
+5. **Scheduler tidak berjalan sendiri di container** — backup harian `02:00` hanya berjalan bila
+   `schedule:run` dipasang pada cron host. Tidak ada pengingat otomatis lain (email/WhatsApp).
 6. **Tidak ada pagination** pada daftar besar; daftar mesin & pengguna memuat seluruh data.
 7. **Tidak ada resize/gambar** — tanda tangan disimpan ukuran canvas apa adanya (dibatasi 2 MB).
 8. **Tidak ada pencarian global** — pencarian hanya per halaman.
@@ -1008,6 +1084,9 @@ Hal-hal yang diketahui ada di sistem ini dan perlu dipertimbangkan:
 12. **Race condition pada signing** — dua request bersamaan pada tahap yang sama bisa saling
     menimpa; `unique(pm_record_id, stage)` mencegah duplikasi baris, tapi bukan konfirmasi transaksional.
     Menambahkan lock pada record akan menutup celah ini.
+13. **Backup hanya mencakup database**, bukan berkas unggahan/tanda tangan di `storage/app/public`.
+14. **Restore bersifat menimpa total (all-or-nothing)** dan belum divalidasi untuk file `mysqldump`
+    yang memakai `DELIMITER` (stored routine/trigger); dump buatan aplikasi tidak memakai `DELIMITER`.
 
 ---
 

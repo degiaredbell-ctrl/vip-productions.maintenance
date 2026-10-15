@@ -137,10 +137,13 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - Filter tahun & periode
 - **Ekspor XLSX** (Maatwebsite Excel) dan **PDF** (DomPDF)
 
-### 13. Audit Log
-- Mencatat aksi penting: `machine.create`, `machine.update`, `machine.delete`, `machine.restore`, `pm.submit`, `pm.sign.{stage}`, `pm.reject`, `user.create`, `user.update`, `user.password`, `user.delete`, `sparepart.create`, `sparepart.update`, `sparepart.delete`, `sparepart.restore`, `sparepart.movement`, `sparepart.import`
+### 13. Activity Logs
+- Halaman **`/admin/activity-logs`** (permission `activity.view`) — pengganti halaman Audit Log lama (backing store tetap tabel `audit_logs`)
+- Mencatat aksi penting: `machine.create`, `machine.update`, `machine.delete`, `machine.restore`, `pm.submit`, `pm.sign.{stage}`, `pm.reject`, `user.create`, `user.update`, `user.password`, `user.delete`, `sparepart.create`, `sparepart.update`, `sparepart.delete`, `sparepart.restore`, `sparepart.movement`, `sparepart.import`, `backup.create`, `backup.restore`, `backup.delete`
 - Menyimpan user pelaku, subject, perubahan (JSON), dan IP
-- 100 log terbaru per halaman
+- **Pencarian** (aksi/pelaku/subjek/IP) dan **filter** aksi, pelaku, serta rentang tanggal (`from`/`to`)
+- **Statistik ringkas** (total, hari ini, pelaku aktif) + **detail perubahan** yang bisa dibuka-tutup per baris
+- Paginasi 25 log per halaman, mempertahankan filter saat berpindah halaman
 
 ### 14. Suku Cadang
 - Master suku cadang **global** (tidak terikat unit Mesin/Utility): `Code.asset`, kategori, nama, merek, type, deskripsi, satuan, stok, stok awal/minimum, supplier, kebutuhan untuk, dan lokasi
@@ -158,6 +161,15 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - Toast notifikasi untuk setiap aksi sukses/gagal
 - Tampilan dalam Bahasa Indonesia
 
+### 16. Backup & Restore
+- Halaman **`/admin/backups`** (permission `backup.manage`, khusus **Admin**) untuk mencadangkan dan memulihkan **database** aplikasi
+- **Backup manual** sekali klik; file `.sql` disimpan di disk privat `backups` (`storage/app/backups`, tidak terekspos web)
+- **Unduh**, **pulihkan**, dan **hapus** tiap backup dari halaman; konfirmasi wajib mengetik ulang nama berkas sebelum restore
+- **Restore dari unggahan** berkas `.sql` (dengan centang pernyataan "data akan ditimpa")
+- **Backup harian otomatis** via Laravel scheduler (`routes/console.php`, `backup:database --type=scheduled --prune`) dan **retensi** `backup.keep` (default 30 backup terbaru)
+- Implementasi **murni PDO** (tanpa biner `mysqldump`): dump dan restore memakai koneksi aplikasi, sehingga konsisten dengan charset/otentikasi MySQL 8
+- Setiap aksi (`backup.create`, `backup.restore`, `backup.delete`) tercatat di Activity Logs
+
 ---
 
 ## Teknologi
@@ -171,7 +183,7 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 | Database | MySQL |
 | Export | Maatwebsite Excel (XLSX), Barryvdh DomPDF (PDF) |
 | Web server | Nginx `1.27-alpine` + PHP-FPM port 9000 |
-| Testing | PHPUnit 11, Playwright (verifikasi UI end-to-end) |
+| Testing | PHPUnit 11, Puppeteer (`pptr-test.mjs`, verifikasi UI end-to-end) |
 
 ---
 
@@ -198,7 +210,8 @@ Daftar permission berasal dari `database/seeders/RoleSeeder.php`.
 | `sparepart.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sparepart.manage` | ✅ | — | — | — | — | — | — | ✅ |
 | `user.manage` | ✅ | — | — | — | — | — | — | — |
-| `audit.view` | ✅ | ✅ | — | — | — | — | — | — |
+| `activity.view` | ✅ | ✅ | — | — | — | — | — | — |
+| `backup.manage` | ✅ | — | — | — | — | — | — | — |
 
 **Catatan penting:**
 - `pm.sign`, `pm.acknowledge`, `pm.approve` **dipisah per tahap** — bukan satu permission `pm.approve` generik, supaya peran tidak bisa melompat tahap.
@@ -208,6 +221,8 @@ Daftar permission berasal dari `database/seeders/RoleSeeder.php`.
 - Role teknisi **tech-machines** / **tech-utilities** sengaja tanpa `dashboard.view`: hanya satu scope terbuka, dan `/form-maintenance` menampilkan kartu di luar scope sebagai **abu-abu** yang tidak bisa diklik maupun dibuka lewat URL. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap).
 - **Suku Cadang** tidak terikat scope Mesin/Utility: `sparepart.view` diberikan ke **semua** role (semua user login boleh melihat), sedangkan `sparepart.manage` hanya Admin & **tech-all**.
 - Otorisasi tetap ditegakkan di server lewat **Policy/middleware** (termasuk blokir akses URL langsung ke form PM unit di luar scope), bukan hanya dengan menyembunyikan menu.
+- **Activity Logs**: `activity.view` menggantikan `audit.view` (migration rename, link role dipertahankan lewat `permission_id`). Nama lama tetap dipakai sebagai backing store — tabel `audit_logs`, model `AuditLog`, dan `AuditLogService` tidak berubah.
+- **Backup & Restore**: `backup.manage` hanya dimiliki **Admin**; halaman dan seluruh route backup dilindungi middleware `can:backup.manage`.
 
 ---
 
@@ -310,6 +325,8 @@ Dari `UserSeeder`, seluruh akun memakai password **`password`**.
 | `php artisan spare-parts:import` | Impor suku cadang dari `references/data-source/suku_cadang.csv` |
 | `php artisan spare-parts:import {path?}` | Impor dari file CSV lain |
 | `php artisan spare-parts:import --purge` | Impor + hapus permanen suku cadang yang tidak ada di CSV |
+| `php artisan backup:database` | Buat backup database manual; file `.sql` disimpan ke `storage/app/backups` |
+| `php artisan backup:database --type=scheduled --prune` | Backup terjadwal + hapus backup melebihi retensi (`backup.keep`, default 30) |
 | `php artisan test` | Jalankan test suite |
 
 > **Catatan test suite.** Database test **dipaksa ke sqlite in-memory** oleh
@@ -317,7 +334,9 @@ Dari `UserSeeder`, seluruh akun memakai password **`password`**.
 > `RefreshDatabase` yang menjalankan `migrate:fresh`, dan tanpa isolasi tersebut
 > seluruh data produksi (akun, mesin, riwayat PM) terhapus setiap kali test suite
 > dijalankan. Variabel `DB_*` di shell maupun `.env` tidak bisa menembusnya.
-> Butuh ekstensi PHP `pdo_sqlite` (sudah ada di image Docker).
+> Butuh ekstensi PHP `pdo_sqlite` di lingkungan tempat test dijalankan (image
+> aplikasi memasang `pdo_mysql`, jadi `pdo_sqlite` perlu ditambahkan bila ingin
+> menjalankan test suite dari dalam container).
 
 **Perilaku impor CSV:** bersifat idempoten (aman dijalankan berulang), melewati baris sentinel spreadsheet, dan menentukan `type` dari kata kunci pada nama mesin serta `week_group` dari angka pada Sub-Category.
 
@@ -328,18 +347,18 @@ Dari `UserSeeder`, seluruh akun memakai password **`password`**.
 ```
 app/
 ├── Actions/Pm/            SubmitPmRecord, SignPmRecord, RejectPmRecord
-├── Console/Commands/      ImportMachinesCommand, ImportSparePartsCommand
+├── Console/Commands/      ImportMachinesCommand, ImportSparePartsCommand, BackupDatabaseCommand
 ├── Enums/                 PmStatus, SignatureStage, Period, Role, MachineType, PmDisplayStatus
 ├── Exports/               MachineStatusExport, PmReportExport (XLSX)
 ├── Http/
 │   ├── Controllers/       Dashboard, Machine, Utility, PmRecord, Approval, Report, Profile, SparePart, Admin/*
-│   │                      Admin/: User, Role, Component (Komponen), AuditLog
+│   │                      Admin/: User, Role, Component (Komponen), ActivityLog, Backup
 │   └── Requests/          Form Request untuk validasi
 ├── Models/                User, Machine (tabel `assets`), Component, PmRecord, PmRecordItem,
 │                          PmRecordRevision, PmSignature, ChecklistTemplate, ChecklistTemplateItem,
-│                          AuditLog, SparePart, SparePartMovement
+│                          AuditLog, Backup, SparePart, SparePartMovement
 ├── Policies/              UserPolicy, MachinePolicy, PmRecordPolicy, RolePolicy
-└── Services/              SignatureChain, SignatureStorage, AssetScope, AuditLogService,
+└── Services/              SignatureChain, SignatureStorage, AssetScope, AuditLogService, BackupService,
                            DashboardService, ReportService, PeriodService,
                            ComponentMigrationService, MachineImportService, SparePartImportService
 
@@ -400,9 +419,19 @@ routes/web.php             Seluruh definisi route
    docker exec vip_app ls /var/www/html/public/build/assets | head
    ```
 
-2. **`storage/` di-bind mount** dari host, sehingga log, session, dan `storage/app/public/signatures` tetap ada saat container di-recreate.
+2. **`storage/` di-bind mount** dari host, sehingga log, session, `storage/app/public/signatures`, dan file backup database (`storage/app/backups`) tetap ada saat container di-recreate.
 
 3. **Restart policy** `unless-stopped` pada kedua service.
+
+4. **Migrasi database** dijalankan terpisah dari build image (image tidak menjalankan `migrate` saat start). Setelah menarik kode baru, jalankan `php artisan migrate` (menangani rename permission `audit.view` → `activity.view`, penambahan `backup.manage`, dan tabel `backups`).
+
+5. **Backup harian otomatis** butuh Laravel scheduler. Container **tidak** menyertakan cron, jadi tambahkan entri crontab di host, misalnya:
+
+   ```bash
+   * * * * * docker exec -u www-data vip_app php artisan schedule:run >> /dev/null 2>&1
+   ```
+
+   Tanpa itu, tombol **Buat Backup Sekarang** tetap berfungsi, tetapi jadwal `02:00` tidak berjalan.
 
 ---
 

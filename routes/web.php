@@ -1,7 +1,8 @@
 <?php
 
+use App\Http\Controllers\Admin\ActivityLogController;
+use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\ComponentController;
-use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
@@ -190,8 +191,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/admin/templates', fn () => redirect()->route('admin.components'));
     });
 
-    Route::middleware('can:audit.view')->group(function () {
-        Route::get('/admin/audit-logs', [AuditLogController::class, 'index'])->name('admin.audit-logs');
+    Route::middleware('can:activity.view')->group(function () {
+        Route::get('/admin/activity-logs', [ActivityLogController::class, 'index'])->name('admin.activity-logs');
+    });
+
+    // Backup & Restore database (khusus admin). Restore menimpa seluruh isi
+    // database, jadi hanya dibuka untuk pemegang `backup.manage`.
+    Route::middleware('can:backup.manage')->group(function () {
+        Route::get('/admin/backups', [BackupController::class, 'index'])->name('admin.backups');
+        Route::post('/admin/backups', [BackupController::class, 'store'])->name('admin.backups.store');
+        Route::get('/admin/backups/{backup}/download', [BackupController::class, 'download'])->name('admin.backups.download');
+        Route::post('/admin/backups/{backup}/restore', [BackupController::class, 'restore'])->name('admin.backups.restore');
+        Route::post('/admin/backups/restore-upload', [BackupController::class, 'uploadRestore'])->name('admin.backups.upload');
+        Route::delete('/admin/backups/{backup}', [BackupController::class, 'destroy'])->name('admin.backups.destroy');
     });
 });
 

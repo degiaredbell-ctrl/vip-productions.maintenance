@@ -13,7 +13,8 @@ const pages = [
   { name: 'Pengguna   ', url: '/admin/users' },
   { name: 'Roles      ', url: '/admin/roles' },
   { name: 'Template   ', url: '/admin/templates' },
-  { name: 'Audit Logs ', url: '/admin/audit-logs' },
+  { name: 'Activity   ', url: '/admin/activity-logs' },
+  { name: 'Backup     ', url: '/admin/backups' },
   { name: 'Profile    ', url: '/profile' },
 ];
 

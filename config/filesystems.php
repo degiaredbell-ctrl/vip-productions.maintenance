@@ -47,6 +47,16 @@ return [
             'report' => false,
         ],
 
+        // File backup database (.sql). Disk privat: tidak pernah disajikan
+        // langsung ke publik, hanya lewat endpoint unduh ber-otorisasi.
+        'backups' => [
+            'driver' => 'local',
+            'root' => storage_path('app/backups'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

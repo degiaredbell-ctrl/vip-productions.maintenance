@@ -232,15 +232,19 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-RPT-04 | Laporan dapat difilter tahun dan periode |
 | REQ-RPT-05 | Laporan dapat diekspor ke XLSX dan PDF |
 
-### 6.11 Audit Log (REQ-AUD)
+### 6.11 Activity Logs (REQ-AUD)
+
+> Backing store tetap tabel `audit_logs` (prefix `REQ-AUD` dipertahankan), tetapi permukaan
+> fiturnya kini bernama **Activity Logs** dengan permission `activity.view`.
 
 | ID | Kebutuhan |
 |----|-----------|
-| REQ-AUD-01 | Aksi penting pada mesin (CRUD + restore), siklus PM (submit/sign/reject), dan pengguna tercatat di audit log |
-| REQ-AUD-02 | Audit log menyimpan pelaku, waktu, subject, perubahan, dan IP |
-| REQ-AUD-03 | Perubahan nilai.before-after dicatat dalam bentuk JSON |
-| REQ-AUD-04 | Halaman audit log menampilkan 100 log terbaru |
-| REQ-AUD-05 | Hanya permission `audit.view` dapat membuka halaman audit log |
+| REQ-AUD-01 | Aksi penting pada mesin (CRUD + restore), siklus PM (submit/sign/reject), pengguna, suku cadang, dan backup database tercatat di activity log |
+| REQ-AUD-02 | Activity log menyimpan pelaku, waktu, subject, perubahan, dan IP |
+| REQ-AUD-03 | Perubahan nilai before-after dicatat dalam bentuk JSON |
+| REQ-AUD-04 | Halaman Activity Logs dapat **dicari** (aksi/pelaku/subjek/IP) dan **difilter** (aksi, pelaku, rentang tanggal), dipaginasi 25 log per halaman |
+| REQ-AUD-05 | Hanya permission `activity.view` dapat membuka halaman Activity Logs |
+| REQ-AUD-06 | Halaman menampilkan statistik ringkas (total, hari ini, pelaku aktif) dan **detail perubahan** per baris yang bisa dibuka-tutup |
 
 ### 6.12 Suku Cadang (REQ-SPARE)
 

@@ -13,7 +13,7 @@ class RoleSeeder extends Seeder
         $permissions = [
             'dashboard.view', 'pm.fill', 'pm.history.view',
             'report.view', 'report.export', 'machine.manage', 'template.manage',
-            'user.manage', 'audit.view',
+            'user.manage', 'activity.view',
             // Scope aset terpisah per tipe supaya role teknisi bisa dibatasi:
             // machine.view  = akses halaman/daftar Mesin (read-only bila tanpa machine.manage)
             // utility.view  = akses halaman/daftar Utility (read-only bila tanpa utility.manage)
@@ -25,6 +25,8 @@ class RoleSeeder extends Seeder
             'pm.manage',
             // Suku Cadang: view untuk semua yang login, manage untuk Admin & tech-all.
             'sparepart.view', 'sparepart.manage',
+            // Backup & Restore database: hanya Admin.
+            'backup.manage',
         ];
 
         foreach ($permissions as $perm) {
@@ -36,7 +38,7 @@ class RoleSeeder extends Seeder
             // mana pun bila belum ada orang lain yang menanganinya.
             'admin' => [...$permissions, 'pm.manage'],
             // Atasan = tahap 3. Tidak boleh mengisi checklist lapangan.
-            'manager' => ['dashboard.view', 'pm.approve', 'pm.history.view', 'report.view', 'report.export', 'machine.manage', 'template.manage', 'audit.view', 'sparepart.view'],
+            'manager' => ['dashboard.view', 'pm.approve', 'pm.history.view', 'report.view', 'report.export', 'machine.manage', 'template.manage', 'activity.view', 'sparepart.view'],
             // Technician mengisi checklist (pm.fill) lalu menandatanganinya (pm.sign).
             'technician' => ['dashboard.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export', 'sparepart.view'],
             // User = tahap 2 (User PIC): menyetujui sebagai diketahui.

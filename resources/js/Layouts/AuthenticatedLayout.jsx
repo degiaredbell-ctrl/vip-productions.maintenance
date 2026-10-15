@@ -82,7 +82,8 @@ export default function Authenticated({ user: userProp, header, children }) {
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
         { name: 'Role', href: route('admin.roles.index'), path: '/admin/roles', show: user?.roles?.includes('admin') },
         { name: 'Komponen / Parts', href: route('admin.components'), path: '/admin/komponen', show: can['template.manage'] },
-        { name: 'Audit Log', href: route('admin.audit-logs'), path: '/admin/audit-logs', show: can['audit.view'] },
+        { name: 'Activity Logs', href: route('admin.activity-logs'), path: '/admin/activity-logs', show: can['activity.view'] },
+        { name: 'Backup & Restore', href: route('admin.backups'), path: '/admin/backups', show: can['backup.manage'] },
     ].filter(item => item.show);
 
     return (

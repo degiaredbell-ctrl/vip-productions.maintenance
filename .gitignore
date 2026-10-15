@@ -2,6 +2,8 @@
 /node_modules
 /public/build
 /public/hot
+# File backup database tidak ikut di-commit.
+/storage/app/backups
 /public/storage
 /storage/*.key
 /storage/pail
