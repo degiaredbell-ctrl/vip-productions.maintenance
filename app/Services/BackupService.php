@@ -48,7 +48,11 @@ class BackupService
         [$name, $conn] = $this->connection();
         $this->ensureSupported($conn, $name);
 
-        $filename = 'backup-'.now()->format('Ymd-His')."-{$name}.sql";
+        // Nama berkas memakai zona waktu tampilan (default Asia/Jakarta) supaya
+        // jam pada nama file sama dengan kolom "Waktu" di Daftar Backup.
+        $displayTz = (string) config('backup.timezone', 'Asia/Jakarta');
+
+        $filename = 'backup-'.now()->timezone($displayTz)->format('Ymd-His')."-{$name}.sql";
         $disk = Storage::disk($this->disk());
         $disk->makeDirectory('/');
         $absolute = $disk->path($filename);
@@ -183,9 +187,10 @@ class BackupService
     {
         $database = DB::connection()->getDatabaseName();
         $pdo = DB::connection()->getPdo();
+        $displayTz = (string) config('backup.timezone', 'Asia/Jakarta');
 
         fwrite($handle, "-- Backup database `{$database}`\n");
-        fwrite($handle, '-- Dibuat: '.now()->toDateTimeString()."\n");
+        fwrite($handle, '-- Dibuat: '.now()->timezone($displayTz)->toDateTimeString()."\n");
         fwrite($handle, "-- Dibuat oleh: Sistem PM Preventive\n\n");
         fwrite($handle, "SET NAMES utf8mb4;\n");
         fwrite($handle, "SET FOREIGN_KEY_CHECKS=0;\n\n");

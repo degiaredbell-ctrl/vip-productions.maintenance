@@ -30,6 +30,10 @@ class BackupController extends Controller
 
     public function index(): Response
     {
+        // Timestamp disimpan dalam UTC; tampilkan dalam zona waktu lokal
+        // (default Asia/Jakarta) supaya jam yang dilihat admin benar.
+        $displayTz = (string) config('backup.timezone', 'Asia/Jakarta');
+
         $backups = Backup::with('user')
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -44,7 +48,7 @@ class BackupController extends Controller
                 'status' => $backup->status,
                 'error' => $backup->error,
                 'created_by' => $backup->user?->name ?? 'System',
-                'created_at' => $backup->created_at?->format('d M Y H:i'),
+                'created_at' => $backup->created_at?->copy()->timezone($displayTz)->format('d M Y H:i'),
                 'exists' => Storage::disk($this->backups->disk())->exists($backup->filename),
             ]);
 
@@ -56,7 +60,7 @@ class BackupController extends Controller
                 'total' => $backups->count(),
                 'total_size' => $backups->sum('size'),
                 'total_size_human' => $this->humanize((int) $backups->sum('size')),
-                'last_at' => $lastCompleted?->created_at?->format('d M Y H:i'),
+                'last_at' => $lastCompleted?->created_at?->copy()->timezone($displayTz)->format('d M Y H:i'),
                 'keep' => (int) config('backup.keep', 30),
                 'schedule' => (string) config('backup.schedule', '02:00'),
             ],
