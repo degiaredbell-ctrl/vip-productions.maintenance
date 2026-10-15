@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Impor master suku cadang dari CSV (references/suku_cadang.csv atau file
- * yang diunggah lewat halaman Suku Cadang).
+ * Impor master suku cadang dari CSV (references/data-source/suku_cadang.csv
+ * atau file yang diunggah lewat halaman Suku Cadang).
  *
  * Format CSV ini berasal dari spreadsheet dan sedikit "kotor", jadi parser di
  * sini sengaja toleran:
@@ -48,7 +48,9 @@ class SparePartImportService
 
     public function defaultPath(): string
     {
-        return base_path('references/suku_cadang.csv');
+        $preferred = base_path('references/data-source/suku_cadang.csv');
+
+        return is_file($preferred) ? $preferred : base_path('references/suku_cadang.csv');
     }
 
     public function defaultExists(): bool

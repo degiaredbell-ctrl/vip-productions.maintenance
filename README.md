@@ -31,6 +31,7 @@ Dibangun dengan **Laravel 11 + Inertia.js v2 + React 18 + Tailwind CSS**, didepl
 - Konfirmasi password untuk aksi sensitif
 - Verifikasi email
 - **Halaman Profil**: ubah nama/email, ganti password sendiri, hapus akun
+- **Tanda tangan tersimpan**: gambar tanda tangan sekali di Profil (`signature_path`) lalu pakai ulang saat menyetujui, tanpa menggambar ulang
 - Ganti password memakai password lama sebagai pembuktian
 
 ### 2. Beranda / Dashboard
@@ -47,13 +48,15 @@ Dibangun dengan **Laravel 11 + Inertia.js v2 + React 18 + Tailwind CSS**, didepl
 - **Ekspor XLSX** status mesin + **PDF** daftar mesin sesuai filter yang sedang aktif
 
 ### 3. Pengisian Checklist PM
-- Checklist **di-generate otomatis dari template** sesuai jenis mesin
-- Bila record sudah ada, form diisi dari data sebelumnya (bukan template kosong)
+- Checklist **di-generate otomatis dari master Komponen** yang ditugaskan ke unit; item template lama hanya dipakai sebagai cadangan untuk data yang belum termigrasi
+- Bila record sudah ada, form diisi dari data sebelumnya (snapshot, bukan item kosong)
 - Per item checklist:
   - nilai aktual (`actual`)
   - aksi: Bersihkan / Perbaiki / Lumasi / Ganti
   - kondisi akhir + jumlah part yang diganti
+  - **detail bagian yang diganti wajib diisi** (`replace_note`) bila aksi **Ganti** dicentang
 - Catatan umum per record
+- Teknisi memilih **User PIC** yang akan menyetujui tahap 2 (`pic_user_id`) sebelum menyimpan
 - Validasi periode: periode terkunci/future tidak bisa diisi
 - Mendukung revisi setelah ditolak (revision counter & snapshot)
 
@@ -67,7 +70,7 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 | 3 | Persetujuan Atasan | `pm.approve` | `approved` |
 
 - **Tahap 1 menyatu dengan pengisian checklist**: teknisi isi Aktual → nama → tanda tangan → sekali submit, checklist langsung naik ke `submitted`. Tidak ada lagi PM nyangkut di `draft`.
-- **Nama teknisi wajib diketik manual** (`technician_name`), bukan diambil dari nama akun login — di lapangan orang yang mengisi checklist tidak selalu orang yang squeez-in-nya. Nama itu juga dipakai sebagai nama pada dokumen bertanda tangan.
+- **Nama teknisi wajib diketik manual** (`technician_name`), bukan diambil dari nama akun login — di lapangan orang yang mengisi checklist tidak selalu orang yang login. Nama itu juga dipakai sebagai nama pada dokumen bertanda tangan.
 - **Nama penanda tangan wajib diisi manual di ketiga tahap** (`signer_name` / kolom `technician_name`), dan tombol submit **mati** selama nama atau tanda tangan kosong.
 - **Tanda tangan gambar** (canvas) — disimpan sebagai PNG di disk, disajikan lewat route ber-otorisasi
 - **Snapshot nama & peran** penanda tangan disimpan terpisah dari akun → jejak tetap terbaca meski akun dihapus
@@ -91,19 +94,26 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - Record yang checklist-nya belum lengkap tidak bisa ditutup dari antrean —
   tahap teknisi hanya naik status setelah semua nilai Aktual terisi
 
-### 6. Daftar Mesin
-- CRUD mesin (kode unik, nama, lokasi, kategori, sub-kategori, jenis, template, status aktif)
+### 6. Daftar Mesin & Utility
+- CRUD mesin (kode unik, nama, lokasi, kategori, sub-kategori, jenis, status aktif) — tabel `assets` menampung **Mesin dan Utility**
+- Halaman **Utility** terpisah (`/utility`) untuk unit utility beserta komponen maintenance-nya
 - **Soft delete + restore**
 - **Impor massal dari CSV** (`machines:import`), idempoten
 - Pengelompokan minggu dari Sub-Category
 - Riwayat PM per mesin
 
-### 7. Template Checklist
-- Template per `machine_type`, dengan item (kategori, nama, spesifikasi, urutan)
-- Template default ditandai `is_default`
-- Hapus template (item ikut terhapus via cascade)
+### 7. Komponen / Parts
+- **Master komponen** (nama, kategori, spesifikasi, urutan) — pengganti template checklist per jenis mesin
+- **Penugasan ke unit** Mesin/Utility lewat relasi banyak-ke-banyak: satu komponen bisa dipakai banyak unit, dan tiap unit punya urutan komponen sendiri
+- Halaman **`/admin/komponen`** (permission `template.manage`) untuk mengelola master + penugasan; URL lama `/admin/templates` dialihkan ke sini
+- Form PM menyusun item dari komponen unit; **item template lama hanya cadangan** untuk data yang belum termigrasi (oleh `ComponentMigrationService`)
 
-### 8. Manajemen Pengguna (role `admin`)
+### 8. Form Maintenance
+- Halaman perantara **`/form-maintenance`**: kartu pilih **Mesin** atau **Utility**
+- Daftar unit + status PM per periode di `/form-maintenance/mesin` dan `/form-maintenance/utility` sebagai pintu masuk ke form PM
+- Hanya scope yang boleh diakses yang ditampilkan; kartu di luar scope tampil abu-abu dan tidak bisa diklik maupun dibuka lewat URL
+
+### 9. Manajemen Pengguna (role `admin`)
 - **CRUD pengguna penuh**: tambah, edit nama/email/role, hapus
 - **Ubah password login pengguna lain** (dengan konfirmasi password)
 - Daftar role diambil **dinamis dari tabel `roles`** → role baru langsung bisa dipilih
@@ -111,23 +121,28 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - **Perlindungan akun sendiri**: admin tidak bisa mengubah role sendiri atau menghapus dirinya (UI nonaktif + guard di backend)
 - Audit `user.create` / `user.update` / `user.password` / `user.delete` — **password tidak pernah masuk log**
 
-### 9. Manajemen Role & Permission
+### 10. Manajemen Role & Permission
 - CRUD role custom (5 role sistem tidak bisa dihapus)
 - Set permission per role via checkbox
 
-### 10. Laporan
+### 11. Manajemen PM Record (role `admin`)
+- Halaman **`/admin/pm-records`** (permission `pm.manage`) menampilkan **seluruh PM Record** lintas mesin, status, periode, dan tahun
+- Filter (status, periode, tahun, tipe) + pencarian (nama teknisi, catatan, kode/nama/lokasi mesin)
+- **Hapus permanen** record beserta item, tanda tangan, revisi, dan audit log terkait
+
+### 12. Laporan
 - **Kepatuhan per periode** (total, selesai, sedang approval, %)
 - **Top part yang paling sering diganti**
 - **Ringkasan aksi** (bersihkan/perbaiki/lumasi/ganti)
 - Filter tahun & periode
 - **Ekspor XLSX** (Maatwebsite Excel) dan **PDF** (DomPDF)
 
-### 11. Audit Log
+### 13. Audit Log
 - Mencatat aksi penting: `machine.create`, `machine.update`, `machine.delete`, `machine.restore`, `pm.submit`, `pm.sign.{stage}`, `pm.reject`, `user.create`, `user.update`, `user.password`, `user.delete`, `sparepart.create`, `sparepart.update`, `sparepart.delete`, `sparepart.restore`, `sparepart.movement`, `sparepart.import`
 - Menyimpan user pelaku, subject, perubahan (JSON), dan IP
 - 100 log terbaru per halaman
 
-### 12. Suku Cadang
+### 14. Suku Cadang
 - Master suku cadang **global** (tidak terikat unit Mesin/Utility): `Code.asset`, kategori, nama, merek, type, deskripsi, satuan, stok, stok awal/minimum, supplier, kebutuhan untuk, dan lokasi
 - **Transaksi stok masuk/keluar** — stok terkini menyesuaikan otomatis; barang keluar melebihi stok ditolak
 - **Riwayat transaksi** per suku cadang (tipe, jumlah, tanggal, catatan, pelaku)
@@ -137,7 +152,7 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - Tombol aksi berupa ikon (masuk `+`, keluar `−`, riwayat, ubah, hapus) agar tabel lebih ringkas
 - Semua user login boleh **melihat**; **kelola** (CRUD, transaksi, impor) hanya pemegang `sparepart.manage` (Admin & tech-all)
 
-### 13. UI / UX
+### 15. UI / UX
 - Design system **Neumorphism** (`NeuCard`, `NeuButton`, `NeuInput`, `NeuPill`, `NeuRing`, `NeuToast`, `NeuTrack`, `NeuBars`, `NeuSignaturePad`)
 - Sidebar responsif (desktop + mobile)
 - Toast notifikasi untuk setiap aksi sukses/gagal
@@ -162,7 +177,7 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 
 ## Peran dan Permission
 
-Daftar permission originates dari `database/seeders/RoleSeeder.php`.
+Daftar permission berasal dari `database/seeders/RoleSeeder.php`.
 
 | Permission | Admin | Manager | Technician | User | Viewer | tech-machines | tech-utilities | tech-all |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -171,6 +186,7 @@ Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 | `pm.sign` | ✅ | — | ✅ | — | — | ✅ | ✅ | ✅ |
 | `pm.acknowledge` | ✅ | — | — | ✅ | — | — | — | — |
 | `pm.approve` | ✅ | ✅ | — | — | — | — | — | — |
+| `pm.manage` | ✅ | — | — | — | — | — | — | — |
 | `pm.history.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `report.view` | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ |
 | `report.export` | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ |
@@ -184,7 +200,7 @@ Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 | `user.manage` | ✅ | — | — | — | — | — | — | — |
 | `audit.view` | ✅ | ✅ | — | — | — | — | — | — |
 
-**Catatanatan penting:**
+**Catatan penting:**
 - `pm.sign`, `pm.acknowledge`, `pm.approve` **dipisah per tahap** — bukan satu permission `pm.approve` generik, supaya peran tidak bisa melompat tahap.
 - Manager **tidak** bisa mengisi checklist lapangan (tidak punya `pm.fill`).
 - Halaman **Role** hanya untuk role `admin`; halaman **Pengguna** untuk siapa pun yang punya `user.manage` (hanya admin saat ini).
@@ -288,17 +304,17 @@ Dari `UserSeeder`, seluruh akun memakai password **`password`**.
 | Perintah | Fungsi |
 |----------|--------|
 | `php artisan migrate --seed` | Siapkan skema + role + mesin + user demo |
-| `php artisan machines:import` | Impor mesin dari `references/data.csv` |
+| `php artisan machines:import` | Impor mesin dari `references/data-source/data.csv` |
 | `php artisan machines:import --purge` | Impor + hapus permanen mesin yang tidak ada di CSV (**riwayat PM ikut terhapus**) |
 | `php artisan machines:import --purge --force` | Sama seperti di atas tanpa konfirmasi interaktif |
-| `php artisan spare-parts:import` | Impor suku cadang dari `references/suku_cadang.csv` |
+| `php artisan spare-parts:import` | Impor suku cadang dari `references/data-source/suku_cadang.csv` |
 | `php artisan spare-parts:import {path?}` | Impor dari file CSV lain |
 | `php artisan spare-parts:import --purge` | Impor + hapus permanen suku cadang yang tidak ada di CSV |
 | `php artisan test` | Jalankan test suite |
 
 > **Catatan test suite.** Database test **dipaksa ke sqlite in-memory** oleh
 > `tests/TestCase.php`, bukan dibaca dari `.env`. Ini wajib: test bawaan memakai
-> `RefreshDatabase` yang menjalankan `migrate:fresh`, dan tanpaIsolation tersebut
+> `RefreshDatabase` yang menjalankan `migrate:fresh`, dan tanpa isolasi tersebut
 > seluruh data produksi (akun, mesin, riwayat PM) terhapus setiap kali test suite
 > dijalankan. Variabel `DB_*` di shell maupun `.env` tidak bisa menembusnya.
 > Butuh ekstensi PHP `pdo_sqlite` (sudah ada di image Docker).
@@ -316,27 +332,37 @@ app/
 ├── Enums/                 PmStatus, SignatureStage, Period, Role, MachineType, PmDisplayStatus
 ├── Exports/               MachineStatusExport, PmReportExport (XLSX)
 ├── Http/
-│   ├── Controllers/       Dashboard, Machine, PmRecord, Approval, Report, Profile, SparePart, Admin/*
+│   ├── Controllers/       Dashboard, Machine, Utility, PmRecord, Approval, Report, Profile, SparePart, Admin/*
+│   │                      Admin/: User, Role, Component (Komponen), AuditLog
 │   └── Requests/          Form Request untuk validasi
-├── Models/                User, Machine, PmRecord, PmRecordItem, PmRecordRevision,
-│                          PmSignature, ChecklistTemplate, ChecklistTemplateItem, AuditLog,
-│                          SparePart, SparePartMovement
+├── Models/                User, Machine (tabel `assets`), Component, PmRecord, PmRecordItem,
+│                          PmRecordRevision, PmSignature, ChecklistTemplate, ChecklistTemplateItem,
+│                          AuditLog, SparePart, SparePartMovement
 ├── Policies/              UserPolicy, MachinePolicy, PmRecordPolicy, RolePolicy
-└── Services/              SignatureChain, SignatureStorage, AuditLogService,
+└── Services/              SignatureChain, SignatureStorage, AssetScope, AuditLogService,
                            DashboardService, ReportService, PeriodService,
-                           MachineImportService, SparePartImportService
+                           ComponentMigrationService, MachineImportService, SparePartImportService
 
 database/
 ├── migrations/            Skema tabel
 └── seeders/               RoleSeeder, MachineSeeder, UserSeeder
 
-references/                 Material desain awal (ARSIP — lihat catatan di bawah)
-├── data.csv               Sumber data mesin (121 baris) untuk `machines:import`
-├── suku_cadang.csv        Sumber data suku cadang untuk `spare-parts:import`
-├── PRD.md                 Spesifikasi desain awal — sudah digantikan PRD.md di root
-├── Architecture.md        Rancangan arsitektur awal — digantikan Architecture.md di root
-├── Agent.md               Catatan untuk AI agent
-└── PM Preventive – Preview Neumorphism.html   Pratinjau visual design system
+references/
+├── data-source/           Sumber data CSV + pratinjau desain
+│   ├── data.csv               Sumber data mesin (121 baris) untuk `machines:import`
+│   ├── suku_cadang.csv        Sumber data suku cadang untuk `spare-parts:import`
+│   ├── utility.csv            Sumber data unit utility
+│   ├── utility_components.csv Komponen maintenance per unit utility
+│   └── PM Preventive – Preview Neumorphism.html   Pratinjau visual design system
+├── v.1.1/                 ARSIP dokumen desain awal (superseded)
+│   ├── PRD.md
+│   ├── Architecture.md
+│   └── Agent.md
+└── v.1.2/                 Dokumen versi terkini (snapshot)
+    ├── PRD.md
+    ├── Architecture.md
+    ├── Agent.md
+    └── Guide.md            Panduan pengguna per peran
 
 resources/
 ├── js/
@@ -386,13 +412,17 @@ routes/web.php             Seluruh definisi route
 |---------|-----|
 | [PRD.md](PRD.md) | Product Requirements Document — tujuan, persona, kebutuhan fungsional, aturan bisnis, kriteria penerimaan |
 | [Architecture.md](Architecture.md) | Arsitektur teknis — stack, layer, skema database, alur, keamanan, deployment |
+| [references/v.1.2/Agent.md](references/v.1.2/Agent.md) | Panduan kerja untuk AI coding agent — perintah, konvensi, aturan arsitektur, definition of done |
+| [references/v.1.2/Guide.md](references/v.1.2/Guide.md) | **Panduan pengguna per peran** — login, isi checklist PM, rantai tanda tangan, persetujuan, laporan, suku cadang |
+| [references/v.1.2/PRD.md](references/v.1.2/PRD.md) | Snapshot PRD versi 1.2 |
+| [references/v.1.2/Architecture.md](references/v.1.2/Architecture.md) | Snapshot arsitektur versi 1.2 |
 
-> **Catatan:** folder `references/` berisi dokumen **desain awal** sebelum aplikasi dibangun
-> (spesifikasi dari prototipe single-file HTML). Dokumen tersebut sudah **tidak sepenuhnya
-> sesuai implementasi** — misalnya masih menyebut 4 status PM, rencana PWA/offline,
-> `TemplateSeeder`, dan `pm:import`. Gunakan `PRD.md` dan `Architecture.md` di root sebagai
-> sumber kebenaran; `references/` disimpan sebagai arsip.`references/data.csv` tetap dipakai
-> oleh `php artisan machines:import`.
+> **Catatan versi dokumen.** `PRD.md` dan `Architecture.md` di root adalah dokumen **aktif**
+> (versi 1.2). Folder [`references/v.1.2/`](references/v.1.2/) menyimpan **snapshot** versi
+> yang sama (plus `Agent.md` dan `Guide.md`), sedangkan [`references/v.1.1/`](references/v.1.1/) adalah
+> **arsip dokumen desain awal** sebelum aplikasi dibangun (masih menyebut 4 status PM,
+> rencana PWA/offline, `TemplateSeeder`, dan `pm:import`) — gunakan versi 1.2 sebagai acuan.
+> Data sumber CSV untuk impor ada di [`references/data-source/`](references/data-source/).
 
 ---
 

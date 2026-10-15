@@ -3,7 +3,7 @@
 **Produk:** Preventive Maintenance System
 **Judul aplikasi:** PM Preventive
 **Client:** Verra Inter Pangan / Redbell Group
-**Versi dokumen:** 1.0
+**Versi dokumen:** 1.2
 **Status:** Implementasi berjalan (MVP selesai)
 
 ---
@@ -71,8 +71,8 @@ Nilai utama yang dibawa produk ini:
 
 | Persona | Peran | Tujuan utama | Kebutuhan harian |
 |---------|-------|--------------|-------------------|
-| **Admin** | Administrator sistem | Mengelola seluruh data & akun | CRUD mesin, template, role, pengguna, ganti password user, baca audit log |
-| **Manager / Atasan** | Atasan unit | Memastikan PM dikerjakan & menyetujui di tahap akhir | Lihat Beranda, isi mesin & template, baca riwayat, laporan + ekspor, audit log, persetujuan tahap 3 |
+| **Admin** | Administrator sistem | Mengelola seluruh data & akun | CRUD mesin, komponen, role, pengguna, ganti password user, kelola & hapus PM Record, baca audit log |
+| **Manager / Atasan** | Atasan unit | Memastikan PM dikerjakan & menyetujui di tahap akhir | Lihat Beranda, isi mesin & komponen, baca riwayat, laporan + ekspor, audit log, persetujuan tahap 3 |
 | **Technician / Pemeriksa** | Teknisi lapangan | Melakukan & mendokumentasikan pemeriksaan | Isi checklist, tanda tangan tahap 1, riwayat, laporan + ekspor |
 | **User PIC** | Penanggung jawab unit | Mengetahui hasil pemeriksaan tim | Persetujuan tahap 2, riwayat, lihat laporan |
 | **Viewer** | Auditor /_management | Hanya melihat | Lihat Beranda, riwayat, laporan + ekspor |
@@ -84,13 +84,16 @@ Nilai utama yang dibawa produk ini:
 ### Termasuk (v1)
 - Autentikasi, profil, ganti password sendiri
 - Dashboard dengan filter periode/tahun/area/status/pencarian + notifikasi tunggakan
-- CRUD mesin (soft delete + restore)
-- Template checklist per jenis mesin
+- CRUD mesin (soft delete + restore) + CRUD unit Utility
+- Master Komponen + penugasan ke Mesin/Utility (pengganti template per jenis mesin)
+- Halaman Form Maintenance (kartu Mesin/Utility) untuk masuk ke form PM
 - Pengisian checklist PM dengan aksi per item
 - Rantai tanda tangan 3 tahap (gambar) + penolakan + revisi
+- Tanda tangan tersimpan per akun (diisi sekali di Profil, dipakai ulang saat persetujuan)
 - Halaman Persetujuan dengan badge antrean
 - Manajemen pengguna (CRUD + ganti password) oleh Admin
 - Manajemen role & permission oleh Admin
+- Manajemen PM Record oleh Admin (lihat semua + hapus permanen)
 - Audit log
 - Laporan kepatuhan, top part, ringkasan aksi
 - Ekspor XLSX & PDF
@@ -146,15 +149,17 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-MCHN-06 | Daftar mesin dapat diimpor massal dari CSV secara idempoten |
 | REQ-MCHN-07 | Kolom `type` dan `week_group` diturunkan otomatis dari CSV karena tidak tersedia di sumber data |
 
-### 6.4 Template Checklist (REQ-TMPL)
+### 6.4 Komponen / Parts (REQ-COMP)
 
 | ID | Kebutuhan |
 |----|-----------|
-| REQ-TMPL-01 | Template checklist dapat dibuat untuk suatu jenis mesin |
-| REQ-TMPL-02 | Setiap item template memiliki kategori, nama, spesifikasi, dan urutan |
-| REQ-TMPL-03 | Satu template per jenis mesin ditandai sebagai default |
-| REQ-TMPL-04 | Template beserta itemnya dapat dihapus |
-| REQ-TMPL-05 | Form PM me-generate item checklist dari template default sesuai jenis mesin |
+| REQ-COMP-01 | Master komponen memiliki nama, kategori, spesifikasi, dan urutan |
+| REQ-COMP-02 | Satu komponen dapat ditugaskan ke banyak Mesin/Utility (many-to-many) |
+| REQ-COMP-03 | Penugasan diatur per unit dan tiap unit punya urutan komponen sendiri |
+| REQ-COMP-04 | Komponen dapat diubah/dihapus; menghapus komponen otomatis melepasnya dari unit terkait |
+| REQ-COMP-05 | Form PM me-generate item dari komponen yang ditugaskan ke unit; item template lama dipakai hanya bila unit belum punya komponen |
+| REQ-COMP-06 | Data item template lama dimigrasikan ke master komponen oleh `ComponentMigrationService` |
+| REQ-COMP-07 | Hanya pemegang `template.manage` yang dapat mengelola Komponen (URL lama `/admin/templates` dialihkan ke `/admin/komponen`) |
 
 ### 6.5 Pengisian PM (REQ-PM)
 
@@ -167,6 +172,7 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-PM-05 | Periode terkunci/masa depan tidak dapat diisi |
 | REQ-PM-06 | Checklist hanya dapat diubah saat status `draft` atau `rejected` |
 | REQ-PM-07 | Setiap record PM unik per kombinasi mesin + tahun + periode |
+| REQ-PM-08 | Saat menyimpan, teknisi memilih User PIC yang akan menyetujui tahap 2 (`pic_user_id`), dipilih dari kandidat User PIC yang sah |
 
 ### 6.6 Rantai Tanda Tangan (REQ-SIGN)
 
@@ -182,6 +188,7 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-SIGN-08 | Penolakan wajib disertai alasan dan mengembalikan record ke teknisi untuk revisi |
 | REQ-SIGN-09 | Revisi menyimpan snapshot isi checklist sebelumnya |
 | REQ-SIGN-10 | Menandatangani ulang pada tahap yang sama menimpa tanda tangan sebelumnya |
+| REQ-SIGN-11 | Pengguna dapat menyimpan tanda tangannya sekali di halaman Profil (`signature_path`) untuk dipakai ulang saat menyetujui, tanpa menggambar ulang |
 
 ### 6.7 Persetujuan (REQ-APPR)
 
@@ -250,6 +257,14 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-SPARE-08 | Semua user login dapat melihat daftar; hanya pemegang `sparepart.manage` dapat mengelola |
 | REQ-SPARE-09 | Aksi create/update/delete/restore/transaksi/impor suku cadang tercatat di audit log |
 
+### 6.13 Manajemen PM Record oleh Admin (REQ-PMR)
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-PMR-01 | Pemegang `pm.manage` dapat melihat seluruh PM Record lintas mesin, status, periode, dan tahun |
+| REQ-PMR-02 | Daftar dapat difilter (status, periode, tahun, tipe mesin) dan dicari (nama teknisi, catatan, kode/nama/lokasi mesin) |
+| REQ-PMR-03 | Pemegang `pm.manage` dapat menghapus PM Record secara permanen beserta item, tanda tangan, revisi, dan audit log terkait |
+
 ---
 
 ## 7. Aturan Bisnis
@@ -312,7 +327,7 @@ Admin tidak boleh mengubah role sendiri maupun menghapus akunnya sendiri. Alasan
 
 ## 8. Model Peran dan Permission
 
-Daftar permission originates dari `database/seeders/RoleSeeder.php`.
+Daftar permission berasal dari `database/seeders/RoleSeeder.php`.
 
 | Permission | Admin | Manager | Technician | User | Viewer | tech-machines | tech-utilities | tech-all |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
@@ -331,6 +346,7 @@ Daftar permission originates dari `database/seeders/RoleSeeder.php`.
 | `template.manage` | ✅ | ✅ | — | — | — | — | — | ✅ |
 | `sparepart.view` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `sparepart.manage` | ✅ | — | — | — | — | — | — | ✅ |
+| `pm.manage` | ✅ | — | — | — | — | — | — | — |
 | `user.manage` | ✅ | — | — | — | — | — | — | — |
 | `audit.view` | ✅ | ✅ | — | — | — | — | — | — |
 
@@ -364,15 +380,18 @@ Prinsip:
 Entitas utama:
 
 ```
-users ──< pm_records (technician_id) ──< pm_record_items
-                    │                ──< pm_record_revisions
-                    │                ──< pm_signatures
+users ──< pm_records (technician_id, pic_user_id) ──< pm_record_items
+                    │                          ──< pm_record_revisions
+                    │                          ──< pm_signatures
                     └ (approved_by)
 
-machines ──< pm_records            checklist_templates ──< checklist_template_items
-machines ──> checklist_templates   (template_id, nullOnDelete)
+assets (model Machine; Mesin + Utility) ──< pm_records
+assets ──< component_machine >── components     (many-to-many, urutan per unit)
+assets ──> checklist_templates (template_id, nullOnDelete) — cadangan data lama
+checklist_templates ──< checklist_template_items
 
 users >── roles >── permissions     (Spatie: model_has_roles, roles, permissions)
+users.signature_path                (PNG tanda tangan tersimpan)
 audit_logs ──> users (user_id, nullOnDelete)
 
 spare_parts ──< spare_part_movements ──> users (user_id, nullOnDelete)
@@ -381,10 +400,11 @@ spare_parts ──< spare_part_movements ──> users (user_id, nullOnDelete)
 Constraint kunci:
 - `pm_records`: **unique** (`machine_id`, `year`, `period`) — satu record PM per mesin per periode.
 - `pm_signatures`: **unique** (`pm_record_id`, `stage`) — satu tanda tangan per tahap.
-- `machines.code`: **unique**.
-- `machines`: soft delete (`deleted_at`).
+- `assets.code`: **unique** (tabel `assets` menampung Mesin dan Utility).
+- `assets`: soft delete (`deleted_at`).
+- `component_machine`: **unique** (`component_id`, `machine_id`) — penugasan komponen per unit.
 - `spare_parts.code`: **unique**; soft delete (`deleted_at`).
-- `spare_part_movements`: mencatat setiap transaksi stok dan mengubah `spare_parts.stock` secara atomik (`type` = `in`/`out`); `spare_parts` bersifat global, tidak ada relasi ke `machines`.
+- `spare_part_movements`: mencatat setiap transaksi stok dan mengubah `spare_parts.stock` secara atomik (`type` = `in`/`out`); `spare_parts` bersifat global, tidak ada relasi ke `assets`.
 
 Rincian lengkap ada di [Architecture.md](Architecture.md).
 
@@ -456,6 +476,12 @@ Fitur dianggap selesai bila seluruh butir di bawah ini terpenuhi dan **diverifik
 > lingkupnya dibatasi pada master + transaksi stok masuk/keluar; perhitungan
 > biaya, depresiasi, dan integrasi ERP tetap di luar lingkup.
 
+> **Catatan revisi (v1.2):** item checklist tidak lagi bersumber dari template
+> per jenis mesin, melainkan dari **master Komponen** yang ditugaskan ke tiap
+> unit (§6.4 REQ-COMP); template lama hanya dipakai sebagai cadangan data yang
+> belum termigrasi. Ditambahkan pula halaman **Admin PM Records** (`pm.manage`,
+> §6.13) dan **tanda tangan tersimpan per akun** (§6.6 REQ-SIGN-11).
+
 ---
 
 ## 13. Risiko & Mitigasi
@@ -491,19 +517,20 @@ Fitur dianggap selesai bila seluruh butir di bawah ini terpenuhi dan **diverifik
 | REQ-AUTH-* | `app/Http/Controllers/Auth/*`, `routes/auth.php` |
 | REQ-DASH-* | `DashboardController`, `DashboardService`, `PeriodService` |
 | REQ-MCHN-* | `MachineController`, `MachineImportService`, `Console/Commands/ImportMachinesCommand` |
-| REQ-TMPL-* | `Admin/TemplateController`, `Admin/Templates.jsx` |
+| REQ-COMP-* | `Admin/ComponentController`, `Admin/Components.jsx`, `Component`, `ComponentMigrationService` |
 | REQ-PM-* | `PmRecordController`, `StorePmRecordRequest`, `Actions/Pm/SubmitPmRecord` |
-| REQ-SIGN-* | `Actions/Pm/SignPmRecord`, `Actions/Pm/RejectPmRecord`, `SignatureChain`, `SignatureStorage`, `PmSignatureController` |
+| REQ-SIGN-* | `Actions/Pm/SignPmRecord`, `Actions/Pm/RejectPmRecord`, `SignatureChain`, `SignatureStorage`, `PmSignatureController`, `ProfileController` (tanda tangan tersimpan) |
 | REQ-APPR-* | `ApprovalController`, `Pages/Approvals/Index.jsx` |
 | REQ-USER-* | `Admin/UserController`, `UserPolicy`, `Pages/Admin/Users.jsx` |
 | REQ-ROLE-* | `Admin/RoleController`, `RolePolicy`, `Pages/Admin/Roles.jsx` |
 | REQ-RPT-* | `ReportController`, `ReportService`, `Exports/*`, `views/reports/pdf.blade.php` |
 | REQ-AUD-* | `AuditLogService`, `Admin/AuditLogController`, `Pages/Admin/AuditLogs.jsx` |
 | REQ-SPARE-* | `SparePartController`, `SparePartImportService`, `Console/Commands/ImportSparePartsCommand`, `Pages/SpareParts/Index.jsx` |
+| REQ-PMR-* | `PmRecordController@adminIndex/adminDestroy`, `Pages/Admin/PmRecords/Index.jsx`, permission `pm.manage` |
 
 ---
 
 ## Related Documents
 
-- [README.md](README.md) — panduan setup &uso
+- [README.md](README.md) — panduan setup & penggunaan
 - [Architecture.md](Architecture.md) — arsitektur teknis

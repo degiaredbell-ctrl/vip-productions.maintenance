@@ -4,7 +4,7 @@ Dokumen arsitektur teknis aplikasi **Preventive Maintenance (PM)**.
 Untuk tujuan & ruang lingkup produk, lihat [PRD.md](PRD.md).
 Untuk panduan setup, lihat [README.md](README.md).
 
-**Versi dokumen:** 1.0
+**Versi dokumen:** 1.2
 
 ---
 
@@ -128,30 +128,33 @@ app/
 │   ├── PmStatus.php          draft/submitted/pic_approved/approved/rejected
 │   ├── SignatureStage.php    technician/pic/supervisor + permission
 │   ├── Period.php            6 periode 2-bulanan + deteksi periode berjalan
-│   ├── Role.php              admin/manager/technician/user/viewer
+│   ├── Role.php              admin/manager/technician/user/viewer + tech-machines/tech-utilities/tech-all
 │   ├── MachineType.php       9 jenis mesin
 │   └── PmDisplayStatus.php   Status turunan untuk tampilan
 │
 ├── Http/
 │   ├── Middleware/
-│   │   └── HandleInertiaRequests.php   Shared props: auth.user, auth.can, flash
+│   │   ├── HandleInertiaRequests.php   Shared props: auth.user, auth.can, flash
+│   │   └── EnsureAnyPermission.php     Alias `can_any` (scope mesin vs utility)
 │   ├── Requests/             Validasi (FormRequest)
-│   │   ├── StorePmRecord.php / SignPmRecord / RejectPmRecord
-│   │   ├── StoreMachine / UpdateMachine
-│   │   └── ProfileUpdateRequest.php
+│   │   ├── StorePmRecordRequest / SignPmRecordRequest / RejectPmRecordRequest
+│   │   ├── StoreMachineRequest / UpdateMachineRequest
+│   │   ├── StoreUserSignatureRequest
+│   │   └── ProfileUpdateRequest
 │   └── Controllers/
-│       ├── DashboardController.php      + export (XLSX/PDF)
-│       ├── MachineController.php        CRUD + restore + history
-│       ├── PmRecordController.php       create/store/sign/reject
-│       ├── PmSignatureController.php    Streaming gambar tanda tangan
+│       ├── DashboardController.php      Beranda + form-maintenance + export (XLSX/PDF)
+│       ├── MachineController.php        CRUD Mesin (tabel `assets`) + restore + history
+│       ├── UtilityController.php        Daftar unit Utility + komponennya
+│       ├── PmRecordController.php       create/store/sign/reject + riwayat + admin PM Records
+│       ├── PmSignatureController.php    Streaming gambar tanda tangan dokumen
 │       ├── ApprovalController.php       Antrean per permission
 │       ├── ReportController.php         Statistik + export
-│       ├── ProfileController.php
+│       ├── ProfileController.php        Info akun + tanda tangan tersimpan
 │       ├── SparePartController.php      Master suku cadang + transaksi stok + impor
 │       └── Admin/
 │           ├── UserController.php       CRUD pengguna + ganti password
 │           ├── RoleController.php       CRUD role (authorizeResource)
-│           ├── TemplateController.php   Template checklist
+│           ├── ComponentController.php  Master Komponen + penugasan ke Mesin/Utility
 │           └── AuditLogController.php   100 log terbaru
 │
 ├── Actions/Pm/              use-case satu proses bisnis
@@ -162,12 +165,14 @@ app/
 ├── Policies/                Gate per resource
 │   ├── UserPolicy.php        create/update/updatePassword/delete + anti self-delete
 │   ├── MachinePolicy.php     create/update/delete/restore
-│   ├── PmRecordPolicy.php    create/update/sign/reject
+│   ├── PmRecordPolicy.php    create/update/sign/reject/delete
 │   └── RolePolicy.php        Registered manual untuk model Spatie
 │
 ├── Services/                 Logika yang dipakai lintas banyak halaman
-│   ├── SignatureChain.php    ATURAN TUNGGAL siapa boleh tanda tangan/ menolak
+│   ├── SignatureChain.php    ATURAN TUNGGAL siapa boleh tanda tangan/menolak
 │   ├── SignatureStorage.php  Decode/validasi/simpan PNG tanda tangan
+│   ├── AssetScope.php        Batas scope tipe aset (Mesin vs Utility) per role
+│   ├── ComponentMigrationService.php  Migrasi item template lama → master Komponen
 │   ├── PeriodService.php     Periode, tahun, dot notifikasi
 │   ├── DashboardService.php  Agregasi status mesin + filter
 │   ├── ReportService.php     Kepatuhan, top part, ringkasan aksi
@@ -176,7 +181,7 @@ app/
 │   └── SparePartImportService.php Impor CSV suku cadang idempoten (toleran header dua-baris & koma)
 │
 ├── Exports/                  Maatwebsite Excel mapping
-├── Models/                   Eloquent + cast/relasi
+├── Models/                   Eloquent + cast/relasi (Machine memakai tabel `assets`; + Component)
 └── Console/Commands/
     ├── ImportMachinesCommand.php
     └── ImportSparePartsCommand.php
@@ -208,6 +213,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
                         │  ─────────────────────────────  │
                         │  name, email UNIQUE              │
                         │  password (cast: hashed)         │
+                        │  signature_path (PNG tersimpan)  │
                         │  email_verified_at                │
                         └──────┬─────────────────────┬─────┘
                                │                     │
@@ -220,7 +226,9 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
                     │  status               │   │  changes   │
                     │  technician_id        │   │  ip        │
                     │  technician_name ★    │   │  ip        │
-                    │  approved_by (null)   │   └────────────┘
+                    │  pic_user_id (null)   │   └────────────┘
+                    │  approved_by (null)   │
+                    │  general_note         │
                     │  revision_count       │
                     │  submitted_at/approved_at
                     │  UNIQUE(machine_id, year, period)
@@ -246,17 +254,23 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
                     └──────────────────┘
 
 ┌──────────────────────┐         ┌──────────────────────────────┐
-│      machines        │         │   checklist_templates       │
-│  code UNIQUE         │         │  machine_type               │
-│  name, location      │         │  is_default                 │
-│  category            │         └───────────┬──────────────────┘
-│  sub_category        │                     │ cascade
-│  type                │         ┌───────────┴──────────────────┐
-│  week_group          │         │ checklist_template_items    │
-│  template_id (null)  │────────▶│  category, name, spec       │
-│  is_active           │         │  sort_no                    │
-│  deleted_at (soft)   │         └──────────────────────────────┘
+│      assets          │         │   components (master)       │
+│  (Mesin + Utility)   │         │  name, category, spec       │
+│  code UNIQUE         │         │  sort_no                    │
+│  name, location      │         └───────────┬──────────────────┘
+│  category            │                     │
+│  sub_category        │         ┌───────────┴──────────────────┐
+│  type                │         │  component_machine (pivot)  │
+│  week_group          │         │  component_id, machine_id   │
+│  template_id (null)⁑ │◀────────│  sort_no, UNIQUE(comp,unit) │
+│  is_active           │         └──────────────────────────────┘
+│  deleted_at (soft)   │
 └──────────────────────┘
+
+⁑ `template_id` + `checklist_template_items` dipertahankan sebagai cadangan
+  untuk data lama; sumber item PM utama kini master `components` lewat pivot
+  (lihat `Machine::effectiveComponents()`). Tabel `assets` menampung Mesin
+  DAN Utility — model `Machine` mengarah ke tabel ini.
 
 ┌──────────────────────────────┐        ┌───────────────────────────────┐
 │         spare_parts          │        │     spare_part_movements      │
@@ -268,7 +282,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 │  min_stock, supplier         │        │  note                         │
 │  needed_for, note            │        └───────────────────────────────┘
 │  location_code, location     │
-│  sort_no, deleted_at (soft)  │  ← global, TIDAK terikat ke machines
+│  sort_no, deleted_at (soft)  │  ← global, TIDAK terikat ke assets
 └──────────────────────────────┘
 ```
 
@@ -282,20 +296,39 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 | `pm_records.technician_id` | **`nullOnDelete`** | History tetap harus terbaca meski teknisi akunnya dihapus (nama dokumen ada di `technician_name`) |
 | `pm_records.approved_by` | **`nullOnDelete`** | Sama seperti `technician_id` — jejak persetujuan tidak boleh ikut hilang |
 | `pm_record_items/revisions/signatures.pm_record_id` | `cascade` | Data turunan dari record |
-| `machines.template_id` | `nullOnDelete` | Hapus template tidak boleh menghapus mesin |
-| `audit_logs.user_id` | `nullOnDelete`** | Log harus bertahan setelah pelaku keluar |
+| `machines.template_id` | `nullOnDelete` | Hapus template tidak boleh menghapus mesin (kolom warisan; item PM kini dari `components`) |
+| `component_machine.component_id/machine_id` | `cascade` | Penugasan komponen tidak bermakna bila komponen atau unitnya hilang |
+| `audit_logs.user_id` | **`nullOnDelete`** | Log harus bertahan setelah pelaku keluar |
 | `spare_part_movements.spare_part_id` | `cascade` | Riwayat transaksi tidak bermakna tanpa suku cadangnya |
 | `spare_part_movements.user_id` | **`nullOnDelete`** | Riwayat stok tetap terbaca meski akun pelakunya dihapus |
 
 ### Index
 
-- `machines`: `(is_active, week_group)`, `(is_active, sub_category)`, unique `code`
+- `assets`: `(is_active, week_group)`, `(is_active, sub_category)`, unique `code`
+- `components`: `(category, name)`
+- `component_machine`: unique `(component_id, machine_id)`, `(machine_id, sort_no)`
 - `pm_records`: `(year, period, status)`, `(machine_id, year)`, unique `(machine_id, year, period)`
 - `pm_record_items`: `pm_record_id`
 - `pm_signatures`: `signed_by`, unique `(pm_record_id, stage)`
 - `audit_logs`: `(subject_type, subject_id)`
 - `spare_parts`: unique `code`, `category`, `name`, `location_code`, `(category, name)`
 - `spare_part_movements`: `(spare_part_id, moved_at)`
+
+### Komponen / Parts (pengganti Template)
+
+Sejak refactor aset, item yang diperiksa saat PM tidak lagi ditentukan lewat
+`checklist_templates` per jenis mesin, melainkan lewat **master Komponen**:
+
+- `components` — daftar tunggal komponen (nama, kategori, spesifikasi, urutan).
+- `component_machine` — pivot many-to-many; satu komponen bisa dipakai banyak
+  Mesin/Utility, dan tiap unit punya urutan komponen sendiri (`sort_no`).
+- Halaman **`/admin/komponen`** (`Admin/Components.jsx`) mengelola master dan
+  penugasannya; URL lama `/admin/templates` diarahkan ke sini.
+- Saat halaman PM dimuat, `Machine::effectiveComponents()` memilih: snapshot
+  record lama → komponen pivot unit → item template lama (cadangan). Ini menjaga
+  form unit yang belum termigrasi tidak kosong.
+- `ComponentMigrationService` memindahkan data template lama ke `components` dan
+  mengikatnya ke unit saat migrasi dijalankan.
 
 ---
 
@@ -365,7 +398,7 @@ POST /machines/{machine}/pm   (technician_name + signature WAJIB)
 
 ### Nama penanda tangan
 
-Nama di dokumen **diketik manual**, bukan diambil dari akun yang squeez-in, karena di
+Nama di dokumen **diketik manual**, bukan diambil dari akun yang login, karena di
 lapangan orang yang mengisi checklist tidak selalu orang yang masuk ke aplikasinya.
 Tiap tahap punya sumber kolom yang berbeda:
 
@@ -434,6 +467,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/machines', …)->middleware('can_any:machine.manage,machine.view');
     Route::get('/utility', …)->middleware('can_any:utility.view,dashboard.view');
     Route::middleware('can:utility.manage')->group(function () { /* CRUD /utility */ });
+    Route::middleware('can:pm.fill')->group(function () { /* form PM + simpan */ });
+    Route::middleware('can:pm.manage')->group(function () { /* /admin/pm-records */ });
     Route::middleware('can:user.manage')->group(function () { /* /admin/users */ });
     Route::middleware('role:admin')->group(function () { /* /admin/roles */ });
     Route::middleware('can:template.manage')->group(function () { /* /admin/komponen */ });
@@ -474,7 +509,7 @@ Beberapa aturan terlalu spesifik untuk ditulis sebagai Policy generik, sehingga 
 
 ### Permission model
 
-Permission originates dari `RoleSeeder`:
+Permission berasal dari `RoleSeeder`:
 
 | Permission | Pemakai utama |
 |------------|---------------|
@@ -493,6 +528,7 @@ Permission originates dari `RoleSeeder`:
 | `template.manage` | admin, manager, tech-all |
 | `sparepart.view` | **semua role** — suku cadang global, di luar scope Mesin/Utility |
 | `sparepart.manage` | admin, tech-all (CRUD + transaksi stok + impor) |
+| `pm.manage` | admin (halaman Admin PM Records — lihat semua record + hapus permanen) |
 | `user.manage` | admin |
 | `audit.view` | admin, manager |
 
@@ -519,16 +555,17 @@ sehingga menu dan server memakai sumber kebenaran yang sama.
 
 ```
 GET  /machines/{machine}/pm?period=&year=
-   ├─ middleware: auth, verified, can:dashboard.view
+   ├─ middleware: auth, verified, can:pm.fill
    ├─ resolve period & year (query, default = periode berjalan)
-   ├─ cari record existing (machine, year, period) → item dari record
-   ├─ kalau tidak ada → item dari template default mesin
+   ├─ cari record existing (machine, year, period) → item dari record (snapshot)
+   ├─ kalau tidak ada → item dari master Komponen unit (pivot)
+   │    └─ item template lama dipakai hanya bila unit belum punya komponen
    └─ teruskan filter Beranda yang sedang aktif ke "Kembali"/redirect
 
 POST /machines/{machine}/pm
    ├─ FormRequest: validasi item[], actual, aksi, parts_replaced
    │    └─ replace_note WAJIB bila act_replace dicentang (detail bagian diganti)
-   ├─ FormRequest: technician_name WAJIB + signature WAJIB (data URL PNG)
+   ├─ FormRequest: technician_name + pic_user_id WAJIB + signature WAJIB (data URL PNG)
    ├─ authorize: pm.fill DAN pm.sign
    │    └─ record existing harus lolos Policy::update (belum terkunci)
    ├─ tolak bila periode future/terkunci
@@ -558,7 +595,9 @@ POST /pm/{record}/sign
 |-------|--------|-----------|---------------------|
 | `/dashboard` | GET | `DashboardController@index` | — |
 | `/dashboard/export` | GET | `DashboardController@export` | `can:report.export` |
-| `/profile` | GET/PUT/DELETE | `ProfileController` | — |
+| `/profile` | GET/PATCH/DELETE | `ProfileController` | — |
+| `/profile/signature` | GET/POST/DELETE | `ProfileController` (tanda tangan tersimpan) | — |
+| `/form-maintenance` | GET | `DashboardController@formMaintenance` | — |
 | `/approvals` | GET | `ApprovalController@index` | — |
 | `/machines/{machine}/pm` | GET | `PmRecordController@create` | `can:pm.fill` + `AssetScope` (tipe unit) |
 | `/machines/{machine}/pm-history` | GET | `PmRecordController@pmHistory` | `can:pm.history.view` + `AssetScope` (tipe unit) |
@@ -587,9 +626,12 @@ POST /pm/{record}/sign
 | `/admin/users/{user}/password` | PUT | `UserController@updatePassword` | `can:user.manage` + Policy |
 | `/admin/users/{user}` | DELETE | `UserController@destroy` | `can:user.manage` + Policy |
 | `/admin/roles` | resource | `RoleController` | `role:admin` + `authorizeResource` |
-| `/admin/templates` | GET/POST | `TemplateController` | `can:template.manage` |
-| `/admin/templates/{template}` | DELETE | `TemplateController@destroy` | `can:template.manage` |
+| `/admin/komponen` | GET/POST/PUT/DELETE | `Admin\ComponentController` | `can:template.manage` |
+| `/admin/komponen/penugasan` | POST | `Admin\ComponentController@assign` | `can:template.manage` |
+| `/admin/templates` | GET | redirect → `/admin/komponen` | `can:template.manage` |
 | `/admin/audit-logs` | GET | `AuditLogController@index` | `can:audit.view` |
+| `/admin/pm-records` | GET | `PmRecordController@adminIndex` | `can:pm.manage` |
+| `/admin/pm-records/{record}` | DELETE | `PmRecordController@adminDestroy` | `can:pm.manage` |
 | `/suku-cadang` | GET | `SparePartController@index` | `can:sparepart.view` |
 | `/suku-cadang` | POST | `SparePartController@store` | `can:sparepart.manage` |
 | `/suku-cadang/import` | POST | `SparePartController@import` | `can:sparepart.manage` (unggah CSV) |
@@ -653,12 +695,17 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore |
 | `/machines/{machine}/history` | `Machines/History` | Riwayat PM mesin |
 | `/machines/{machine}/pm` | `Pm/Form` | Checklist + tanda tangan |
+| `/form-maintenance` | `FormMaintenance/Index` | Kartu pilih scope Mesin/Utility |
+| `/form-maintenance/mesin` | `FormMaintenance/Mesin` | Daftar mesin + status PM per periode |
+| `/form-maintenance/utility` | `FormMaintenance/Utility` | Daftar unit utility + status PM per periode |
+| `/utility` | `Utility/Index` | Daftar unit utility + komponen maintenance |
 | `/admin/users` | `Admin/Users` | CRUD pengguna + ganti password + pencarian |
 | `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
-| `/admin/templates` | `Admin/Templates` | Template checklist per jenis |
+| `/admin/komponen` | `Admin/Components` | Master Komponen + penugasan ke Mesin/Utility |
+| `/admin/pm-records` | `Admin/PmRecords/Index` | Semua PM Record: filter, cari, hapus permanen |
 | `/admin/audit-logs` | `Admin/AuditLogs` | 100 log terbaru |
 | `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV, unduh template CSV, hapus massal |
-| `/profile` | `Profile/Edit` | Info akun, ganti password, hapus akun |
+| `/profile` | `Profile/Edit` | Info akun, ganti password, tanda tangan tersimpan, hapus akun |
 
 ---
 
@@ -684,7 +731,7 @@ cetak identik dengan tabel di layar dan tidak menyesatkan.
 php artisan machines:import [--purge] [--force]
 ```
 
-Sumber data: `references/data.csv` di root proyek (121 mesin, jalur `base_path('references/data.csv')`).
+Sumber data: `references/data-source/data.csv` di proyek (121 mesin, jalur `base_path('references/data-source/data.csv')`).
 
 | Asal | Tujuan | Cara |
 |------|--------|------|
@@ -710,7 +757,7 @@ Keputusan desain:
 php artisan spare-parts:import [path?] [--purge]
 ```
 
-Sumber data: `references/suku_cadang.csv` (jalur `base_path('references/suku_cadang.csv')`),
+Sumber data: `references/data-source/suku_cadang.csv` (jalur `base_path('references/data-source/suku_cadang.csv')`),
 atau file apa pun lewat argumen `path`. Halaman `/suku-cadang` juga bisa **mengunggah CSV**
 lewat `POST /suku-cadang/import`; keduanya memakai `SparePartImportService` yang sama.
 Tombol **Unduh Template** di halaman itu memanggil `GET /suku-cadang/template` yang
@@ -910,7 +957,7 @@ Health check Laravel tersedia di `/up` (dikonfigurasi lewat `withRouting(health:
 
 | Jenis | Tool | Cakupan |
 |-------|------|---------|
-| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile, Mesin/Utility, PM & rantai tanda tangan, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses) |
+| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile & tanda tangan tersimpan, Mesin/Utility (termasuk master Komponen + penugasan), PM & rantai tanda tangan, Admin PM Records, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses) |
 | Manual terotomasi | Playwright (via Docker image `mcr.microsoft.com/playwright`) | Sweep 9 halaman: login nyata, cek blank page, error console, HTTP 5xx |
 | Fungsional | Skrip Playwright ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda |
 
@@ -927,11 +974,11 @@ UI bisa-disable tombol, jadi hanya state server yang membuktikan guard bekerja.
 | Enum sebagai sumber kebenaran (`PmStatus::awaiting`) | Aturan tahap tidak bisa menyimpang antar policy/controller/frontend | Enum harus di-maintain bila aturan berubah |
 | Satu endpoint sign untuk 3 tahap | Tahap dari status, bukan dari client → rantai tidak bisa dilompati | Endpoint tidak bisa dipanggil paralel tanpa race condition |
 | `SignatureChain` dipakai policy **dan** UI | Badge antrean dan daftar tidak bisa berbeda | Penulisan aturan tidak terduplikasi; biaya maintenance aturan tetap rendah |
-| Snapshot nama/role di `pm_signatures` | Jejak tetap terbaca setelah akun dihapus | Data denormalisasi (s disengaja) |
+| Snapshot nama/role di `pm_signatures` | Jejak tetap terbaca setelah akun dihapus | Data denormalisasi (disengaja) |
 | `nullOnDelete` pada `technician_id`/`approved_by` | History lebih penting daripada referensial user | Query perlu handle `technician_id = null` |
 | Izin berbeda untuk `restore` = `delete` | Tidak ada user yang bisa restore tanpa bisa delete | Sederhana |
 | Permission per tahap | Mencegah lompatan tahap | Tiga permission yang harus dikelola |
-| Guard self-lock di controller (bukan policy) | Butuh pesan spesifik, bukan 403 | Logika di controller, perlu Consistensi UI |
+| Guard self-lock di controller (bukan policy) | Butuh pesan spesifik, bukan 403 | Logika di controller, perlu konsistensi UI |
 | Soft delete mesin | Salah hapus tidak langsung merusak history | Tabel bertambah `deleted_at`; query wajib `SoftDeletes` |
 | Service terpisah untuk logika lintas halaman | Rapikan controller | Lebih banyak file |
 | Template default per jenis mesin | Form PM otomatis terisi | Perubahan template tidak mengubah record lama (snapshot di items) |
@@ -946,7 +993,7 @@ UI bisa-disable tombol, jadi hanya state server yang membuktikan guard bekerja.
 Hal-hal yang diketahui ada di sistem ini dan perlu dipertimbangkan:
 
 1. **Asset frontend harus disalin manual setelah rebuild** karena named volume `app_public`.
-   Ini tanggal etiology utama "perubahan frontend tidak muncul".
+   Ini penyebab utama "perubahan frontend tidak muncul".
 2. **Tidak ada notifikasi otomatis** (email/WhatsApp) untuk pengingat persetujuan atau PM jatuh tempo.
 3. **Rantai 3 tahap bersifat hardcoded** di enum, belum bisa dikonfigurasi per unit.
 4. **Audit log tidak bisa difilter** (hanya 100 terbaru) dan tidak bisa dihapus dari UI.
@@ -960,7 +1007,7 @@ Hal-hal yang diketahui ada di sistem ini dan perlu dipertimbangkan:
 11. **Tidak ada rate limiting** pada endpoint login (boneka Laravel default belum diaktifkan).
 12. **Race condition pada signing** — dua request bersamaan pada tahap yang sama bisa saling
     menimpa; `unique(pm_record_id, stage)` mencegah duplikasi baris, tapi bukan konfirmasi transaksional.
-    Adding lock pada record akan menutup celah ini.
+    Menambahkan lock pada record akan menutup celah ini.
 
 ---
 

@@ -12,8 +12,8 @@ use RuntimeException;
 /**
  * Impor daftar mesin + utility dari references/.
  *
- * Mesin datang dari references/data.csv dan utility dari
- * references/utility.csv. Tidak ada kolom "jenis" maupun "minggu" di kedua
+ * Mesin datang dari references/data-source/data.csv dan utility dari
+ * references/data-source/utility.csv. Tidak ada kolom "jenis" maupun "minggu" di kedua
  * CSV, jadi keduanya diturunkan:
  *  - type        <- kata kunci pada Machine Name (lihat TYPE_KEYWORDS),
  *                   kecuali baris utility yang sudah jelas type-nya
@@ -140,17 +140,28 @@ class MachineImportService
 
     public function csvPath(): string
     {
-        return base_path('references/data.csv');
+        return $this->referenceFile('data.csv');
     }
 
     public function utilityCsvPath(): string
     {
-        return base_path('references/utility.csv');
+        return $this->referenceFile('utility.csv');
     }
 
     public function utilityComponentsCsvPath(): string
     {
-        return base_path('references/utility_components.csv');
+        return $this->referenceFile('utility_components.csv');
+    }
+
+    /**
+     * Cari berkas sumber di references/data-source/ lebih dulu, lalu jatuh
+     * kembali ke references/ agar tetap kompatibel dengan tata letak lama.
+     */
+    private function referenceFile(string $filename): string
+    {
+        $preferred = base_path("references/data-source/{$filename}");
+
+        return is_file($preferred) ? $preferred : base_path("references/{$filename}");
     }
 
     public function exists(): bool

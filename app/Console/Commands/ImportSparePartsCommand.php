@@ -9,11 +9,11 @@ use RuntimeException;
 class ImportSparePartsCommand extends Command
 {
     protected $signature = 'spare-parts:import
-        {--file= : Path CSV lain (default references/suku_cadang.csv)}
+        {--file= : Path CSV lain (default references/data-source/suku_cadang.csv)}
         {--purge : Hapus permanen suku cadang yang kodenya tidak ada di CSV}
         {--force : Lewati konfirmasi, untuk dijalankan non-interaktif}';
 
-    protected $description = 'Impor master suku cadang dari references/suku_cadang.csv';
+    protected $description = 'Impor master suku cadang dari references/data-source/suku_cadang.csv';
 
     public function handle(SparePartImportService $importer): int
     {
