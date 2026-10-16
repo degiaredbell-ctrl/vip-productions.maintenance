@@ -40,6 +40,7 @@ class ProfileController extends Controller
                 ]
                 : null,
             'hasPin' => $user->hasPin(),
+            'canDeleteAccount' => $user->hasRole('admin'),
         ]);
     }
 
@@ -64,6 +65,10 @@ class ProfileController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        // Hanya admin yang boleh menghapus akunnya sendiri; akun role lain
+        // dikelola admin lewat halaman Kelola Pengguna.
+        abort_unless($request->user()->hasRole('admin'), 403);
+
         $request->validate([
             'password' => ['required', 'current_password'],
         ]);

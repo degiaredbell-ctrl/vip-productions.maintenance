@@ -6,7 +6,7 @@ import UpdatePinForm from './Partials/UpdatePinForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 import UpdateSignatureForm from './Partials/UpdateSignatureForm';
 
-export default function Edit({ mustVerifyEmail, status, savedSignature, hasPin }) {
+export default function Edit({ mustVerifyEmail, status, savedSignature, hasPin, canDeleteAccount }) {
     return (
         <AuthenticatedLayout>
             <Head title="Profile" />
@@ -25,7 +25,7 @@ export default function Edit({ mustVerifyEmail, status, savedSignature, hasPin }
                     <UpdateSignatureForm savedSignature={savedSignature} />
                     <UpdatePasswordForm />
                     <UpdatePinForm hasPin={hasPin} />
-                    <DeleteUserForm />
+                    {canDeleteAccount && <DeleteUserForm />}
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -61,9 +62,11 @@ class ProfileTest extends TestCase
         $this->assertNotNull($user->refresh()->email_verified_at);
     }
 
-    public function test_user_can_delete_their_account(): void
+    public function test_admin_can_delete_their_account(): void
     {
+        $this->seed(RoleSeeder::class);
         $user = User::factory()->create();
+        $user->assignRole('admin');
 
         $response = $this
             ->actingAs($user)
@@ -81,7 +84,9 @@ class ProfileTest extends TestCase
 
     public function test_correct_password_must_be_provided_to_delete_account(): void
     {
+        $this->seed(RoleSeeder::class);
         $user = User::factory()->create();
+        $user->assignRole('admin');
 
         $response = $this
             ->actingAs($user)
@@ -95,5 +100,34 @@ class ProfileTest extends TestCase
             ->assertRedirect('/profile');
 
         $this->assertNotNull($user->fresh());
+    }
+
+    public function test_non_admin_cannot_delete_their_account(): void
+    {
+        $this->seed(RoleSeeder::class);
+
+        foreach (['manager', 'technician', 'user', 'viewer'] as $role) {
+            $user = User::factory()->create();
+            $user->assignRole($role);
+
+            $this->actingAs($user)->get('/profile')
+                ->assertInertia(fn ($page) => $page->where('canDeleteAccount', false));
+
+            $this->actingAs($user)
+                ->delete('/profile', ['password' => 'password'])
+                ->assertForbidden();
+
+            $this->assertNotNull($user->fresh());
+        }
+    }
+
+    public function test_admin_sees_delete_account_option(): void
+    {
+        $this->seed(RoleSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('admin');
+
+        $this->actingAs($user)->get('/profile')
+            ->assertInertia(fn ($page) => $page->where('canDeleteAccount', true));
     }
 }
