@@ -199,7 +199,7 @@ export default function FormMaintenanceUtility({
                 </div>
 
                 <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3" role="group" aria-label="Filter sub kategori">
-                    <NeuChip active={filters.sub === 'all'} onClick={() => applyFilters({ sub: 'all' })}>Semua Area</NeuChip>
+                    <NeuChip active={filters.sub === 'all'} onClick={() => applyFilters({ sub: 'all' })}>Semua Minggu</NeuChip>
                     {(subCategories ?? []).map((s) => (
                         <NeuChip key={s} active={filters.sub === s} onClick={() => applyFilters({ sub: s })}>{s}</NeuChip>
                     ))}

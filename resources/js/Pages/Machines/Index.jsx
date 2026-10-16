@@ -20,7 +20,7 @@ const EMPTY_MACHINE = {
     is_active: 1,
 };
 
-/** Konvensi sub-kategori "C.7" sudah memuat nomor minggu, jadi angka yang
+/** Konvensi sub-kategori "W.7" sudah memuat nomor minggu, jadi angka yang
  *  diketik di situ langsung dipakai untuk mengisi pilihan minggu. */
 const applySubCategory = (setData) => (value) => {
     setData((prev) => {

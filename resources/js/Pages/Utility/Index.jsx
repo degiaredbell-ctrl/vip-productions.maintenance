@@ -177,7 +177,7 @@ export default function UtilityIndex({ auth, utilities = [], allComponents = [],
                 </div>
 
                 <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-4" role="group" aria-label="Filter area">
-                    <NeuChip active={sub === 'all'} onClick={() => setSub('all')} aria-label="Semua area">Semua Area</NeuChip>
+                    <NeuChip active={sub === 'all'} onClick={() => setSub('all')} aria-label="Semua minggu">Semua Minggu</NeuChip>
                     {(subCategories ?? []).map((s) => (
                         <NeuChip key={s} active={sub === s} onClick={() => setSub(s)} aria-label={`Area ${s}`}>{s}</NeuChip>
                     ))}

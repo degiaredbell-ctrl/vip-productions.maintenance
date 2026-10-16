@@ -177,7 +177,7 @@ export default function FormMaintenanceMesin({
                     <div className="relative">
                         <input
                             type="search"
-                            placeholder="Cari kode, nama, area (C.7), atau lokasi…"
+                            placeholder="Cari kode, nama, minggu (W.7), atau lokasi…"
                             value={filters.q}
                             onChange={handleSearch}
                             className="neu-input pr-11"
@@ -205,7 +205,7 @@ export default function FormMaintenanceMesin({
 
                 {/* Filter Sub Kategori */}
                 <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3" role="group" aria-label="Filter sub kategori">
-                    <NeuChip active={filters.sub === 'all'} onClick={() => applyFilters({ sub: 'all' })}>Semua Area</NeuChip>
+                    <NeuChip active={filters.sub === 'all'} onClick={() => applyFilters({ sub: 'all' })}>Semua Minggu</NeuChip>
                     {(subCategories ?? []).map((s) => (
                         <NeuChip key={s} active={filters.sub === s} onClick={() => applyFilters({ sub: s })}>{s}</NeuChip>
                     ))}

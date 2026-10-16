@@ -75,7 +75,7 @@ export default function MachineFields({
             <Field name="sub_category">
                 <input
                     type="text"
-                    placeholder="Sub-kategori (opsional, mis. C.7)"
+                    placeholder="Sub-kategori (opsional, mis. W.7)"
                     list={`${idPrefix}-sub-options`}
                     {...inputProps('sub_category')}
                     onChange={(e) => {

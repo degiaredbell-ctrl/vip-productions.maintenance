@@ -301,9 +301,9 @@ class MachineImportService
     }
 
     /**
-     * "C.7" -> 7, "W.9" -> 9, "0" / kosong / bukan angka -> 1 (nilai default
-     * skema). Dijepit ke 1..9 karena week_group berupa tinyint dan form mesin
-     * memvalidasi max 9.
+     * "C.7" / "W.7" -> 7, "C.9" / "W.9" -> 9, "0" / kosong / bukan angka -> 1
+     * (nilai default skema). Dijepit ke 1..9 karena week_group berupa tinyint
+     * dan form mesin memvalidasi max 9.
      */
     public static function guessWeekGroup(?string $subCategory): int
     {

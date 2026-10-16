@@ -779,7 +779,7 @@ Sumber data: `references/data-source/data.csv` di proyek (121 mesin, jalur `base
 | `Machine Name` | `name` + penentuan `type` | keyword berurutan (`TYPE_KEYWORDS`) |
 | `Location` | `location` | langsung |
 | `Category` | `category` | langsung |
-| `Sub-Category` | `sub_category` + `week_group` | angka pada label (`"C.7"` → 7) |
+| `Sub-Category` | `sub_category` + `week_group` | angka pada label (`"W.7"` → 7) |
 
 Keputusan desain:
 

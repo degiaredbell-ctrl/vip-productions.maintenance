@@ -105,7 +105,7 @@ class DashboardService
 
     /**
      * Filter yang sama dipakai di halaman Beranda maupun saat ekspor:
-     * area (C.1 s.d. C.9), status PM, dan pencarian bebas.
+     * area (W.1 s.d. W.9), status PM, dan pencarian bebas.
      */
     public static function applyFilters(
         Collection $machines,
@@ -120,7 +120,7 @@ class DashboardService
             ->when($status !== 'all', fn ($c) => $c->where('status', $status))
             ->when($needle !== '', fn ($c) => $c->filter(fn ($m) => str_contains(mb_strtolower($m['code']), $needle)
                 || str_contains(mb_strtolower($m['name']), $needle)
-                // Sub-category dan lokasi ikut dicari supaya "C.7" atau
+                // Sub-category dan lokasi ikut dicari supaya "W.7" atau
                 // "Milenium" bisa dipakai sebagai kata kunci.
                 || str_contains(mb_strtolower((string) $m['sub_category']), $needle)
                 || str_contains(mb_strtolower((string) $m['location']), $needle)
