@@ -133,11 +133,16 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - **Hapus permanen** record beserta item, tanda tangan, revisi, dan audit log terkait
 
 ### 12. Laporan
-- **Kepatuhan per periode** (total, selesai, sedang approval, %)
-- **Top part yang paling sering diganti**
+Kartu laporan dulu berada di halaman **`/reports`** (sudah dihapus, termasuk
+item menu **Laporan**), kini dilebur ke **Beranda (`/dashboard`)**:
 - **Ringkasan aksi** (bersihkan/perbaiki/lumasi/ganti)
-- Filter tahun & periode
-- **Ekspor XLSX** (Maatwebsite Excel) dan **PDF** (DomPDF)
+- **Komponen yang paling sering diganti** (5 teratas)
+- Mengikuti filter **tahun** & **periode** Beranda
+- **Ekspor XLSX** (Maatwebsite Excel) dan **PDF** (DomPDF) lewat
+  `GET /dashboard/report/export` (permission `report.export`)
+
+Ekspor PDF juga memuat **kepatuhan per periode** dan **detail komponen diganti**
+per mesin, meski kartunya tidak lagi tampil di layar.
 
 ### 13. Activity Logs
 - Halaman **`/admin/activity-logs`** (permission `activity.view`) — pengganti halaman Audit Log lama (backing store tetap tabel `audit_logs`)

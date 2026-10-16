@@ -230,13 +230,17 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 
 ### 6.10 Laporan (REQ-RPT)
 
+> Halaman **`/reports`** dan item menu **Laporan** dihapus. Kartu laporan kini
+> menyatu di **Beranda (`/dashboard`)** dan ikut filter tahun/periode di sana.
+> Ekspor dipindah ke `GET /dashboard/report/export`.
+
 | ID | Kebutuhan |
 |----|-----------|
-| REQ-RPT-01 | Laporan menampilkan kepatuhan (total, selesai, sedang approval, %) per periode |
-| REQ-RPT-02 | Laporan menampilkan 5 part yang paling sering diganti |
-| REQ-RPT-03 | Laporan menampilkan ringkasan aksi (bersihkan/perbaiki/lumasi/ganti) |
-| REQ-RPT-04 | Laporan dapat difilter tahun dan periode |
-| REQ-RPT-05 | Laporan dapat diekspor ke XLSX dan PDF |
+| REQ-RPT-01 | Beranda dapat menampilkan kepatuhan per periode (tercermin di grafik status/progress) |
+| REQ-RPT-02 | Beranda menampilkan 5 part yang paling sering diganti pada periode terpilih |
+| REQ-RPT-03 | Beranda menampilkan ringkasan aksi (bersihkan/perbaiki/lumasi/ganti) |
+| REQ-RPT-04 | Data laporan mengikuti filter tahun dan periode Beranda |
+| REQ-RPT-05 | Laporan dapat diekspor ke XLSX dan PDF (termasuk kepatuhan & detail komponen diganti) |
 
 ### 6.11 Activity Logs (REQ-AUD)
 

@@ -619,6 +619,7 @@ POST /pm/{record}/sign
 |-------|--------|-----------|---------------------|
 | `/dashboard` | GET | `DashboardController@index` | — |
 | `/dashboard/export` | GET | `DashboardController@export` | `can:report.export` |
+| `/dashboard/report/export` | GET | `ReportController@export` (XLSX/PDF laporan PM) | `can:report.export` |
 | `/profile` | GET/PATCH/DELETE | `ProfileController` | — |
 | `/profile/signature` | GET/POST/DELETE | `ProfileController` (tanda tangan tersimpan) | — |
 | `/form-maintenance` | GET | `DashboardController@formMaintenance` | — |
@@ -644,8 +645,6 @@ POST /pm/{record}/sign
 | `/utility/{machine}/components` | PUT | `MachineController@updateComponents` | `can:utility.manage` + `authorizeType()` |
 | `/form-maintenance/mesin` | GET | `DashboardController@formMaintenanceMesin` | `can_any:machine.manage,machine.view,dashboard.view` |
 | `/form-maintenance/utility` | GET | `DashboardController@formMaintenanceUtility` | `can_any:utility.view,dashboard.view` |
-| `/reports` | GET | `ReportController@index` | `can:report.view` |
-| `/reports/export` | GET | `ReportController@export` | `can:report.export` |
 | `/admin/users` | GET | `UserController@index` | `can:user.manage` |
 | `/admin/users` | POST | `UserController@store` | `can:user.manage` + Policy |
 | `/admin/users/{user}` | PUT | `UserController@update` | `can:user.manage` + Policy |
@@ -722,9 +721,8 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 
 | Path | Halaman | Ringkas |
 |------|---------|---------|
-| `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ekspor |
+| `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ringkasan tindakan + komponen sering diganti, ekspor |
 | `/approvals` | `Approvals/Index` | Antrean per permission, stepper, tabel nama + signature per baris |
-| `/reports` | `Reports/Index` | Kepatuhan, top part, ringkasan aksi, ekspor |
 | `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore, Edit Komponen + Standar per unit |
 | `/machines/{machine}/history` | `Machines/History` | Riwayat PM mesin |
 | `/machines/{machine}/pm` | `Pm/Form` | Checklist + tanda tangan |

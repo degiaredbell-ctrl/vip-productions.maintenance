@@ -130,4 +130,115 @@ class ReportService
             'replace' => (clone $query)->where('act_replace', true)->count(),
         ];
     }
+
+    /**
+     * Ringkasan tindakan per periode, dihitung dalam SATU query grouped
+     * (bukan 4 COUNT × 6 periode) supaya Beranda tetap ringan.
+     *
+     * @return array<string, array{clean:int,repair:int,lubricate:int,replace:int}>
+     */
+    public static function actionSummaryByPeriod(int $year): array
+    {
+        $rows = PmRecordItem::query()
+            ->join('pm_records', 'pm_record_items.pm_record_id', '=', 'pm_records.id')
+            ->where('pm_records.year', $year)
+            ->groupBy('pm_records.period')
+            ->selectRaw('pm_records.period')
+            ->selectRaw('SUM(CASE WHEN pm_record_items.act_clean = 1 THEN 1 ELSE 0 END) AS clean')
+            ->selectRaw('SUM(CASE WHEN pm_record_items.act_repair = 1 THEN 1 ELSE 0 END) AS repair')
+            ->selectRaw('SUM(CASE WHEN pm_record_items.act_lubricate = 1 THEN 1 ELSE 0 END) AS lubricate')
+            // `replace` adalah kata kunci MySQL, jadi hasil agregatnya diberi
+            // alias lain (`replace_count`) lalu dipetakan ke kunci `replace`.
+            ->selectRaw('SUM(CASE WHEN pm_record_items.act_replace = 1 THEN 1 ELSE 0 END) AS replace_count')
+            ->get()
+            ->keyBy('period');
+
+        $result = [];
+
+        foreach (Period::cases() as $period) {
+            $row = $rows->get($period->value);
+
+            $result[$period->value] = [
+                'clean' => (int) ($row->clean ?? 0),
+                'repair' => (int) ($row->repair ?? 0),
+                'lubricate' => (int) ($row->lubricate ?? 0),
+                'replace' => (int) ($row->replace_count ?? 0),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * Komponen paling sering diganti untuk SETIAP periode dalam satu query
+     * grouped; tiap periode diambil `$limit` teratas. Dipakai kartu Beranda
+     * supaya angkanya mengikuti filter periode yang sedang dipilih.
+     *
+     * @return array<string, array<int, array{item_name:string,total:int}>>
+     */
+    public static function topReplacedPartsByPeriod(int $year, int $limit = 5): array
+    {
+        $rows = PmRecordItem::query()
+            ->join('pm_records', 'pm_record_items.pm_record_id', '=', 'pm_records.id')
+            ->where('pm_record_items.act_replace', true)
+            ->where('pm_records.year', $year)
+            ->groupBy('pm_records.period', 'pm_record_items.item_name')
+            ->selectRaw('pm_records.period, pm_record_items.item_name, SUM(pm_record_items.parts_replaced) as total')
+            ->orderByDesc('total')
+            ->get();
+
+        $result = [];
+
+        foreach (Period::cases() as $period) {
+            $result[$period->value] = $rows
+                ->where('period', $period->value)
+                ->take($limit)
+                ->map(fn ($row) => [
+                    'item_name' => $row->item_name,
+                    'total' => (int) $row->total,
+                ])
+                ->values()
+                ->all();
+        }
+
+        return $result;
+    }
+
+    /**
+     * Data kartu laporan Beranda: `actions` + `topParts` untuk tiap periode
+     * ditambah kunci `all` sebagai agregat setahun penuh. Dipanggil sekali per
+     * request supaya filter periode di Beranda bisa berpindah tanpa memanggil
+     * server lagi.
+     *
+     * @return array<string, array{actions:array,topParts:array}>
+     */
+    public static function summaryByPeriod(int $year): array
+    {
+        $actionsByPeriod = self::actionSummaryByPeriod($year);
+        $topPartsByPeriod = self::topReplacedPartsByPeriod($year);
+
+        $allActions = ['clean' => 0, 'repair' => 0, 'lubricate' => 0, 'replace' => 0];
+
+        foreach ($actionsByPeriod as $actions) {
+            foreach ($allActions as $key => $value) {
+                $allActions[$key] = $value + $actions[$key];
+            }
+        }
+
+        $summary = [
+            'all' => [
+                'actions' => $allActions,
+                'topParts' => self::topReplacedParts($year),
+            ],
+        ];
+
+        foreach (Period::cases() as $period) {
+            $summary[$period->value] = [
+                'actions' => $actionsByPeriod[$period->value],
+                'topParts' => $topPartsByPeriod[$period->value],
+            ];
+        }
+
+        return $summary;
+    }
 }

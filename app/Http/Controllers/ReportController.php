@@ -2,48 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\Period;
-use App\Models\PmRecord;
+use App\Exports\PmReportExport;
 use App\Services\ReportService;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\PmReportExport;
 
 class ReportController extends Controller
 {
-    public function index(Request $request): Response
-    {
-        $year = (int) $request->query('year', now()->year);
-        $period = $request->query('period');
-
-        $compliance = ReportService::complianceByPeriod($year);
-        $topParts = ReportService::topReplacedParts($year, $period);
-        $actions = ReportService::actionSummary($year, $period);
-
-        // Statistik ikut filter periode supaya angka di kartu atas sinkron
-        // dengan Ringkasan Tindakan dan daftar komponen di bawahnya.
-        $totalPm = PmRecord::where('year', $year)
-            ->when($period, fn ($q) => $q->where('period', $period))
-            ->count();
-        $totalApproved = PmRecord::where('year', $year)
-            ->where('status', 'approved')
-            ->when($period, fn ($q) => $q->where('period', $period))
-            ->count();
-
-        return Inertia::render('Reports/Index', [
-            'compliance' => $compliance,
-            'topParts' => $topParts,
-            'actions' => $actions,
-            'totalPm' => $totalPm,
-            'totalApproved' => $totalApproved,
-            'year' => $year,
-            'period' => $period,
-            'periods' => collect(Period::cases())->map(fn ($p) => ['value' => $p->value, 'label' => $p->label()])->toArray(),
-        ]);
-    }
-
     public function export(Request $request)
     {
         $request->validate([

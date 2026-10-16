@@ -8,6 +8,7 @@ use App\Exports\MachineStatusExport;
 use App\Services\DashboardReportService;
 use App\Services\DashboardService;
 use App\Services\PeriodService;
+use App\Services\ReportService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -55,6 +56,13 @@ class DashboardController extends Controller
             'reportMachine' => DashboardReportService::build($year, 'machine'),
             'reportUtility' => DashboardReportService::build($year, 'utility'),
             'reportYears' => PeriodService::availableYears(),
+            // Kartu "Ringkasan Tindakan" & "Komponen Paling Sering Diganti"
+            // (dulu ada di halaman /reports). Hanya dihitung untuk pemegang
+            // izin `report.view` supaya user lain tidak menanggung query
+            // tambahannya. Berisi data tiap periode + agregat setahun (`all`).
+            'reportSummary' => $request->user()?->can('report.view')
+                ? ReportService::summaryByPeriod($year)
+                : null,
         ]);
     }
 

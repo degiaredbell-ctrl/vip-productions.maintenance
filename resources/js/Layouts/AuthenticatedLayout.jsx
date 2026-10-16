@@ -66,7 +66,6 @@ export default function Authenticated({ user: userProp, header, children }) {
             // punya wewenang, supaya sidebar tidak penuh item mati.
             show: pending > 0 || can['pm.sign'] || can['pm.acknowledge'] || can['pm.approve'],
         },
-        { name: 'Laporan', href: route('reports.index'), path: '/reports', show: can['report.view'] },
         {
             name: 'Form Maintenance',
             href: route('form-maintenance'),

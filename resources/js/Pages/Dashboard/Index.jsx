@@ -5,6 +5,7 @@ import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuRing from '@/Components/NeuRing';
 import NeuPill from '@/Components/NeuPill';
+import NeuButton from '@/Components/NeuButton';
 
 const PERIOD_LABELS_LIST = {
     'Jan-Feb': 'Jan–Feb',
@@ -53,6 +54,7 @@ export default function Dashboard({
     reportMachine = { byPeriod: [], byStatus: { done:0,progress:0,todo:0,issue:0,total:0,percent:0 }, totalUnits: 0 },
     reportUtility = { byPeriod: [], byStatus: { done:0,progress:0,todo:0,issue:0,total:0,percent:0 }, totalUnits: 0 },
     reportYears = [],
+    reportSummary = null,
 }) {
     // Scope Beranda mengikuti hak akses aset: role teknisi khusus mesin tidak
     // melihat tab/report Utility, dan sebaliknya. Role general memakai
@@ -143,6 +145,19 @@ export default function Dashboard({
         status: filters.status !== 'all' ? filters.status : undefined,
         sub: filters.sub !== 'all' ? filters.sub : undefined,
         q: filters.q || undefined,
+    };
+
+    // Kartu laporan (Ringkasan Tindakan & Komponen Paling Sering Diganti)
+    // ikut filter periode yang sedang dipilih, tanpa perlu minta server lagi:
+    // backend sudah mengirim data untuk tiap periode + agregat `all`.
+    const canReportView = Boolean(auth?.can?.['report.view']) && reportSummary != null;
+    const activeSummary = canReportView
+        ? (reportSummary[periodFilter] ?? reportSummary.all)
+        : { actions: { clean: 0, repair: 0, lubricate: 0, replace: 0 }, topParts: [] };
+    const exportReportParams = {
+        year: filters.year,
+        period: periodFilter === 'all' ? undefined : periodFilter,
+        format: 'xlsx',
     };
 
     const activeReport = tab === 'utility' ? reportUtility : reportMachine;
@@ -332,6 +347,66 @@ export default function Dashboard({
                             <Link href={route('utility.index')} className="neu-btn">Buka Halaman Utility</Link>
                         </div>
                     </NeuCard>
+                ) : null}
+
+                {/* Kartu laporan yang dulu berada di halaman /reports
+                    (kini dilebur ke Beranda). Sumbernya sama dengan ekspor
+                    XLSX/PDF di bawah supaya angka kartu dan berkas cocok. */}
+                {canReportView ? (
+                    <>
+                        <NeuCard className="mb-3">
+                            <b className="text-sm mb-3 block">Ringkasan Tindakan</b>
+                            <div className="space-y-2">
+                                {[
+                                    { label: 'Bersihkan', value: activeSummary.actions.clean },
+                                    { label: 'Perbaiki', value: activeSummary.actions.repair },
+                                    { label: 'Lumasi', value: activeSummary.actions.lubricate },
+                                    { label: 'Ganti', value: activeSummary.actions.replace },
+                                ].map((a) => (
+                                    <div key={a.label} className="flex items-center justify-between">
+                                        <span className="text-sm">{a.label}</span>
+                                        <NeuPill variant="done">{a.value}x</NeuPill>
+                                    </div>
+                                ))}
+                            </div>
+                        </NeuCard>
+
+                        <NeuCard className="mb-3">
+                            <b className="text-sm mb-3 block">Komponen Paling Sering Diganti</b>
+                            {activeSummary.topParts.length > 0 ? (
+                                <div className="space-y-2">
+                                    {activeSummary.topParts.map((p, i) => (
+                                        <div key={i} className="flex items-center justify-between">
+                                            <span className="text-sm">{p.item_name}</span>
+                                            <NeuPill variant="done">{p.total}x</NeuPill>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-neu-sub">Belum ada data.</p>
+                            )}
+                        </NeuCard>
+
+                        {canExport ? (
+                            <div className="flex gap-3">
+                                <NeuButton
+                                    native
+                                    href={route('dashboard.report.export', exportReportParams)}
+                                    variant="primary"
+                                    className="flex-1"
+                                >
+                                    Ekspor Excel
+                                </NeuButton>
+                                <NeuButton
+                                    native
+                                    href={route('dashboard.report.export', { ...exportReportParams, format: 'pdf' })}
+                                    className="flex-1"
+                                >
+                                    Cetak PDF
+                                </NeuButton>
+                            </div>
+                        ) : null}
+                    </>
                 ) : null}
             </div>
         </AuthenticatedLayout>

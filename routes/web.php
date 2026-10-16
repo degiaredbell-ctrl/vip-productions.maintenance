@@ -161,12 +161,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->whereNumber('sparePart');
     });
 
-    // Reports
-    Route::get('/reports', [ReportController::class, 'index'])
-        ->name('reports.index')
-        ->middleware('can:report.view');
-    Route::get('/reports/export', [ReportController::class, 'export'])
-        ->name('reports.export')
+    // Ekspor laporan PM. Halaman laporan lama (/reports) sudah dilebur ke
+    // Beranda, jadi tinggal endpoint ekspor XLSX/PDF yang dipertahankan.
+    Route::get('/dashboard/report/export', [ReportController::class, 'export'])
+        ->name('dashboard.report.export')
         ->middleware('can:report.export');
 
     // Admin

@@ -7,7 +7,6 @@ const PASSWORD = 'Anwar@teknis.vip';
 const pages = [
   { name: 'Beranda    ', url: '/' },
   { name: 'Persetujuan', url: '/approvals' },
-  { name: 'Laporan    ', url: '/reports' },
   { name: 'Mesin      ', url: '/machines' },
   { name: 'Utility    ', url: '/utility' },
   { name: 'Pengguna   ', url: '/admin/users' },
