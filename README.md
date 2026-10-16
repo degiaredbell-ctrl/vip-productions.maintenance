@@ -83,14 +83,15 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - Daftar record yang menunggu tindakan user **berdasarkan permission-nya**
 - Badge sidebar memakai **query yang sama** dengan daftar halaman → angka tidak pernah berbeda
 - Rantai approval ditampilkan sebagai stepper dengan centang per tahap
-- **Dibiarkan sebagai tabel** dengan kolom **Nama Penanda Tangan** (input manual,
-  wajib) dan kolom **Tanda Tangan** (canvas) berdiri sendiri — bukan ditumpuk di
-  dalam kartu, supaya jelas kolom mana nama dan kolom mana tanda tangan
-- **Tanda tangan bisa diselesaikan langsung dari daftar**: tombol Setujui mati
-  selama nama atau tanda tangan kosong, jadi tidak ada approval tanpa identitas
-  penandatanganannya. Baris ini muncul untuk tahap apa pun yang sedang menunggu
-  user tersebut, termasuk `rejected` milik teknisi sendiri
-- Tombol **Buka Checklist** tetap ada supaya PM bisa dibaca dulu sebelum diteken
+- **Murni antrean (tanpa tanda tangan di daftar)**: halaman ini menjawab "apa
+  yang menunggu saya". Persetujuan dilakukan di **form checklist PM-nya sendiri**
+  supaya isi yang disetujui dibaca bersamaan dengan tanda tangannya
+- Tombol **Buka Checklist** membuka form PM. Approver (`pm.acknowledge` /
+  `pm.approve`) dapat membukanya walaupun tanpa `pm.fill` — form tampil
+  **read-only**, isi checklist tetap terbaca, dan **panel tanda tangan** di
+  bawahnya yang menyetujui/menolak
+- Form yang dibuka dari antrean memakai `?return=approvals`, jadi tombol
+  **Kembali** mengembalikan approver ke antrean ini, bukan ke Beranda
 - Record yang checklist-nya belum lengkap tidak bisa ditutup dari antrean —
   tahap teknisi hanya naik status setelah semua nilai Aktual terisi
 
@@ -217,6 +218,7 @@ Daftar permission berasal dari `database/seeders/RoleSeeder.php`.
 **Catatan penting:**
 - `pm.sign`, `pm.acknowledge`, `pm.approve` **dipisah per tahap** — bukan satu permission `pm.approve` generik, supaya peran tidak bisa melompat tahap.
 - Manager **tidak** bisa mengisi checklist lapangan (tidak punya `pm.fill`).
+- **Approver bisa membuka form PM (read-only)**: route `GET /machines/{machine}/pm` dibuka dengan `can_any:pm.fill,pm.acknowledge,pm.approve`. Role **User** (tahap 2) dan **Manager** (tahap 3) dapat meninjau isi checklist lalu menyetujui/menolak lewat panel tanda tangan di form itu, walaupun tanpa `pm.fill`. `viewer` (hanya `pm.history.view`) tetap **tidak** bisa membukanya. Penyimpanan checklist tetap butuh `pm.fill`.
 - Halaman **Role** hanya untuk role `admin`; halaman **Pengguna** untuk siapa pun yang punya `user.manage` (hanya admin saat ini).
 - `machine.view` / `utility.view` = **scope** halaman/daftar Mesin & Utility. Role general (Manager ke atas) membuka keduanya lewat baseline `dashboard.view`, jadi tidak perlu `*.view` eksplisit.
 - Role teknisi **tech-machines** / **tech-utilities** sengaja tanpa `dashboard.view`: hanya satu scope terbuka, dan `/form-maintenance` menampilkan kartu di luar scope sebagai **abu-abu** yang tidak bisa diklik maupun dibuka lewat URL. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap).

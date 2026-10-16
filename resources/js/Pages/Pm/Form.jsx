@@ -321,7 +321,11 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                 {readOnly && (
                     <NeuCard className="mb-4 !shadow-neu-in">
                         <p className="text-sm text-neu-sub">
-                            {isFuturePeriod ? 'Periode ini belum tiba.' : 'Anda tidak memiliki izin mengisi checklist.'}
+                            {isFuturePeriod
+                                ? 'Periode ini belum tiba.'
+                                : (chain?.canSign || chain?.canReject)
+                                    ? 'Anda membuka checklist ini dalam mode tinjau. Isinya tidak dapat diubah; gunakan panel Persetujuan di bawah untuk menyetujui atau menolak.'
+                                    : 'Anda tidak memiliki izin mengisi checklist.'}
                         </p>
                     </NeuCard>
                 )}

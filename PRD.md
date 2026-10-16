@@ -202,6 +202,8 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-APPR-02 | Badge antrean pada sidebar menggunakan query identik dengan daftar halaman |
 | REQ-APPR-03 | Detail record menampilkan stepper 3 tahap dengan status tercentang |
 | REQ-APPR-04 | User tanpa permission untuk suatu tahap tidak melihat aksi tanda tangan pada tahap tersebut |
+| REQ-APPR-05 | Approver (`pm.acknowledge` / `pm.approve`) dapat **membuka form PM mesin maupun utility** untuk meninjau isi checklist, walaupun tidak memegang `pm.fill`; form tampil **read-only** dan panel tanda tangan tetap tersedia |
+| REQ-APPR-06 | Form yang dibuka dari halaman Persetujuan mengembalikan tombol "Kembali" ke antrean Persetujuan |
 
 ### 6.8 Manajemen Pengguna (REQ-USER)
 
@@ -362,6 +364,7 @@ Prinsip:
 - Menu sidebar hanya menampilkan item sesuai permission, **tetapi** otorisasi sesungguhnya ditegakkan di server oleh Policy/middleware (`can_any` + `AssetScope` untuk scope mesin vs utility).
 - Role `admin` memegang seluruh permission.
 - Role `manager` tidak memegang `pm.fill` (tidak melakukan pekerjaan lapangan).
+- Role `user` (User PIC tahap 2) dan `manager` (Atasan tahap 3) dapat **membuka form PM read-only** untuk meninjau lalu menyetujui/menolak, meski tanpa `pm.fill`. Membuka form dibatasi `can_any:pm.fill,pm.acknowledge,pm.approve`, jadi `viewer` yang hanya punya `pm.history.view` tetap tidak bisa membukanya.
 - `machine.view` / `utility.view` adalah **scope** halaman/daftar aset; role general membukanya lewat baseline `dashboard.view`.
 - Role teknisi **tech-machines** / **tech-utilities** tanpa `dashboard.view` → hanya satu scope terbuka; kartu di luar scope pada `/form-maintenance` tampil abu-abu dan URL langsungnya diblokir. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap termasuk Komponen).
 - **Suku Cadang** berdiri di luar scope Mesin/Utility: `sparepart.view` untuk **semua** role, `sparepart.manage` (CRUD + transaksi + impor) hanya Admin & **tech-all**.

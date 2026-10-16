@@ -52,11 +52,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Persetujuan (rantai tanda tangan 3 tahap)
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
 
-    // PM Records — mengisi form PM hanya untuk role yang memang bisa mengisi
-    // (pm.fill), bukan sekadar "masuk aplikasi" (dashboard.view).
+    // PM Records — form PM dibuka oleh pengisi checklist (`pm.fill`) maupun
+    // approver (`pm.acknowledge` tahap PIC / `pm.approve` tahap Atasan). Bagi
+    // approver, form dibuka READ-ONLY supaya bisa meninjau isi checklist lalu
+    // menyetujui/menolak lewat panel tanda tangan di halaman yang sama —
+    // persetujuan memang terjadi di form PM, bukan di halaman Persetujuan.
+    // Menyimpan checklist tetap butuh `pm.fill` (lihat StorePmRecordRequest).
     Route::get('/machines/{machine}/pm', [PmRecordController::class, 'create'])
         ->name('machines.pm.create')
-        ->middleware('can:pm.fill');
+        ->middleware('can_any:pm.fill,pm.acknowledge,pm.approve');
     Route::get('/machines/{machine}/pm-history', [PmRecordController::class, 'pmHistory'])
         ->name('machines.pm.history')
         ->middleware('can:pm.history.view');

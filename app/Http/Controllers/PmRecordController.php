@@ -105,7 +105,13 @@ class PmRecordController extends Controller
         // utility, kembali ke halaman Utility (unit itu tidak ada di Beranda).
         // Disimpan lewat session, bukan diambil dari input form, supaya URL
         // tujuan redirect tidak bisa dipakai untuk open redirect.
-        if ($machine->type === MachineType::Utility->value) {
+        if ($request->query('return') === 'approvals') {
+            // Approver membuka form (mesin maupun utility) dari halaman
+            // Persetujuan; tombol "Kembali" harus mengembalikannya ke antrean
+            // itu, bukan ke Beranda/Daftar Utility.
+            $dashboardUrl = route('approvals.index');
+            $request->session()->put('pm_dashboard_url', $dashboardUrl);
+        } elseif ($machine->type === MachineType::Utility->value) {
             $return = $request->query('return');
             if ($return === 'utility') {
                 $dashboardUrl = route('form-maintenance.utility', array_filter([

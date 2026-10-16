@@ -97,6 +97,7 @@ export default function ApprovalRow({ record }) {
                         machine: record.machine_id,
                         year: record.year,
                         period: record.period,
+                        return: 'approvals',
                     })}
                 >
                     Buka Checklist

@@ -484,7 +484,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/machines', …)->middleware('can_any:machine.manage,machine.view');
     Route::get('/utility', …)->middleware('can_any:utility.view,dashboard.view');
     Route::middleware('can:utility.manage')->group(function () { /* CRUD /utility */ });
-    Route::middleware('can:pm.fill')->group(function () { /* form PM + simpan */ });
+    Route::get('/machines/{machine}/pm', …)->middleware('can_any:pm.fill,pm.acknowledge,pm.approve'); // form PM (approver read-only)
+    Route::post('/machines/{machine}/pm', …)->middleware('can:pm.fill'); // simpan checklist
     Route::middleware('can:pm.manage')->group(function () { /* /admin/pm-records */ });
     Route::middleware('can:user.manage')->group(function () { /* /admin/users */ });
     Route::middleware('role:admin')->group(function () { /* /admin/roles */ });
@@ -522,8 +523,10 @@ Beberapa aturan terlalu spesifik untuk ditulis sebagai Policy generik, sehingga 
   Dengan begitu satu endpoint tidak bisa dipakai menembus scope (mis. membuat unit utility
   lewat endpoint mesin), meski tabel `assets` menampung keduanya.
 - `PmRecordController::create/pmHistory` + `MachineController::history` — selain izin route
-  (`pm.fill` / `pm.history.view`), scope tipe unit ditegakkan lewat `App\Services\AssetScope`
-  supaya teknisi mesin tidak membuka form/riwayat unit utility lewat URL langsung.
+  (`can_any:pm.fill,pm.acknowledge,pm.approve` untuk form PM; `pm.history.view` untuk riwayat), scope tipe
+  unit ditegakkan lewat `App\Services\AssetScope` supaya teknisi mesin tidak membuka form/riwayat unit
+  utility lewat URL langsung. Approver membuka form yang sama dengan `canFill=false` (read-only); panel
+  tanda tangan di form itu yang menyetujui/menolak, dan penyimpanan tetap butuh `pm.fill`.
 
 ### Permission model
 
@@ -574,12 +577,13 @@ sehingga menu dan server memakai sumber kebenaran yang sama.
 
 ```
 GET  /machines/{machine}/pm?period=&year=
-   ├─ middleware: auth, verified, can:pm.fill
+   ├─ middleware: auth, verified, can_any:pm.fill,pm.acknowledge,pm.approve
    ├─ resolve period & year (query, default = periode berjalan)
    ├─ cari record existing (machine, year, period) → item dari record (snapshot)
    ├─ kalau tidak ada → item dari master Komponen unit (pivot)
    │    ├─ spec item = pivot.standard ?: components.spec (standar per unit)
    │    └─ item template lama dipakai hanya bila unit belum punya komponen
+   ├─ canFill = user punya pm.fill (approver → read-only, panel tanda tangan tetap tampil)
    └─ teruskan filter Beranda yang sedang aktif ke "Kembali"/redirect
 
 POST /machines/{machine}/pm
@@ -619,7 +623,7 @@ POST /pm/{record}/sign
 | `/profile/signature` | GET/POST/DELETE | `ProfileController` (tanda tangan tersimpan) | — |
 | `/form-maintenance` | GET | `DashboardController@formMaintenance` | — |
 | `/approvals` | GET | `ApprovalController@index` | — |
-| `/machines/{machine}/pm` | GET | `PmRecordController@create` | `can:pm.fill` + `AssetScope` (tipe unit) |
+| `/machines/{machine}/pm` | GET | `PmRecordController@create` | `can_any:pm.fill,pm.acknowledge,pm.approve` + `AssetScope` (tipe unit) — approver membuka read-only |
 | `/machines/{machine}/pm-history` | GET | `PmRecordController@pmHistory` | `can:pm.history.view` + `AssetScope` (tipe unit) |
 | `/machines/{machine}/pm` | POST | `PmRecordController@store` | `can:pm.fill` + `pm.sign` (dalam FormRequest) |
 | `/pm/{record}/sign` | POST | `PmRecordController@sign` | Policy::sign |
