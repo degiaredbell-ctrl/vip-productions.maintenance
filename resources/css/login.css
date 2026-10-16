@@ -1,0 +1,303 @@
+/* Halaman login bergaya "glass" gelap. Berdiri sendiri (tidak memakai
+   GuestLayout / tema neumorphism) supaya tidak bentrok dengan gaya aplikasi. */
+.arc-page {
+    position: relative;
+    display: grid;
+    width: 100%;
+    min-height: 100svh;
+    place-items: center;
+    overflow: hidden;
+    padding: clamp(18px, 4vw, 44px);
+    color: #fff;
+    background: #08050d;
+}
+
+.arc-background,
+.arc-video-fallback,
+.arc-overlay,
+.arc-grid {
+    position: absolute;
+    inset: 0;
+}
+
+.arc-background { overflow: hidden; background: #09060f; }
+
+.arc-video-fallback {
+    z-index: 0;
+    background:
+        radial-gradient(circle at 20% 30%, rgba(111, 56, 211, 0.5), transparent 35%),
+        radial-gradient(circle at 80% 70%, rgba(17, 93, 171, 0.35), transparent 38%),
+        linear-gradient(135deg, #13091e, #06040b 60%, #11091b);
+}
+
+.arc-overlay {
+    z-index: 2;
+    background:
+        linear-gradient(90deg, rgba(4, 2, 8, 0.64), rgba(6, 3, 11, 0.3), rgba(4, 2, 8, 0.64)),
+        linear-gradient(rgba(3, 2, 7, 0.3), rgba(3, 2, 7, 0.62));
+}
+
+.arc-grid {
+    z-index: 3;
+    opacity: 0.12;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 55px 55px;
+    -webkit-mask-image: radial-gradient(circle, #000, transparent 76%);
+    mask-image: radial-gradient(circle, #000, transparent 76%);
+}
+
+.arc-glow {
+    position: absolute;
+    z-index: 3;
+    width: min(44vw, 540px);
+    aspect-ratio: 1 / 1;
+    border-radius: 999px;
+    opacity: 0.24;
+    filter: blur(100px);
+    pointer-events: none;
+    animation: arcFloat 12s ease-in-out infinite alternate;
+}
+.arc-glow-one { top: -20%; left: -8%; background: #8b45ff; }
+.arc-glow-two { right: -12%; bottom: -30%; background: #2c66e6; animation-delay: -5s; }
+
+.arc-card {
+    position: relative;
+    z-index: 5;
+    width: min(100%, 430px);
+    padding: clamp(25px, 4vw, 34px);
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 25px;
+    background: linear-gradient(145deg, rgba(16, 11, 24, 0.72), rgba(8, 6, 14, 0.56));
+    box-shadow: 0 32px 90px rgba(0, 0, 0, 0.46), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+    -webkit-backdrop-filter: blur(20px) saturate(125%);
+    backdrop-filter: blur(20px) saturate(125%);
+}
+.arc-card::before {
+    content: "";
+    position: absolute;
+    inset: -1px;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(178, 112, 255, 0.42), transparent 35%, transparent 65%, rgba(80, 133, 255, 0.24));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+    pointer-events: none;
+}
+
+.arc-header { margin-bottom: 28px; text-align: center; }
+.arc-logo { width: 44px; height: 44px; margin: 0 auto 14px; object-fit: contain; filter: drop-shadow(0 0 14px rgba(178, 112, 255, 0.35)); }
+.arc-brand-wrap { position: relative; display: inline-grid; place-items: center; }
+.arc-brand-glow {
+    position: absolute;
+    width: 130%;
+    height: 80%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(139, 69, 255, 0.65), rgba(229, 80, 198, 0.45), rgba(61, 124, 255, 0.55));
+    opacity: 0.65;
+    filter: blur(22px);
+    animation: arcPulse 3.4s ease-in-out infinite;
+}
+.arc-header h1 {
+    position: relative;
+    margin: 0;
+    font-size: clamp(30px, 7vw, 39px);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: -0.045em;
+    text-shadow: 0 0 30px rgba(178, 112, 255, 0.32);
+}
+.arc-header > p { margin: 12px 0 4px; color: rgba(255, 255, 255, 0.78); font-size: 14px; }
+.arc-hint { color: rgba(255, 255, 255, 0.4); font-size: 11px; letter-spacing: 0.04em; }
+.arc-status-icons {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    margin-top: 8px;
+    color: rgba(255, 255, 255, 0.42);
+    font-size: 13px;
+}
+.arc-status-icons span:first-child { animation: arcPulse 2.2s ease-in-out infinite; }
+.arc-status-icons svg { animation: arcBounce 2s ease-in-out infinite; }
+.arc-status-icons span:last-child { animation: arcPulse 2.2s ease-in-out 0.7s infinite; }
+
+.arc-alert {
+    margin-bottom: 17px;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    line-height: 1.45;
+}
+.arc-alert-ok { color: #9ff0c8; background: rgba(47, 168, 115, 0.14); border: 1px solid rgba(47, 168, 115, 0.35); }
+
+.arc-form { display: grid; gap: 17px; }
+.arc-field { position: relative; display: flex; align-items: center; }
+.arc-field-icon {
+    position: absolute;
+    left: 15px;
+    z-index: 2;
+    display: inline-flex;
+    color: rgba(255, 255, 255, 0.5);
+    transition: color 180ms;
+    pointer-events: none;
+}
+.arc-field input {
+    width: 100%;
+    height: 48px;
+    padding: 0 46px;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 12px;
+    outline: none;
+    color: #fff;
+    font-size: 15px;
+    background: rgba(255, 255, 255, 0.055);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    transition: border-color 180ms, background 180ms, box-shadow 180ms;
+}
+.arc-field input::placeholder { color: rgba(255, 255, 255, 0.42); }
+.arc-field input:-webkit-autofill {
+    -webkit-text-fill-color: #fff;
+    -webkit-box-shadow: 0 0 0 1000px #1a1424 inset;
+    caret-color: #fff;
+}
+.arc-field:focus-within input {
+    border-color: rgba(165, 100, 255, 0.65);
+    background: rgba(255, 255, 255, 0.075);
+    box-shadow: 0 0 0 3px rgba(139, 69, 255, 0.1), 0 10px 30px rgba(81, 35, 143, 0.1);
+}
+.arc-field:focus-within .arc-field-icon { color: #c6a2ff; }
+.arc-field-invalid input { border-color: rgba(255, 107, 107, 0.6); }
+.arc-error { margin: -9px 2px 0; color: #ff9b9b; font-size: 12.5px; }
+
+.arc-password-button {
+    position: absolute;
+    right: 14px;
+    display: inline-flex;
+    padding: 3px;
+    border: 0;
+    outline: none;
+    color: rgba(255, 255, 255, 0.48);
+    background: transparent;
+    cursor: pointer;
+    transition: color 180ms;
+}
+.arc-password-button:hover,
+.arc-password-button:focus-visible { color: #fff; }
+
+.arc-options { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+.arc-options a { color: rgba(255, 255, 255, 0.75); text-decoration: none; transition: color 180ms; }
+.arc-options a:hover { color: #d0b1ff; }
+.arc-remember { display: flex; align-items: center; gap: 9px; color: rgba(255, 255, 255, 0.72); cursor: pointer; user-select: none; }
+.arc-remember input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.arc-switch {
+    position: relative;
+    width: 38px;
+    height: 20px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.17);
+    transition: background 200ms, box-shadow 200ms;
+}
+.arc-switch span {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    transition: transform 200ms;
+}
+.arc-remember input:checked + .arc-switch { background: #8650e8; box-shadow: 0 0 18px rgba(134, 80, 232, 0.35); }
+.arc-remember input:checked + .arc-switch span { transform: translateX(18px); }
+.arc-remember input:focus-visible + .arc-switch { outline: 2px solid #c6a2ff; outline-offset: 3px; }
+
+.arc-submit {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 49px;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    border-radius: 12px;
+    outline: none;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 650;
+    background: linear-gradient(135deg, #7540dc, #8b4fee);
+    box-shadow: 0 13px 35px rgba(117, 64, 220, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: transform 180ms, box-shadow 180ms, filter 180ms;
+}
+.arc-submit:hover:not(:disabled) {
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+    box-shadow: 0 18px 42px rgba(117, 64, 220, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+.arc-submit:active:not(:disabled) { transform: translateY(0); }
+.arc-submit:focus-visible { outline: 2px solid #c5a0ff; outline-offset: 3px; }
+.arc-submit:disabled { cursor: default; opacity: 0.85; }
+.arc-submit-shine {
+    position: absolute;
+    top: -120%;
+    left: -30%;
+    width: 30%;
+    height: 340%;
+    transform: rotate(22deg);
+    background: rgba(255, 255, 255, 0.18);
+    filter: blur(4px);
+    transition: left 600ms;
+}
+.arc-submit:hover .arc-submit-shine { left: 120%; }
+.arc-loader {
+    width: 17px;
+    height: 17px;
+    border: 2px solid rgba(255, 255, 255, 0.34);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: arcSpin 700ms linear infinite;
+}
+
+.arc-footer { margin: 23px 0 0; text-align: center; color: rgba(255, 255, 255, 0.4); font-size: 12px; }
+
+@keyframes arcFloat {
+    0% { transform: translate3d(-3%, -3%, 0) scale(0.95); }
+    100% { transform: translate3d(5%, 4%, 0) scale(1.08); }
+}
+@keyframes arcPulse {
+    0%, 100% { opacity: 0.42; transform: scale(0.92); }
+    50% { opacity: 0.8; transform: scale(1.08); }
+}
+@keyframes arcBounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+@keyframes arcSpin { 100% { transform: rotate(360deg); } }
+
+@media (max-height: 720px) and (min-width: 560px) {
+    .arc-card { padding: 23px 28px; transform: scale(0.93); }
+    .arc-header { margin-bottom: 20px; }
+    .arc-form { gap: 13px; }
+}
+@media (max-width: 520px) {
+    .arc-page { padding: 14px; }
+    .arc-card { padding: 25px 19px; border-radius: 21px; }
+    .arc-options { font-size: 12px; }
+    .arc-header { margin-bottom: 24px; }
+}
+@media (max-width: 360px) {
+    .arc-options { flex-direction: column; align-items: flex-start; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .arc-glow, .arc-brand-glow, .arc-status-icons > *, .arc-loader { animation-duration: 12s; }
+    .arc-submit { transition: none; }
+}
