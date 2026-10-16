@@ -5,14 +5,21 @@ import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 import ApprovalRow from '@/Pages/Approvals/ApprovalRow';
+import MySubmissionRow from '@/Pages/Approvals/MySubmissionRow';
 
-export default function Approvals({ auth, records, years, year, period, periods, myStages, hasStages }) {
+export default function Approvals({ auth, records, mySubmissions = [], canSubmit = false, years, year, period, periods, myStages, hasStages }) {
     const [selectedYear, setSelectedYear] = useState(year);
     const [selectedPeriod, setSelectedPeriod] = useState(period);
     // Switch kategori PM: default "Mesin". Daftar difilter di sisi klien
     // supaya perpindahan Mesin/Utility terasa instan — semua record untuk
     // tahun/periode ini sudah terkirim dalam satu muatan.
     const [category, setCategory] = useState('machine');
+    const showMine = canSubmit || mySubmissions.length > 0;
+    // Tab "PM Saya" dibuka langsung kalau tidak ada yang menunggu tindakan
+    // tetapi ada PM buatan user ini yang sedang diproses.
+    const [view, setView] = useState(() =>
+        !hasStages || (records.length === 0 && mySubmissions.length > 0) ? 'mine' : 'queue'
+    );
 
     useEffect(() => {
         setSelectedYear(year);
@@ -27,9 +34,12 @@ export default function Approvals({ auth, records, years, year, period, periods,
         });
     };
 
-    const machineCount = records.filter((record) => record.category === 'machine').length;
-    const utilityCount = records.filter((record) => record.category === 'utility').length;
-    const visibleRecords = records.filter((record) => record.category === category);
+    const activeList = view === 'mine' ? mySubmissions : records;
+    const machineCount = activeList.filter((record) => record.category === 'machine').length;
+    const utilityCount = activeList.filter((record) => record.category === 'utility').length;
+    const visibleRecords = activeList.filter((record) => record.category === category);
+    const categoryLabel = category === 'utility' ? 'Utility' : 'Mesin';
+    const inProgressCount = mySubmissions.filter((record) => record.status === 'progress').length;
 
     return (
         <AuthenticatedLayout user={auth.user}>
@@ -39,7 +49,7 @@ export default function Approvals({ auth, records, years, year, period, periods,
                     <h1 className="text-xl sm:text-2xl font-bold">Persetujuan</h1>
                 </div>
 
-                {!hasStages ? (
+                {!hasStages && !showMine ? (
                     <NeuCard>
                         <p className="text-sm text-neu-sub text-center py-4">
                             Anda tidak memiliki kewenangan persetujuan pada rantai tanda tangan PM.
@@ -51,14 +61,50 @@ export default function Approvals({ auth, records, years, year, period, periods,
                             Tahap milik user ini ditampilkan supaya daftar kosong
                             bisa dipahami: "menunggu apa", bukan sekadar tidak ada data.
                         */}
-                        <NeuCard className="mb-4 !shadow-neu-in">
-                            <p className="text-xs text-neu-sub mb-1.5">Tahap yang menunggu Anda</p>
-                            <div className="flex flex-wrap gap-2">
-                                {myStages.map((stage) => (
-                                    <NeuPill key={stage.value} variant="progress">{stage.label}</NeuPill>
-                                ))}
+                        {hasStages && showMine && (
+                            <div className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-2" role="tablist" aria-label="Tampilan persetujuan">
+                                <NeuChip
+                                    role="tab"
+                                    aria-selected={view === 'queue'}
+                                    active={view === 'queue'}
+                                    onClick={() => setView('queue')}
+                                >
+                                    Perlu Tindakan Saya ({records.length})
+                                </NeuChip>
+                                <NeuChip
+                                    role="tab"
+                                    aria-selected={view === 'mine'}
+                                    active={view === 'mine'}
+                                    onClick={() => setView('mine')}
+                                >
+                                    Status PM Saya ({mySubmissions.length})
+                                </NeuChip>
                             </div>
-                        </NeuCard>
+                        )}
+
+                        {view === 'queue' ? (
+                            <NeuCard className="mb-4 !shadow-neu-in">
+                                <p className="text-xs text-neu-sub mb-1.5">Tahap yang menunggu Anda</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {myStages.map((stage) => (
+                                        <NeuPill key={stage.value} variant="progress">{stage.label}</NeuPill>
+                                    ))}
+                                </div>
+                            </NeuCard>
+                        ) : (
+                            <NeuCard className="mb-4 !shadow-neu-in">
+                                <p className="text-xs text-neu-sub">
+                                    PM yang Anda isi dan tanda tangani. Pantau apakah sudah
+                                    sampai tahap <b className="text-neu-text">Approval by User PIC</b> atau{' '}
+                                    <b className="text-neu-text">Approval by Atasan</b>.
+                                </p>
+                                {inProgressCount > 0 && (
+                                    <p className="text-xs mt-1.5">
+                                        <NeuPill variant="progress">{inProgressCount} sedang dalam proses approval</NeuPill>
+                                    </p>
+                                )}
+                            </NeuCard>
+                        )}
 
                         <div
                             className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-2 lg:flex-nowrap lg:overflow-x-auto"
@@ -129,15 +175,41 @@ export default function Approvals({ auth, records, years, year, period, periods,
                         </div>
 
                         <p className="text-xs text-neu-sub mb-3">
-                            {visibleRecords.length} PM {category === 'utility' ? 'Utility' : 'Mesin'} menunggu tindakan Anda
+                            {view === 'mine'
+                                ? `${visibleRecords.length} PM ${categoryLabel} buatan Anda`
+                                : `${visibleRecords.length} PM ${categoryLabel} menunggu tindakan Anda`}
                         </p>
 
                         {visibleRecords.length === 0 ? (
                             <NeuCard>
                                 <p className="text-sm text-neu-sub text-center py-4">
-                                    Tidak ada PM {category === 'utility' ? 'Utility' : 'Mesin'} yang menunggu persetujuan Anda pada filter ini.
+                                    {view === 'mine'
+                                        ? `Belum ada PM ${categoryLabel} buatan Anda yang dikirim ke persetujuan pada filter ini.`
+                                        : `Tidak ada PM ${categoryLabel} yang menunggu persetujuan Anda pada filter ini.`}
                                 </p>
                             </NeuCard>
+                        ) : view === 'mine' ? (
+                            <div className="neu-table-wrap">
+                                <table className="neu-table">
+                                    <caption className="sr-only">
+                                        Status persetujuan PM yang Anda buat.
+                                    </caption>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Mesin</th>
+                                            <th scope="col">Periode</th>
+                                            <th scope="col">Status</th>
+                                            <th scope="col">Progres Persetujuan</th>
+                                            <th scope="col">Aksi</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {visibleRecords.map((record) => (
+                                            <MySubmissionRow key={record.id} record={record} />
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         ) : (
                             /*
                                 Lima kolom ini muat di layar sempit, tapi tetap
