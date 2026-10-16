@@ -5,6 +5,7 @@ import NeuCard from '@/Components/NeuCard';
 import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
+import OverdueAlert from '@/Components/OverdueAlert';
 
 const PERIOD_LABELS_LIST = {
     'Jan-Feb': 'Jan–Feb',
@@ -49,6 +50,7 @@ export default function FormMaintenanceMesin({
     search = '',
     statusFilter = 'all',
     isFuturePeriod = false,
+    currentWeek = null,
 }) {
     const [filters, setFilters] = useState({
         period: currentPeriod,
@@ -198,7 +200,7 @@ export default function FormMaintenanceMesin({
 
                 {/* Filter Status */}
                 <div className="flex gap-2.5 overflow-x-auto px-1.5 py-2 mb-3" role="group" aria-label="Filter status">
-                    {[{value:'all',label:'Semua'},{value:'todo',label:'Belum'},{value:'progress',label:'Sedang Approval'},{value:'done',label:'Selesai'},{value:'issue',label:'Perlu Revisi'}].map((f) => (
+                    {[{value:'all',label:'Semua'},{value:'todo',label:'Belum'},{value:'progress',label:'Sedang Approval'},{value:'done',label:'Selesai'},{value:'issue',label:'Perlu Revisi'},{value:'overdue',label:`Terlambat (${stats.overdue ?? 0})`}].map((f) => (
                         <NeuChip key={f.value} active={filters.status === f.value} onClick={() => applyFilters({ status: f.value })}>{f.label}</NeuChip>
                     ))}
                 </div>
@@ -210,6 +212,17 @@ export default function FormMaintenanceMesin({
                         <NeuChip key={s} active={filters.sub === s} onClick={() => applyFilters({ sub: s })}>{s}</NeuChip>
                     ))}
                 </div>
+
+                <OverdueAlert
+                    key={`${filters.year}-${filters.period}`}
+                    count={stats.overdue ?? 0}
+                    unitLabel="mesin"
+                    currentWeek={currentWeek}
+                    periodLabel={`${(periods ?? []).find((p) => p.value === filters.period)?.label ?? ''} ${filters.year}`}
+                    active={filters.status === 'overdue'}
+                    onShow={() => applyFilters({ status: 'overdue' })}
+                    onClear={() => applyFilters({ status: 'all' })}
+                />
 
                 {isFuturePeriod && (
                     <NeuCard className="mb-4 !shadow-neu-in">
@@ -232,13 +245,14 @@ export default function FormMaintenanceMesin({
                                 status: filters.status !== 'all' ? filters.status : undefined,
                                 q: filters.q || undefined,
                             })}
-                            className="neu-card-link flex items-start gap-3.5 w-full text-left p-3.5 mb-4 active:shadow-neu-in"
+                            className={`neu-card-link flex items-start gap-3.5 w-full text-left p-3.5 mb-4 active:shadow-neu-in ${machine.overdue ? 'neu-card-overdue' : ''}`}
                         >
                             <span className="neu-inset w-12 h-12 flex-none grid place-items-center font-bold text-sm text-neu-accent">{machine.sub_category ?? '—'}</span>
                             <div className="min-w-0 flex-1">
                                 <b className="block text-sm truncate">{machine.name}</b>
                                 <span className="block text-xs text-neu-sub truncate">{machine.code} · {typeLabels[machine.type] ?? machine.type} · Minggu {machine.week_group}</span>
                                 {machine.progress_note && <span className="block text-[11px] font-semibold text-neu-info truncate">{machine.progress_note}</span>}
+                                {machine.overdue && <span className="block text-[11px] font-semibold text-neu-bad truncate">⚠ Terlambat · batas {new Date(`${machine.deadline}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>}
                             </div>
                             <NeuPill variant={STATUS_VARIANTS[machine.status]} className="ml-auto self-start">{STATUS_LABELS[machine.status]}</NeuPill>
                         </Link>

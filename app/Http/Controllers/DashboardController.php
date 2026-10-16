@@ -191,6 +191,7 @@ class DashboardController extends Controller
             'statusFilter' => $status,
             'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
+            'currentWeek' => PeriodService::currentWeek($period, $year),
         ]);
     }
 
@@ -235,6 +236,7 @@ class DashboardController extends Controller
                 ->values()
                 ->toArray(),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
+            'currentWeek' => PeriodService::currentWeek($period, $year),
         ]);
     }
 }

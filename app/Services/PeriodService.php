@@ -7,6 +7,7 @@ use App\Enums\Period;
 use App\Enums\PmStatus;
 use App\Models\Machine;
 use App\Models\PmRecord;
+use Carbon\CarbonImmutable;
 
 class PeriodService
 {
@@ -23,6 +24,40 @@ class PeriodService
     public static function isFuturePeriod(Period $period, int $year): bool
     {
         return $period->isFuture($year);
+    }
+
+    public static function periodStart(Period $period, int $year): CarbonImmutable
+    {
+        return CarbonImmutable::create($year, $period->startMonth(), 1)->startOfDay();
+    }
+
+    /**
+     * Minggu ke-N dihitung per 7 hari sejak tanggal 1 awal periode
+     * (tgl 1–7 = Minggu 1, tgl 8–14 = Minggu 2, dst). Null bila periode
+     * tersebut bukan periode berjalan.
+     */
+    public static function currentWeek(Period $period, int $year): ?int
+    {
+        $now = CarbonImmutable::now();
+        $start = self::periodStart($period, $year);
+        $end = $start->addMonths(2);
+
+        if ($now->lt($start) || $now->gte($end)) {
+            return null;
+        }
+
+        return intdiv((int) $start->diffInDays($now), 7) + 1;
+    }
+
+    /**
+     * Batas akhir PM untuk unit dengan `week_group` tertentu: akhir Minggu ke-N
+     * pada periode, dijepit ke akhir periode (Minggu 9 bisa melewati 2 bulan).
+     */
+    public static function weekDeadline(Period $period, int $year, int $weekGroup): CarbonImmutable
+    {
+        $start = self::periodStart($period, $year);
+
+        return $start->addDays(7 * max(1, $weekGroup))->min($start->addMonths(2));
     }
 
     public static function getPeriods(): array

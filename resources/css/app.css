@@ -290,4 +290,10 @@
     .neu-card-link:focus-visible {
         @apply outline-none ring-2 ring-neu-accent/40;
     }
+
+    /* Unit yang melewati batas minggu PM-nya. */
+    .neu-card-overdue {
+        background-image: linear-gradient(120deg, rgba(185, 58, 46, 0.30) 0%, rgba(185, 58, 46, 0.12) 50%, rgba(185, 58, 46, 0) 100%);
+        @apply ring-1 ring-neu-bad/25;
+    }
 }

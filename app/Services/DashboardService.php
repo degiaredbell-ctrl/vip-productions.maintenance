@@ -28,6 +28,8 @@ class DashboardService
      */
     public static function machineStatuses(int $year, Period $period, ?MachineType $type = null): Collection
     {
+        $now = now();
+
         return Machine::with(['template.items', 'pmRecords' => function ($q) use ($year, $period) {
             $q->where('year', $year)->where('period', $period->value);
         }])
@@ -41,12 +43,19 @@ class DashboardService
             )
             ->orderBy('sort_no')
             ->get()
-            ->map(function (Machine $machine) {
+            ->map(function (Machine $machine) use ($year, $period, $now) {
                 $record = $machine->pmRecords->first();
 
                 $display = $record
                     ? PmDisplayStatus::fromPmStatus($record->status)
                     : PmDisplayStatus::Todo;
+
+                // Terlambat = batas minggunya sudah lewat dan PM belum dikerjakan
+                // (Belum / Perlu Revisi). Unit yang sedang approval sudah diisi
+                // teknisi, jadi tidak dihitung terlambat.
+                $deadline = PeriodService::weekDeadline($period, $year, (int) $machine->week_group);
+                $overdue = in_array($display, [PmDisplayStatus::Todo, PmDisplayStatus::Issue], true)
+                    && $now->gte($deadline);
 
                 return [
                     'id' => $machine->id,
@@ -67,6 +76,8 @@ class DashboardService
                     'progress_note' => $record?->status->isInApproval()
                         ? $record->status->label()
                         : null,
+                    'overdue' => $overdue,
+                    'deadline' => $deadline->subDay()->toDateString(),
                 ];
             })
             ->values();
@@ -80,6 +91,7 @@ class DashboardService
             'progress' => $machines->where('status', PmDisplayStatus::Progress->value)->count(),
             'todo' => $machines->where('status', PmDisplayStatus::Todo->value)->count(),
             'issue' => $machines->where('status', PmDisplayStatus::Issue->value)->count(),
+            'overdue' => $machines->where('overdue', true)->count(),
         ];
     }
 
@@ -117,7 +129,8 @@ class DashboardService
 
         return $machines
             ->when($subCategory !== 'all', fn ($c) => $c->where('sub_category', $subCategory))
-            ->when($status !== 'all', fn ($c) => $c->where('status', $status))
+            ->when($status === 'overdue', fn ($c) => $c->where('overdue', true))
+            ->when(! in_array($status, ['all', 'overdue'], true), fn ($c) => $c->where('status', $status))
             ->when($needle !== '', fn ($c) => $c->filter(fn ($m) => str_contains(mb_strtolower($m['code']), $needle)
                 || str_contains(mb_strtolower($m['name']), $needle)
                 // Sub-category dan lokasi ikut dicari supaya "W.7" atau
