@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import NeuToast from '@/Components/NeuToast';
+import OfflineOutbox from '@/Components/OfflineOutbox';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
@@ -113,6 +114,9 @@ export default function Authenticated({ user: userProp, header, children }) {
     return (
         <div className="min-h-screen bg-neu-bg">
             <NeuToast toast={toast} onDismiss={() => setToast(null)} />
+
+            {/* Antrean checklist PM yang diisi tanpa jaringan ke server. */}
+            {can?.['pm.fill'] && <OfflineOutbox userId={user?.id} onToast={setToast} />}
 
             {/*
                 Sidebar baru dipakai mulai desktop (lg/1024px). iPad dan

@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
@@ -8,11 +8,85 @@ import NeuTrack from '@/Components/NeuTrack';
 import NeuSignaturePad from '@/Components/NeuSignaturePad';
 import SignatureActions from '@/Components/SignatureActions';
 import SignatureChain from '@/Components/SignatureChain';
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+    CHANGE_EVENT,
+    clearDraft,
+    enqueue,
+    findQueued,
+    loadDraft,
+    newClientId,
+    removeFromOutbox,
+    returnToDraft,
+    saveDraft,
+    sendSubmission,
+    syncOutbox,
+} from '@/offline/pmOffline';
+
+/**
+ * Gabungkan isian item dari draft perangkat ke daftar item dari server.
+ * Dicocokkan lewat nama + kategori, bukan indeks, supaya perubahan template
+ * setelah draft dibuat tidak menggeser nilai ke item yang salah.
+ */
+function mergeDraftItems(items, draftItems) {
+    if (!Array.isArray(draftItems)) return items.map((item) => ({ ...item }));
+
+    return items.map((item) => {
+        const saved = draftItems.find((d) => d.item_name === item.item_name && d.category === item.category);
+        if (!saved) return { ...item };
+
+        return {
+            ...item,
+            actual: saved.actual ?? item.actual,
+            act_clean: Boolean(saved.act_clean),
+            act_repair: Boolean(saved.act_repair),
+            act_lubricate: Boolean(saved.act_lubricate),
+            act_replace: Boolean(saved.act_replace),
+            replace_note: saved.replace_note ?? item.replace_note ?? '',
+        };
+    });
+}
+
+const formatSavedAt = (iso) => {
+    try {
+        return new Date(iso).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return '';
+    }
+};
 
 
 export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain, savedSignature = null }) {
-    const [formItems, setFormItems] = useState(items.map(item => ({ ...item })));
+    const userId = auth.user.id;
+
+    // Checklist hanya bisa diisi (dan disimpan sebagai draft di perangkat)
+    // selama masih di tahap teknisi.
+    const editableHere = canFill && !isFuturePeriod && canSignTechnician
+        && (!existing || chain?.awaiting === 'technician');
+
+    // Draft & antrean dibaca sekali saat halaman dibuka. Draft yang tertinggal
+    // untuk record yang sudah lewat tahap teknisi dibuang karena basi.
+    const [initialDraft] = useState(() => {
+        const draft = loadDraft(userId, machine.id, year, period);
+        if (draft && !editableHere) {
+            clearDraft(userId, machine.id, year, period);
+            return null;
+        }
+        return draft;
+    });
+    const [queued, setQueued] = useState(() => findQueued(userId, machine.id, year, period));
+    const [restoredAt, setRestoredAt] = useState(initialDraft?.saved_at ?? null);
+    const [signatureSeed, setSignatureSeed] = useState(initialDraft?.signature ?? null);
+    const [sending, setSending] = useState(false);
+    const [queueNotice, setQueueNotice] = useState('');
+    const clientIdRef = useRef(initialDraft?.client_id ?? queued?.client_id ?? newClientId());
+    const signatureRef = useRef(initialDraft?.signature ?? null);
+    const dirtyRef = useRef(false);
+    // Selama submit dari tombol berjalan, perubahan antrean ditangani langsung
+    // oleh handleSubmit, bukan oleh listener antrean.
+    const foregroundRef = useRef(false);
+
+    const [formItems, setFormItems] = useState(() => mergeDraftItems(items, initialDraft?.items));
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [hasSignature, setHasSignature] = useState(false);
@@ -22,7 +96,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
     const padRef = useRef(null);
 
-    const { data, setData, post, processing } = useForm({
+    const serverDefaults = {
         machine_id: machine.id,
         year: year,
         period: period,
@@ -32,17 +106,117 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         general_note: existing?.general_note || '',
         revision_reason: '',
         note: '',
-        items: formItems,
         signature: '',
         // User PIC yang menunggu tahap 2. Saat revisi, penugasan sebelumnya
         // sudah terpilih supaya tidak diam-diam berganti orang; teknisi tetap
         // bisa mengubahnya sebelum submit ulang.
         pic_user_id: existing?.pic_user_id ? String(existing.pic_user_id) : '',
+    };
+
+    const fieldsFromDraft = (draft) => ({
+        technician_name: draft?.technician_name ?? serverDefaults.technician_name,
+        general_note: draft?.general_note ?? serverDefaults.general_note,
+        revision_reason: draft?.revision_reason ?? '',
+        note: draft?.note ?? '',
+        pic_user_id: draft?.pic_user_id ?? serverDefaults.pic_user_id,
     });
+
+    const { data, setData } = useForm({
+        ...serverDefaults,
+        ...(initialDraft ? fieldsFromDraft(initialDraft) : {}),
+        items: formItems,
+    });
+
+    const setField = (field, value) => {
+        dirtyRef.current = true;
+        setData(field, value);
+    };
+
+    /*
+        Simpan otomatis ke perangkat setiap kali isian berubah, supaya checklist
+        yang diisi di area tanpa jaringan tidak hilang walau halaman di-refresh,
+        baterai habis, atau browser ditutup.
+    */
+    const persistDraft = useCallback(() => {
+        if (!editableHere || queued) return;
+
+        saveDraft(userId, machine.id, year, period, {
+            client_id: clientIdRef.current,
+            technician_name: data.technician_name,
+            general_note: data.general_note,
+            revision_reason: data.revision_reason,
+            note: data.note,
+            pic_user_id: data.pic_user_id,
+            items: formItems,
+            signature: signatureRef.current,
+        });
+    }, [editableHere, queued, userId, machine.id, year, period, data, formItems]);
+
+    useEffect(() => {
+        if (!dirtyRef.current) return undefined;
+        const timer = setTimeout(persistDraft, 400);
+        return () => clearTimeout(timer);
+    }, [persistDraft]);
+
+    // Pantau antrean: begitu checklist yang menunggu terkirim di latar
+    // belakang, muat ulang data form dari server.
+    useEffect(() => {
+        const onChange = (event) => {
+            if (foregroundRef.current) return;
+            const current = findQueued(userId, machine.id, year, period);
+            setQueued((previous) => {
+                if (previous && !current && event?.detail?.sent?.includes(previous.client_id)) {
+                    router.reload();
+                }
+                return current;
+            });
+        };
+
+        window.addEventListener(CHANGE_EVENT, onChange);
+        return () => window.removeEventListener(CHANGE_EVENT, onChange);
+    }, [userId, machine.id, year, period]);
+
+    const restoreIntoForm = (draft) => {
+        const merged = mergeDraftItems(items, draft?.items);
+        setFormItems(merged);
+        setData((current) => ({ ...current, ...fieldsFromDraft(draft), items: merged }));
+        signatureRef.current = draft?.signature ?? null;
+        setSignatureSeed(draft?.signature ?? null);
+        if (!draft?.signature) padRef.current?.clear();
+        clientIdRef.current = draft?.client_id ?? newClientId();
+    };
+
+    const discardDraft = () => {
+        if (!window.confirm('Buang draft di perangkat ini dan kembali ke isian dari server?')) return;
+        clearDraft(userId, machine.id, year, period);
+        dirtyRef.current = false;
+        restoreIntoForm(null);
+        setRestoredAt(null);
+    };
+
+    const editQueued = () => {
+        if (!queued) return;
+        const item = returnToDraft(userId, queued.client_id);
+        setQueued(null);
+        setQueueNotice('');
+        if (item) {
+            restoreIntoForm({ ...item.payload, client_id: item.client_id });
+            setRestoredAt(new Date().toISOString());
+        }
+    };
+
+    const sendQueuedNow = async () => {
+        setSending(true);
+        const summary = await syncOutbox(userId);
+        setSending(false);
+        if (summary.offline) setQueueNotice('Server belum bisa dijangkau. Checklist tetap aman di perangkat dan akan dikirim otomatis.');
+        else if (summary.auth) setQueueNotice('Sesi login berakhir. Login ulang lalu buka halaman ini lagi untuk mengirim.');
+    };
 
     const updateItem = (index, field, value) => {
         const newItems = [...formItems];
         newItems[index] = { ...newItems[index], [field]: value };
+        dirtyRef.current = true;
         setFormItems(newItems);
         setData('items', newItems);
     };
@@ -58,6 +232,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         }
 
         newItems[index] = updated;
+        dirtyRef.current = true;
         setFormItems(newItems);
         setData('items', newItems);
     };
@@ -89,7 +264,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                         ? `Setelah submit, checklist menunggu persetujuan ${picChosenName}.`
                         : 'Setelah submit, checklist langsung diteruskan ke User PIC.';
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         const incomplete = formItems.some(item => !item.actual);
         if (incomplete) {
@@ -125,24 +300,64 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
         setError('');
         setSubmitError('');
+        setQueueNotice('');
 
         /*
-            `post` ini berasal dari useForm, jadi payload-nya hanya berisi state
-            form. Opsi `data: { signature }` pada post() dibaca sebagai opsi
-            request Inertia, bukan isi payload, dan dibuang tanpa jejak —
-            backend lalu membalas "Tanda tangan wajib digambar." meski canvas
-            sudah berisi tinta. Jadi data URL-nya harus masuk ke state form dulu;
-            commitData() memperbarui dataRef secara sinkron, jadi nilai ini sudah
-            terbaca oleh post() di bawah pada tick yang sama.
+            Checklist selalu masuk antrean perangkat dulu, baru dikirim. Kalau
+            jaringan ke server putus di tengah jalan, isian sudah aman dan akan
+            dikirim ulang otomatis; client_id yang sama mencegah PM tercatat
+            dua kali.
         */
-        setData('signature', signature);
-
-        post(route('machines.pm.store', { machine: machine.id }), {
-            preserveScroll: true,
-            onError: (formErrors) => {
-                setSubmitError(Object.values(formErrors)[0] ?? 'Gagal menyimpan checklist.');
-            },
+        foregroundRef.current = true;
+        const entry = enqueue(userId, {
+            client_id: clientIdRef.current,
+            machine_id: machine.id,
+            machine_name: machine.name,
+            machine_code: machine.code,
+            year,
+            period,
+            payload: { ...data, items: formItems, signature },
         });
+
+        if (!entry) {
+            foregroundRef.current = false;
+            setSubmitError('Penyimpanan perangkat penuh. Hapus data browser yang tidak dipakai lalu coba lagi.');
+            return;
+        }
+
+        setSending(true);
+        const outcome = await sendSubmission(entry, { foreground: true, expectedUserId: userId });
+        setSending(false);
+        foregroundRef.current = false;
+
+        if (outcome.result === 'sent') {
+            removeFromOutbox(userId, entry.client_id);
+            clearDraft(userId, machine.id, year, period);
+            router.visit(outcome.data?.redirect ?? dashboardUrl ?? route('dashboard'));
+            return;
+        }
+
+        if (outcome.result === 'offline' || outcome.result === 'auth' || outcome.result === 'error') {
+            // Tetap di antrean; draft tidak diperlukan lagi karena isinya
+            // sudah tersimpan utuh di entri antrean.
+            clearDraft(userId, machine.id, year, period);
+            setQueued(findQueued(userId, machine.id, year, period));
+            setQueueNotice(
+                outcome.result === 'auth'
+                    ? 'Sesi login berakhir. Checklist tersimpan di perangkat; login ulang supaya bisa dikirim.'
+                    : outcome.result === 'error'
+                        ? `Server sedang bermasalah (${outcome.message}). Checklist tersimpan di perangkat dan akan dikirim ulang otomatis.`
+                        : '',
+            );
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            return;
+        }
+
+        // Ditolak validasi/otorisasi: kembalikan ke draft supaya bisa diperbaiki.
+        removeFromOutbox(userId, entry.client_id);
+        signatureRef.current = signature;
+        persistDraft();
+        setSubmitError(outcome.message);
     };
 
     const actions = [
@@ -152,7 +367,8 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         { key: 'act_replace', label: 'Perlu Pergantian' },
     ];
 
-    const readOnly = !canFill || isFuturePeriod;
+    const lockedByQueue = Boolean(queued) && queued.status !== 'failed';
+    const readOnly = !canFill || isFuturePeriod || lockedByQueue;
 
     // Tahap yang sedang menunggu ditandatangani, untuk judul panel aksi.
     const activeStage = chain?.stages?.find((stage) => stage.value === chain.awaiting) ?? null;
@@ -215,6 +431,62 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                     Semua isian di bawah tetap ada dan bisa diubah, termasuk User PIC.
                                     Setelah diubah, submit ulang untuk mengulang tahap persetujuan.
                                 </p>
+                            </div>
+                        </div>
+                    </NeuCard>
+                )}
+
+                {queued && (
+                    <NeuCard className={`mb-4 ${queued.status === 'failed' ? '!bg-[#FCEFEC]' : '!bg-[#FFF5E6]'}`}>
+                        <div className="flex items-start gap-3">
+                            <span
+                                className={`neu-inset w-9 h-9 flex-none grid place-items-center font-bold ${queued.status === 'failed' ? 'text-neu-bad' : 'text-neu-warn'}`}
+                                aria-hidden="true"
+                            >
+                                {queued.status === 'failed' ? '!' : '⇅'}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className={`text-sm font-bold ${queued.status === 'failed' ? 'text-neu-bad' : 'text-neu-warn'}`}>
+                                    {queued.status === 'failed'
+                                        ? 'Checklist gagal dikirim ke server'
+                                        : 'Checklist tersimpan di perangkat, menunggu terkirim'}
+                                </p>
+                                <p className="text-xs text-neu-sub mt-0.5">
+                                    Disubmit {formatSavedAt(queued.queued_at)}.{' '}
+                                    {queued.status === 'failed'
+                                        ? queued.error
+                                        : 'Akan dikirim otomatis begitu perangkat terhubung ke server, lalu lanjut ke approval User PIC. Jangan hapus data browser.'}
+                                </p>
+                                {queueNotice && <p className="text-xs text-neu-warn mt-1.5">{queueNotice}</p>}
+                                <div className="flex gap-2.5 flex-wrap mt-3">
+                                    {queued.status !== 'failed' && (
+                                        <NeuButton onClick={sendQueuedNow} disabled={sending} className="!min-h-[36px] !py-1.5 !px-3 !text-xs">
+                                            {sending ? 'Mengirim…' : 'Kirim sekarang'}
+                                        </NeuButton>
+                                    )}
+                                    <NeuButton onClick={editQueued} disabled={sending} className="!min-h-[36px] !py-1.5 !px-3 !text-xs">
+                                        {queued.status === 'failed' ? 'Perbaiki checklist' : 'Batalkan kiriman & ubah'}
+                                    </NeuButton>
+                                </div>
+                            </div>
+                        </div>
+                    </NeuCard>
+                )}
+
+                {!queued && restoredAt && editableHere && (
+                    <NeuCard className="mb-4 !shadow-neu-in">
+                        <div className="flex items-start gap-3">
+                            <span className="neu-inset w-9 h-9 flex-none grid place-items-center text-neu-info font-bold" aria-hidden="true">
+                                ✎
+                            </span>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-bold">Draft dari perangkat ini dipulihkan</p>
+                                <p className="text-xs text-neu-sub mt-0.5">
+                                    Isian terakhir disimpan {formatSavedAt(restoredAt)}. Lanjutkan mengisi lalu Submit.
+                                </p>
+                                <button type="button" onClick={discardDraft} className="text-xs font-semibold text-neu-bad mt-1.5">
+                                    Buang draft
+                                </button>
                             </div>
                         </div>
                     </NeuCard>
@@ -321,7 +593,9 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                 {readOnly && (
                     <NeuCard className="mb-4 !shadow-neu-in">
                         <p className="text-sm text-neu-sub">
-                            {isFuturePeriod
+                            {lockedByQueue
+                                ? 'Checklist sudah disubmit dari perangkat ini dan dikunci sampai terkirim ke server.'
+                                : isFuturePeriod
                                 ? 'Periode ini belum tiba.'
                                 : (chain?.canSign || chain?.canReject)
                                     ? 'Anda membuka checklist ini dalam mode tinjau. Isinya tidak dapat diubah; gunakan panel Persetujuan di bawah untuk menyetujui atau menolak.'
@@ -427,7 +701,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                             <textarea
                                 id="general_note"
                                 value={data.general_note}
-                                onChange={(e) => setData('general_note', e.target.value)}
+                                onChange={(e) => setField('general_note', e.target.value)}
                                 placeholder="Catatan tambahan (opsional)"
                                 className="neu-input min-h-[80px] resize-y"
                                 rows={3}
@@ -445,7 +719,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                 id="revision_reason"
                                 type="text"
                                 value={data.revision_reason}
-                                onChange={(e) => setData('revision_reason', e.target.value)}
+                                onChange={(e) => setField('revision_reason', e.target.value)}
                                 placeholder="Jika revisi, jelaskan alasan"
                                 className="neu-input"
                             />
@@ -480,7 +754,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                         type="text"
                                         value={data.technician_name}
                                         onChange={(e) => {
-                                            setData('technician_name', e.target.value);
+                                            setField('technician_name', e.target.value);
                                             if (error) setError('');
                                         }}
                                         placeholder="Tulis nama lengkap teknisi/pemeriksa"
@@ -491,9 +765,15 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
                                     <NeuSignaturePad
                                         ref={padRef}
-                                        disabled={processing}
+                                        disabled={sending}
                                         error={Boolean(error) && !hasSignature}
                                         onChange={(value) => setHasSignature(Boolean(value))}
+                                        initialDataUrl={signatureSeed}
+                                        onStrokeEnd={(value) => {
+                                            signatureRef.current = value;
+                                            dirtyRef.current = true;
+                                            persistDraft();
+                                        }}
                                     />
 
                                     {/*
@@ -510,10 +790,10 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                         id="pic_user_id"
                                         value={data.pic_user_id}
                                         onChange={(e) => {
-                                            setData('pic_user_id', e.target.value);
+                                            setField('pic_user_id', e.target.value);
                                             if (error) setError('');
                                         }}
-                                        disabled={processing}
+                                        disabled={sending}
                                         aria-describedby="pic_user_id-hint"
                                         aria-invalid={Boolean(error) && !picChosen}
                                         className={`neu-input mb-1.5 ${error && !picChosen ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]' : ''}`}
@@ -537,7 +817,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                     <textarea
                                         id="pm-note"
                                         value={data.note}
-                                        onChange={(e) => setData('note', e.target.value)}
+                                        onChange={(e) => setField('note', e.target.value)}
                                         rows={2}
                                         maxLength={500}
                                         placeholder="Catatan tambahan (opsional)"
@@ -554,10 +834,10 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                 type="submit"
                                 variant="primary"
                                 className="w-full !py-4 text-base"
-                                disabled={processing || !nameFilled || !hasSignature || !picChosen}
+                                disabled={sending || !nameFilled || !hasSignature || !picChosen}
                             >
-                                {processing
-                                    ? 'Menyimpan...'
+                                {sending
+                                    ? 'Mengirim...'
                                     : existing ? 'Submit & Tanda tangan' : 'Submit Checklist'}
                             </NeuButton>
 

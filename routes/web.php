@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MachineController;
 use App\Http\Controllers\PmRecordController;
 use App\Http\Controllers\PmSignatureController;
+use App\Http\Controllers\PmSyncController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
@@ -92,6 +93,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->middleware('can:pm.history.view');
     Route::post('/machines/{machine}/pm', [PmRecordController::class, 'store'])
         ->name('machines.pm.store')
+        ->middleware('can:pm.fill');
+
+    // Submit checklist versi JSON: dipakai form PM dan antrean offline di
+    // perangkat teknisi (lihat PmSyncController).
+    Route::get('/pm/sync/ping', [PmSyncController::class, 'ping'])
+        ->name('pm.sync.ping');
+    Route::post('/pm/sync', [PmSyncController::class, 'store'])
+        ->name('pm.sync')
         ->middleware('can:pm.fill');
 
     // Satu endpoint untuk ketiga tahap; tahap aktif dibaca dari status record

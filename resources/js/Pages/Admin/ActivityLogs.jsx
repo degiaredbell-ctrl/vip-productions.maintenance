@@ -38,6 +38,7 @@ const ACTION_LABELS = {
     'pm.acknowledge': 'Persetujuan User PIC',
     'pm.approve': 'Persetujuan Atasan',
     'pm.reject': 'Tolak PM',
+    'pm.offline_sync': 'PM Terkirim dari Offline',
     'pm.revise': 'Revisi PM',
     'pm.delete': 'Hapus PM Record',
     'backup.create': 'Buat Backup',

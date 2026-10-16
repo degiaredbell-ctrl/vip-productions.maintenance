@@ -15,7 +15,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
  * hanya menempel ke pad pertama.
  */
 const NeuSignaturePad = forwardRef(function NeuSignaturePad(
-    { disabled = false, label = 'Tanda Tangan', id = 'signature-pad', onChange, error = false },
+    { disabled = false, label = 'Tanda Tangan', id = 'signature-pad', onChange, onStrokeEnd, initialDataUrl = null, error = false },
     ref,
 ) {
     const canvasRef = useRef(null);
@@ -80,6 +80,26 @@ const NeuSignaturePad = forwardRef(function NeuSignaturePad(
 
         return () => observer.disconnect();
     }, [prepareCanvas]);
+
+    // Tanda tangan dari draft di perangkat digambar ulang ke kanvas, supaya
+    // teknisi tidak perlu menandatangani lagi setelah halaman dimuat ulang.
+    useEffect(() => {
+        if (!initialDataUrl) return;
+
+        const prepared = prepareCanvas();
+        if (!prepared) return;
+
+        const { ctx, rect } = prepared;
+        const image = new Image();
+        image.onload = () => {
+            ctx.drawImage(image, 0, 0, rect.width, rect.height);
+            hasInk.current = true;
+            setEmpty(false);
+            onChange?.(true);
+        };
+        image.src = initialDataUrl;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [initialDataUrl, prepareCanvas]);
 
     useImperativeHandle(ref, () => ({
         getDataUrl: () => {
@@ -147,6 +167,10 @@ const NeuSignaturePad = forwardRef(function NeuSignaturePad(
         drawing.current = false;
         last.current = null;
         canvasRef.current?.releasePointerCapture?.(event.pointerId);
+
+        if (hasInk.current && onStrokeEnd) {
+            onStrokeEnd(canvasRef.current.toDataURL('image/png'));
+        }
     };
 
     const handleClear = () => {
@@ -156,6 +180,7 @@ const NeuSignaturePad = forwardRef(function NeuSignaturePad(
         hasInk.current = false;
         setEmpty(true);
         onChange?.(null);
+        onStrokeEnd?.(null);
     };
 
     return (
