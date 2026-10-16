@@ -63,9 +63,11 @@ class PmSyncController extends Controller
             try {
                 app(SignPmRecord::class)->handle(
                     $record,
-                    $data['signature'],
+                    $data['signature'] ?? null,
                     $data['note'] ?? null,
                     $data['technician_name'],
+                    $form->usesSavedSignature(),
+                    $form->savesSignatureToProfile(),
                 );
             } catch (\Throwable $exception) {
                 report($exception);

@@ -90,6 +90,21 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
     const [error, setError] = useState('');
     const [submitError, setSubmitError] = useState('');
     const [hasSignature, setHasSignature] = useState(false);
+
+    /*
+        Dua cara mengisi identitas penanda tangan tahap teknisi:
+        - "self"   (Data Saya): nama = nama akun, tanda tangan otomatis dari
+                    Profile bila sudah tersimpan (atau digambar bila belum).
+        - "manual" (Isi Manual): nama diketik dan tanda tangan digambar,
+                    untuk pemeriksa yang berbeda dari pemilik akun.
+        Revisi yang sebelumnya memakai nama lain otomatis dibuka di mode manual.
+    */
+    const accountName = auth.user.name;
+    const [signerMode, setSignerMode] = useState(() => initialDraft?.signer_mode
+        ?? (existing?.technician_name && existing.technician_name.trim() !== accountName.trim() ? 'manual' : 'self'));
+    const [useSaved, setUseSaved] = useState(() => initialDraft?.use_saved_signature ?? Boolean(savedSignature));
+    const [saveToProfile, setSaveToProfile] = useState(() => Boolean(initialDraft?.save_signature_to_profile));
+    const [savedPreviewFailed, setSavedPreviewFailed] = useState(false);
     // Detail stempel waktu dokumen: tertutup sebagai default supaya checklist
     // tetap yang pertama terlihat, dan hanya bisa dibuka dari barisnya.
     const [showHistory, setShowHistory] = useState(true);
@@ -149,8 +164,11 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
             pic_user_id: data.pic_user_id,
             items: formItems,
             signature: signatureRef.current,
+            signer_mode: signerMode,
+            use_saved_signature: useSaved,
+            save_signature_to_profile: saveToProfile,
         });
-    }, [editableHere, queued, userId, machine.id, year, period, data, formItems]);
+    }, [editableHere, queued, userId, machine.id, year, period, data, formItems, signerMode, useSaved, saveToProfile]);
 
     useEffect(() => {
         if (!dirtyRef.current) return undefined;
@@ -183,7 +201,31 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         signatureRef.current = draft?.signature ?? null;
         setSignatureSeed(draft?.signature ?? null);
         if (!draft?.signature) padRef.current?.clear();
+        if (draft?.signer_mode) setSignerMode(draft.signer_mode);
+        if (draft && 'use_saved_signature' in draft) setUseSaved(Boolean(draft.use_saved_signature));
+        setSaveToProfile(Boolean(draft?.save_signature_to_profile));
         clientIdRef.current = draft?.client_id ?? newClientId();
+    };
+
+    // Ganti orang penanda tangan = tanda tangan yang sudah digambar dibuang,
+    // supaya coretan orang lain tidak ikut terkirim atas nama berbeda.
+    const changeSignerMode = (mode) => {
+        if (mode === signerMode) return;
+        dirtyRef.current = true;
+        signatureRef.current = null;
+        setSignatureSeed(null);
+        setHasSignature(false);
+        setSignerMode(mode);
+        if (error) setError('');
+    };
+
+    const changeUseSaved = (value) => {
+        dirtyRef.current = true;
+        // Coretan yang sempat dibuat di mode gambar digambar ulang saat kembali.
+        setSignatureSeed(signatureRef.current);
+        setHasSignature(false);
+        setUseSaved(value);
+        if (error) setError('');
     };
 
     const discardDraft = () => {
@@ -239,7 +281,10 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
     const progress = Math.round(formItems.filter(item => item.actual).length / formItems.length * 100);
 
-    const nameFilled = data.technician_name.trim() !== '';
+    const signerName = signerMode === 'self' ? accountName : data.technician_name;
+    const nameFilled = signerName.trim() !== '';
+    const usingSavedSignature = signerMode === 'self' && Boolean(savedSignature) && useSaved;
+    const signatureReady = usingSavedSignature || hasSignature;
     // Value dari <select> selalu string, jadi id "0" tidak mungkin terjadi di
     // sini; kosong berarti belum ada yang dipilih.
     const picChosen = data.pic_user_id !== '';
@@ -252,13 +297,13 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         field paling atas supaya teknisi tahu harus mengisi apa berikutnya, bukan
         hanya melihat tombol yang tiba-tiba mati.
     */
-    const submitHint = !nameFilled && !hasSignature && !picChosen
+    const submitHint = !nameFilled && !signatureReady && !picChosen
         ? 'Nama teknisi, User PIC, dan tanda tangan wajib diisi sebelum submit.'
         : !nameFilled
             ? 'Nama teknisi wajib diisi sebelum submit.'
             : !picChosen
                 ? 'Pilih User PIC yang akan menyetujui sebelum submit.'
-                : !hasSignature
+                : !signatureReady
                     ? 'Tanda tangan wajib digambar sebelum submit.'
                     : picChosenName
                         ? `Setelah submit, checklist menunggu persetujuan ${picChosenName}.`
@@ -292,8 +337,8 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
             return;
         }
 
-        const signature = padRef.current?.getDataUrl();
-        if (!signature) {
+        const signature = usingSavedSignature ? null : padRef.current?.getDataUrl();
+        if (!usingSavedSignature && !signature) {
             setError('Tanda tangan wajib digambar sebelum melanjutkan.');
             return;
         }
@@ -316,7 +361,15 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
             machine_code: machine.code,
             year,
             period,
-            payload: { ...data, items: formItems, signature },
+            payload: {
+                ...data,
+                items: formItems,
+                technician_name: signerName.trim(),
+                signature,
+                signer_mode: signerMode,
+                use_saved_signature: usingSavedSignature,
+                save_signature_to_profile: signerMode === 'self' && !usingSavedSignature && saveToProfile,
+            },
         });
 
         if (!entry) {
@@ -736,7 +789,8 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                         <NeuCard className="mb-4">
                             <b className="text-sm block mb-0.5">Tanda Tangan Teknisi/Pemeriksa</b>
                             <p className="text-xs text-neu-sub mb-4">
-                                Checklist ditutup dengan satu submit: isi nama dan tanda tangan, lalu kirim untuk approval.
+                                Pilih <b>Data Saya</b> untuk memakai nama &amp; tanda tangan akun Anda, atau <b>Isi Manual</b>{' '}
+                                untuk mengetik nama dan menggambar tanda tangan pemeriksa.
                             </p>
 
                             {!canSignTechnician ? (
@@ -746,35 +800,138 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                 </p>
                             ) : (
                                 <>
-                                    <label htmlFor="technician_name" className="block text-xs text-neu-sub mb-1.5">
-                                        Nama Teknisi <span className="text-neu-bad">*</span>
-                                    </label>
-                                    <input
-                                        id="technician_name"
-                                        type="text"
-                                        value={data.technician_name}
-                                        onChange={(e) => {
-                                            setField('technician_name', e.target.value);
-                                            if (error) setError('');
-                                        }}
-                                        placeholder="Tulis nama lengkap teknisi/pemeriksa"
-                                        maxLength={100}
-                                        autoComplete="off"
-                                        className={`neu-input mb-4 ${error && !nameFilled ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]' : ''}`}
-                                    />
+                                    <div className="flex flex-wrap gap-2 mb-4" role="radiogroup" aria-label="Identitas penanda tangan">
+                                        <NeuChip
+                                            size="sm"
+                                            role="radio"
+                                            aria-checked={signerMode === 'self'}
+                                            active={signerMode === 'self'}
+                                            onClick={() => !sending && changeSignerMode('self')}
+                                        >
+                                            Data Saya
+                                        </NeuChip>
+                                        <NeuChip
+                                            size="sm"
+                                            role="radio"
+                                            aria-checked={signerMode === 'manual'}
+                                            active={signerMode === 'manual'}
+                                            onClick={() => !sending && changeSignerMode('manual')}
+                                        >
+                                            Isi Manual
+                                        </NeuChip>
+                                    </div>
 
-                                    <NeuSignaturePad
-                                        ref={padRef}
-                                        disabled={sending}
-                                        error={Boolean(error) && !hasSignature}
-                                        onChange={(value) => setHasSignature(Boolean(value))}
-                                        initialDataUrl={signatureSeed}
-                                        onStrokeEnd={(value) => {
-                                            signatureRef.current = value;
-                                            dirtyRef.current = true;
-                                            persistDraft();
-                                        }}
-                                    />
+                                    {signerMode === 'self' ? (
+                                        <>
+                                            <p className="text-xs text-neu-sub mb-4">
+                                                Nama Teknisi <span className="text-neu-bad">*</span>
+                                                <b className="block text-sm text-neu-text mt-0.5">{accountName}</b>
+                                                <span className="block text-[11px] mt-0.5">Diambil otomatis dari akun Anda.</span>
+                                            </p>
+
+                                            {savedSignature && (
+                                                <div className="flex flex-wrap gap-2 mb-3">
+                                                    <NeuChip size="sm" active={useSaved} onClick={() => !sending && changeUseSaved(true)}>
+                                                        Tanda tangan tersimpan
+                                                    </NeuChip>
+                                                    <NeuChip size="sm" active={!useSaved} onClick={() => !sending && changeUseSaved(false)}>
+                                                        Gambar baru
+                                                    </NeuChip>
+                                                </div>
+                                            )}
+
+                                            {usingSavedSignature ? (
+                                                <>
+                                                    <p className="text-xs text-neu-sub mb-1.5">
+                                                        Tanda tangan dari halaman Profile akan dipakai otomatis.
+                                                    </p>
+                                                    <div className="neu-inset rounded-neu-sm p-3 flex items-center justify-center min-h-[90px]">
+                                                        {savedPreviewFailed ? (
+                                                            <span className="text-xs text-neu-sub text-center">
+                                                                Pratinjau tidak tersedia tanpa jaringan. Tanda tangan tersimpan
+                                                                tetap dipakai saat checklist terkirim.
+                                                            </span>
+                                                        ) : (
+                                                            <img
+                                                                src={`${savedSignature.url}?${savedSignature.version}`}
+                                                                alt="Tanda tangan tersimpan"
+                                                                className="max-h-28"
+                                                                onError={() => setSavedPreviewFailed(true)}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {!savedSignature && (
+                                                        <p className="text-xs text-neu-sub mb-2">
+                                                            Belum ada tanda tangan tersimpan di Profile. Gambar di bawah ini.
+                                                        </p>
+                                                    )}
+                                                    <NeuSignaturePad
+                                                        ref={padRef}
+                                                        disabled={sending}
+                                                        error={Boolean(error) && !hasSignature}
+                                                        onChange={(value) => setHasSignature(Boolean(value))}
+                                                        initialDataUrl={signatureSeed}
+                                                        onStrokeEnd={(value) => {
+                                                            signatureRef.current = value;
+                                                            dirtyRef.current = true;
+                                                            persistDraft();
+                                                        }}
+                                                    />
+                                                    <label className="flex items-start gap-2 mt-3 text-xs text-neu-sub cursor-pointer">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={saveToProfile}
+                                                            onChange={(e) => {
+                                                                dirtyRef.current = true;
+                                                                setSaveToProfile(e.target.checked);
+                                                            }}
+                                                            disabled={sending}
+                                                            className="mt-1 accent-neu-accent"
+                                                        />
+                                                        <span>
+                                                            Simpan tanda tangan ini di Profile saya agar berikutnya
+                                                            terisi otomatis.
+                                                        </span>
+                                                    </label>
+                                                </>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <>
+                                            <label htmlFor="technician_name" className="block text-xs text-neu-sub mb-1.5">
+                                                Nama Teknisi <span className="text-neu-bad">*</span>
+                                            </label>
+                                            <input
+                                                id="technician_name"
+                                                type="text"
+                                                value={data.technician_name}
+                                                onChange={(e) => {
+                                                    setField('technician_name', e.target.value);
+                                                    if (error) setError('');
+                                                }}
+                                                placeholder="Tulis nama lengkap teknisi/pemeriksa"
+                                                maxLength={100}
+                                                autoComplete="off"
+                                                className={`neu-input mb-4 ${error && !nameFilled ? '!shadow-[inset_4px_4px_9px_#C3CAD6,inset_-4px_-4px_9px_#FFFFFF,0_0_0_2px_#B93A2E]' : ''}`}
+                                            />
+
+                                            <NeuSignaturePad
+                                                ref={padRef}
+                                                disabled={sending}
+                                                error={Boolean(error) && !hasSignature}
+                                                onChange={(value) => setHasSignature(Boolean(value))}
+                                                initialDataUrl={signatureSeed}
+                                                onStrokeEnd={(value) => {
+                                                    signatureRef.current = value;
+                                                    dirtyRef.current = true;
+                                                    persistDraft();
+                                                }}
+                                            />
+                                        </>
+                                    )}
 
                                     {/*
                                         Teknisi menunjuk siapa yang menyetujui
@@ -834,7 +991,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                                 type="submit"
                                 variant="primary"
                                 className="w-full !py-4 text-base"
-                                disabled={sending || !nameFilled || !hasSignature || !picChosen}
+                                disabled={sending || !nameFilled || !signatureReady || !picChosen}
                             >
                                 {sending
                                     ? 'Mengirim...'

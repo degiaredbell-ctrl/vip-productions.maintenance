@@ -56,11 +56,16 @@ class SignPmRecord
             throw new \LogicException('Checklist PM belum lengkap.');
         }
 
-        // Tanda tangan tersimpan adalah milik akun yang login; tahap teknisi
-        // menandatangani pekerjaan sendiri dengan nama yang bisa berbeda dari
-        // akun, jadi tetap harus menggambar.
-        if ($useSavedSignature && $stage === SignatureStage::Technician) {
-            throw new \LogicException('Tanda tangan tersimpan tidak dipakai untuk tahap teknisi.');
+        // Tanda tangan tersimpan adalah milik akun yang login. Di tahap teknisi
+        // nama dokumen bisa diketik bebas, jadi tanda tangan tersimpan hanya
+        // sah kalau nama dokumennya memang nama akun itu sendiri (opsi
+        // "Data Saya" di form PM).
+        if (
+            $useSavedSignature
+            && $stage === SignatureStage::Technician
+            && trim((string) $signerName) !== trim((string) Auth::user()?->name)
+        ) {
+            throw new \LogicException('Tanda tangan tersimpan hanya untuk nama akun sendiri.');
         }
 
         if (! $useSavedSignature && ! is_string($dataUrl)) {

@@ -137,4 +137,115 @@ class PmOfflineSyncTest extends TestCase
             ->assertOk()
             ->assertJson(['ok' => true, 'user_id' => $this->teknisi->id]);
     }
+
+    // ------------------------------------------------------------------
+    // Opsi penanda tangan tahap teknisi: "Data Saya" vs "Isi Manual"
+    // ------------------------------------------------------------------
+
+    private function giveProfileSignature(User $user): void
+    {
+        $path = \App\Services\SignatureStorage::storeUserSignature($user, self::PNG);
+        $user->forceFill(['signature_path' => $path])->save();
+    }
+
+    public function test_data_saya_memakai_nama_akun_dan_tanda_tangan_tersimpan(): void
+    {
+        $this->giveProfileSignature($this->teknisi);
+
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload([
+                'signer_mode' => 'self',
+                'use_saved_signature' => true,
+                'signature' => null,
+                // Nama dari client diabaikan di mode Data Saya.
+                'technician_name' => 'Orang Lain',
+            ]))
+            ->assertOk()
+            ->assertJson(['signed' => true]);
+
+        $record = PmRecord::sole();
+        $this->assertSame(PmStatus::Submitted, $record->status);
+        $this->assertSame($this->teknisi->name, $record->technician_name);
+        $signature = $record->signatures()->sole();
+        $this->assertSame($this->teknisi->name, $signature->signed_by_name);
+        Storage::disk('public')->assertExists($signature->image_path);
+    }
+
+    public function test_data_saya_tanpa_tanda_tangan_di_profile_ditolak(): void
+    {
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload([
+                'signer_mode' => 'self',
+                'use_saved_signature' => true,
+                'signature' => null,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('use_saved_signature');
+
+        $this->assertSame(0, PmRecord::count());
+    }
+
+    public function test_isi_manual_tidak_boleh_memakai_tanda_tangan_tersimpan(): void
+    {
+        $this->giveProfileSignature($this->teknisi);
+
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload([
+                'signer_mode' => 'manual',
+                'use_saved_signature' => true,
+                'signature' => null,
+                'technician_name' => 'Budi Santoso',
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('use_saved_signature');
+    }
+
+    public function test_isi_manual_tetap_wajib_nama_dan_tanda_tangan(): void
+    {
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload([
+                'signer_mode' => 'manual',
+                'technician_name' => '',
+                'signature' => null,
+            ]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['technician_name', 'signature']);
+    }
+
+    public function test_isi_manual_menyimpan_nama_yang_diketik(): void
+    {
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload([
+                'signer_mode' => 'manual',
+                'technician_name' => 'Budi Santoso',
+            ]))
+            ->assertOk();
+
+        $this->assertSame('Budi Santoso', PmRecord::sole()->signatures()->sole()->signed_by_name);
+    }
+
+    public function test_data_saya_gambar_baru_bisa_disimpan_ke_profile(): void
+    {
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload([
+                'signer_mode' => 'self',
+                'save_signature_to_profile' => true,
+            ]))
+            ->assertOk();
+
+        $this->assertNotNull($this->teknisi->fresh()->signature_path);
+    }
+
+    public function test_isi_manual_tidak_menyimpan_tanda_tangan_ke_profile(): void
+    {
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload([
+                'signer_mode' => 'manual',
+                'technician_name' => 'Budi Santoso',
+                'save_signature_to_profile' => true,
+            ]))
+            ->assertOk();
+
+        $this->assertNull($this->teknisi->fresh()->signature_path);
+    }
 }

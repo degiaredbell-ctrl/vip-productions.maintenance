@@ -6,6 +6,7 @@ use App\Enums\Period;
 use App\Models\PmRecord;
 use App\Services\PeriodService;
 use App\Services\SignatureChain;
+use App\Services\SignatureStorage;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -34,6 +35,35 @@ class StorePmRecordRequest extends FormRequest
         return $existing === null || $user->can('update', $existing);
     }
 
+    /**
+     * Mode "Data Saya": nama dokumen = nama akun login, dan tanda tangan boleh
+     * diambil dari Profile. Nama dari client diabaikan supaya mode ini tidak
+     * bisa dipakai menandatangani atas nama orang lain dengan tanda tangan
+     * tersimpan milik akun.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->isSelfMode() && $this->user() !== null) {
+            $this->merge(['technician_name' => $this->user()->name]);
+        }
+    }
+
+    public function isSelfMode(): bool
+    {
+        return $this->input('signer_mode') === 'self';
+    }
+
+    public function usesSavedSignature(): bool
+    {
+        return $this->isSelfMode() && $this->boolean('use_saved_signature');
+    }
+
+    /** Gambar baru disalin ke Profile hanya di mode "Data Saya". */
+    public function savesSignatureToProfile(): bool
+    {
+        return $this->isSelfMode() && ! $this->usesSavedSignature() && $this->boolean('save_signature_to_profile');
+    }
+
     public function rules(): array
     {
         return [
@@ -55,7 +85,12 @@ class StorePmRecordRequest extends FormRequest
             ],
             // Data URL PNG dari canvas, bukan upload multipart, supaya tidak
             // butuh storage:link dan tidak ada file sementara di server.
-            'signature' => ['required', 'string', 'regex:/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/'],
+            // Wajib kecuali memakai tanda tangan tersimpan (diperiksa di
+            // withValidator karena bergantung pada signer_mode).
+            'signature' => ['nullable', 'string', 'regex:/^data:image\/png;base64,[A-Za-z0-9+\/=]+$/', 'max:' . SignatureStorage::MAX_CHARS],
+            'signer_mode' => ['sometimes', Rule::in(['self', 'manual'])],
+            'use_saved_signature' => ['sometimes', 'boolean'],
+            'save_signature_to_profile' => ['sometimes', 'boolean'],
             'general_note' => ['nullable', 'string', 'max:1000'],
             'revision_reason' => ['nullable', 'string', 'max:255'],
             'items' => ['required', 'array', 'min:1'],
@@ -84,6 +119,20 @@ class StorePmRecordRequest extends FormRequest
 
             if ($period && PeriodService::isFuturePeriod($period, $year)) {
                 $validator->errors()->add('period', 'Periode masa depan tidak dapat diisi.');
+            }
+
+            if ($this->boolean('use_saved_signature') && ! $this->isSelfMode()) {
+                $validator->errors()->add(
+                    'use_saved_signature',
+                    'Tanda tangan tersimpan hanya bisa dipakai dengan opsi "Data Saya".'
+                );
+            } elseif ($this->usesSavedSignature() && $this->user()?->signature_path === null) {
+                $validator->errors()->add(
+                    'use_saved_signature',
+                    'Anda belum menyimpan tanda tangan di halaman Profile. Gambar tanda tangan di form ini.'
+                );
+            } elseif (! $this->usesSavedSignature() && ! filled($this->input('signature'))) {
+                $validator->errors()->add('signature', 'Tanda tangan wajib digambar.');
             }
 
             // Ketika teknisi mencentang aksi "Perlu Pergantian", wajib menjelaskan
