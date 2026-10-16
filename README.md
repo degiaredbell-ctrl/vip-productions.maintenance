@@ -110,10 +110,14 @@ Satu submit untuk tahap 1 (`POST /machines/{machine}/pm`), satu endpoint untuk t
 - Halaman **`/admin/komponen`** (permission `template.manage`) untuk mengelola master + penugasan; URL lama `/admin/templates` dialihkan ke sini
 - Form PM menyusun item dari komponen unit; **item template lama hanya cadangan** untuk data yang belum termigrasi (oleh `ComponentMigrationService`)
 
-### 8. Form Maintenance
-- Halaman perantara **`/form-maintenance`**: kartu pilih **Mesin** atau **Utility**
-- Daftar unit + status PM per periode di `/form-maintenance/mesin` dan `/form-maintenance/utility` sebagai pintu masuk ke form PM
-- Hanya scope yang boleh diakses yang ditampilkan; kartu di luar scope tampil abu-abu dan tidak bisa diklik maupun dibuka lewat URL
+### 8. Menu Settings & Form Maintenance
+- Item menu **Settings** (`/settings`) menggantikan lima item sidebar terpisah: **Form Maintenance**, **Mesin**, **Utility**, **Suku Cadang**, dan **Komponen / Parts**
+- Halaman Settings menampilkan kartu: **Mesin** → `/machines` dan **Utility** → `/utility` (keduanya halaman kelola/CRUD dengan tombol **Isi PM**), sedangkan kartu **Komponen / Parts** dan **Suku Cadang** masih **nonaktif ("Segera hadir")**
+- Kartu mengikuti permission rute tujuannya: kartu di luar scope user tampil abu-abu dan tidak bisa diklik, sehingga tautan yang tampak aktif tidak pernah berujung 403
+- Sebagai pintu masuk **pengisian form**, sidebar juga menampilkan **Mesin** → `/form-maintenance/mesin`, **Utility** → `/form-maintenance/utility`, dan **Suku Cadang** → `/form-maintenance/suku-cadang`
+- **Form Maintenance - Mesin/Utility** (`/form-maintenance/mesin`, `/form-maintenance/utility`): daftar unit + status PM per periode sebagai pintu masuk ke form PM
+- **Form Maintenance - Suku Cadang** (`/form-maintenance/suku-cadang`): catat **pemakaian suku cadang ke unit** (Mesin/Utility) per periode PM + riwayat pemakaian per tahun/periode. Pemakaian tersimpan sebagai transaksi stok **keluar** bertujuan unit dan langsung mengurangi stok; hanya pemegang `sparepart.manage` yang boleh mencatat
+- Halaman lama tetap hidup dan bisa dibuka lewat URL langsung (`/form-maintenance`, `/admin/komponen`, `/suku-cadang`) meski tidak lagi tampil di sidebar
 
 ### 9. Manajemen Pengguna (role `admin`)
 - **CRUD pengguna penuh**: tambah, edit nama/email/role, hapus
@@ -161,6 +165,7 @@ per mesin, meski kartunya tidak lagi tampil di layar.
 - **Soft delete** (hapus dari daftar; pulih lewat `restore`/impor ulang) — termasuk **hapus massal** lewat checkbox baris
 - Tombol aksi berupa ikon (masuk `+`, keluar `−`, riwayat, ubah, hapus) agar tabel lebih ringkas
 - Semua user login boleh **melihat**; **kelola** (CRUD, transaksi, impor) hanya pemegang `sparepart.manage` (Admin & tech-all)
+- **Pemakaian ke unit** per periode PM dicatat dari halaman `/form-maintenance/suku-cadang` (lihat §8); tersimpan sebagai transaksi stok keluar bertujuan unit
 
 ### 15. UI / UX
 - Design system **Neumorphism** (`NeuCard`, `NeuButton`, `NeuInput`, `NeuPill`, `NeuRing`, `NeuToast`, `NeuTrack`, `NeuBars`, `NeuSignaturePad`)

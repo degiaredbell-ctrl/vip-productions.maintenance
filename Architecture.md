@@ -152,6 +152,7 @@ app/
 │       ├── ReportController.php         Statistik + export
 │       ├── ProfileController.php        Info akun + tanda tangan tersimpan
 │       ├── SparePartController.php      Master suku cadang + transaksi stok + impor
+│       ├── SparePartUsageController.php Pemakaian suku cadang ke unit per periode (form-maintenance/suku-cadang)
 │       └── Admin/
 │           ├── UserController.php       CRUD pengguna + ganti password
 │           ├── RoleController.php       CRUD role (authorizeResource)
@@ -284,11 +285,12 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 │  qty, stock, stock_start     │        │  qty                          │
 │  stock_in/out(_log)          │        │  moved_at                     │
 │  min_stock, supplier         │        │  note                         │
-│  needed_for, note            │        └───────────────────────────────┘
-│  location_code, location     │
-│  sort_no, deleted_at (soft)  │  ← global, TIDAK terikat ke assets
-└──────────────────────────────┘
+│  needed_for, note            │        │  machine_id (unit tujuan)*    │
+│  location_code, location     │        │  year, period (periode PM)*   │
+│  sort_no, deleted_at (soft)  │  ← global, TIDAK terikat ke assets        │
+└──────────────────────────────┘        └───────────────────────────────┘
 ```
+*Diisi bila transaksi adalah **pemakaian ke unit** (lihat `SparePartUsageController`); transaksi stok biasa membiarkannya `null`.
 
 ★ = snapshot, sengaja diduplikasi agar jejaknya tidak hilang saat akun dihapus.
 
@@ -318,7 +320,7 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 - `audit_logs`: `(subject_type, subject_id)`
 - `backups`: `created_at`
 - `spare_parts`: unique `code`, `category`, `name`, `location_code`, `(category, name)`
-- `spare_part_movements`: `(spare_part_id, moved_at)`
+- `spare_part_movements`: `(spare_part_id, moved_at)`, `(machine_id, year, period)`
 
 ### Komponen / Parts (pengganti Template)
 
@@ -645,6 +647,8 @@ POST /pm/{record}/sign
 | `/utility/{machine}/components` | PUT | `MachineController@updateComponents` | `can:utility.manage` + `authorizeType()` |
 | `/form-maintenance/mesin` | GET | `DashboardController@formMaintenanceMesin` | `can_any:machine.manage,machine.view,dashboard.view` |
 | `/form-maintenance/utility` | GET | `DashboardController@formMaintenanceUtility` | `can_any:utility.view,dashboard.view` |
+| `/form-maintenance/suku-cadang` | GET | `SparePartUsageController@index` | `can:sparepart.view` |
+| `/form-maintenance/suku-cadang` | POST | `SparePartUsageController@store` | `can:sparepart.manage` |
 | `/admin/users` | GET | `UserController@index` | `can:user.manage` |
 | `/admin/users` | POST | `UserController@store` | `can:user.manage` + Policy |
 | `/admin/users/{user}` | PUT | `UserController@update` | `can:user.manage` + Policy |
@@ -711,6 +715,8 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 `AuthenticatedLayout.jsx` menyusun sidebar + header:
 
 - Item menu didefinisikan sekali dengan flag `show` berdasarkan `auth.can`.
+- Item **Settings** (`/settings`) menggantikan item terpisah Form Maintenance/Mesin/Utility/Suku Cadang/Komponen; menunya tetap ditandai aktif saat berada di salah satu halaman modul (`/machines`, `/utility`, `/admin/komponen`, `/suku-cadang`).
+- Item **Mesin**/**Utility**/**Suku Cadang** mengarah langsung ke halaman pengisian form (`/form-maintenance/mesin`, `/form-maintenance/utility`, `/form-maintenance/suku-cadang`); saat mengisi PM (`/machines/{id}/pm`) menu Mesin/Utility ditandai sesuai tipe unitnya.
 - Badge antrean "Persetujuan" memakai `SignatureChain::pendingCountFor()` yang dikirim backend,
   sehingga angka pada badge selalu sama dengan daftar. Karena badge memakai query itu
   juga, daftar memuat record `draft`/`rejected` milik teknisi — jadi panel tanda tangan
@@ -722,6 +728,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | Path | Halaman | Ringkas |
 |------|---------|---------|
 | `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ringkasan tindakan + komponen sering diganti, ekspor |
+| `/settings` | `Settings/Index` | Pusat kartu menu pengelolaan aset: Mesin → `/machines`, Utility → `/utility`; Komponen / Parts & Suku Cadang "Segera hadir"; menggantikan item sidebar terpisah |
 | `/approvals` | `Approvals/Index` | Antrean per permission, stepper, tabel nama + signature per baris |
 | `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore, Edit Komponen + Standar per unit |
 | `/machines/{machine}/history` | `Machines/History` | Riwayat PM mesin |
@@ -729,6 +736,7 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `/form-maintenance` | `FormMaintenance/Index` | Kartu pilih scope Mesin/Utility |
 | `/form-maintenance/mesin` | `FormMaintenance/Mesin` | Daftar mesin + status PM per periode |
 | `/form-maintenance/utility` | `FormMaintenance/Utility` | Daftar unit utility + status PM per periode |
+| `/form-maintenance/suku-cadang` | `FormMaintenance/SukuCadang` | Catat pemakaian suku cadang ke unit (Mesin/Utility) per periode PM + riwayat; pemakaian = transaksi stok keluar bertujuan unit |
 | `/utility` | `Utility/Index` | Daftar unit utility + komponen maintenance, Edit Komponen + Standar per unit |
 | `/admin/users` | `Admin/Users` | CRUD pengguna + ganti password + pencarian |
 | `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
@@ -855,7 +863,7 @@ Action yang tercatat:
 | | `sign.{stage}` (mis. `pm.sign.pic`) | `Actions/Pm/SignPmRecord` |
 | | `reject` | `Actions/Pm/RejectPmRecord` |
 | `user.*` | `create`, `update`, `password`, `delete` | `Admin/UserController` |
-| `sparepart.*` | `create`, `update`, `delete` (tunggal & massal, ditandai `bulk`), `restore`, `movement`, `import` | `SparePartController` |
+| `sparepart.*` | `create`, `update`, `delete` (tunggal & massal, ditandai `bulk`), `restore`, `movement` (termasuk pemakaian ke unit), `import` | `SparePartController`, `SparePartUsageController` |
 | `backup.*` | `create`, `restore`, `delete` | `Admin/BackupController` |
 
 > **Cakupan saat ini:** perubahan pada **template checklist** dan **role/permission** belum

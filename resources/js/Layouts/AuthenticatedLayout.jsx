@@ -34,18 +34,27 @@ export default function Authenticated({ user: userProp, header, children }) {
     const isActive = (path, exact = false) =>
         exact ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
 
-    // Form PM & riwayat mesin memakai URL /machines/{id}/..., jadi logika
-    // isActive menandai menu "Mesin" dengan sendirinya. Untuk unit utility,
-    // menu aktif harus tetap "Utility", supaya sidebar tidak tampak pindah
-    // sendiri waktu teknisi sedang mengisi PM utility.
+    // Form PM & riwayat mesin memakai URL /machines/{id}/..., jadi menu form
+    // "Mesin"/"Utility" ditandai sesuai tipe unitnya saat teknisi mengisi PM.
     const machine = page.props.machine;
     const machineDetailUrl = pathname.startsWith('/machines/');
     const machineIsUtility = Boolean(machineDetailUrl && machine?.type === 'utility');
 
+    // Halaman Settings adalah induk modul versi kelola/CRUD (Mesin/Utility/
+    // Komponen/Suku Cadang), jadi menu "Settings" tetap ditandai aktif saat
+    // berada di halaman modul tersebut — kecuali halaman detail PM mesin
+    // (/machines/{id}/...) yang menandai menu form Mesin/Utility.
+    const SETTINGS_PATHS = ['/settings', '/machines', '/utility', '/admin/komponen', '/suku-cadang'];
+
     const isNavActive = (item) => {
         if (machineDetailUrl) {
-            if (item.path === '/machines') return !machineIsUtility;
-            if (item.path === '/utility') return machineIsUtility;
+            if (item.path === '/form-maintenance/mesin') return !machineIsUtility;
+            if (item.path === '/form-maintenance/utility') return machineIsUtility;
+            if (item.path === '/settings') return false;
+        }
+
+        if (item.path === '/settings') {
+            return SETTINGS_PATHS.some((path) => isActive(path));
         }
 
         return isActive(item.path, item.exact);
@@ -67,20 +76,36 @@ export default function Authenticated({ user: userProp, header, children }) {
             show: pending > 0 || can['pm.sign'] || can['pm.acknowledge'] || can['pm.approve'],
         },
         {
-            name: 'Form Maintenance',
-            href: route('form-maintenance'),
-            path: '/form-maintenance',
+            // Menu form: langsung ke daftar unit berstatus PM untuk diisi.
+            name: 'Mesin',
+            href: route('form-maintenance.mesin'),
+            path: '/form-maintenance/mesin',
+            show: can['machine.manage'] || can['machine.view'] || can['dashboard.view'],
+        },
+        {
+            name: 'Utility',
+            href: route('form-maintenance.utility'),
+            path: '/form-maintenance/utility',
+            show: can['utility.view'] || can['dashboard.view'],
+        },
+        {
+            name: 'Suku Cadang',
+            href: route('form-maintenance.suku-cadang'),
+            path: '/form-maintenance/suku-cadang',
+            // Pemakaian suku cadang ke unit per periode PM.
+            show: can['sparepart.view'],
+        },
+        {
+            name: 'Settings',
+            href: route('settings'),
+            path: '/settings',
             // Scope aset (machine.view / utility.view) atau baseline
             // dashboard.view; kartu yang tak terjangkau tampil abu-abu.
-            show: can['machine.manage'] || can['machine.view'] || can['utility.view'] || can['dashboard.view'] || can['template.manage'],
+            show: can['machine.manage'] || can['machine.view'] || can['utility.view'] || can['dashboard.view'],
         },
-        { name: 'Mesin', href: route('machines.index'), path: '/machines', show: can['machine.manage'] || can['machine.view'] },
-        { name: 'Utility', href: route('utility.index'), path: '/utility', show: can['utility.view'] || can['dashboard.view'] },
-        { name: 'Suku Cadang', href: route('spareparts.index'), path: '/suku-cadang', show: can['sparepart.view'] },
         { name: 'PM Records', href: route('admin.pm-records'), path: '/admin/pm-records', show: can['pm.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
         { name: 'Role', href: route('admin.roles.index'), path: '/admin/roles', show: user?.roles?.includes('admin') },
-        { name: 'Komponen / Parts', href: route('admin.components'), path: '/admin/komponen', show: can['template.manage'] },
         { name: 'Activity Logs', href: route('admin.activity-logs'), path: '/admin/activity-logs', show: can['activity.view'] },
         { name: 'Backup & Restore', href: route('admin.backups'), path: '/admin/backups', show: can['backup.manage'] },
     ].filter(item => item.show);

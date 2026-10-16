@@ -86,7 +86,7 @@ Nilai utama yang dibawa produk ini:
 - Dashboard dengan filter periode/tahun/area/status/pencarian + notifikasi tunggakan
 - CRUD mesin (soft delete + restore) + CRUD unit Utility
 - Master Komponen + penugasan ke Mesin/Utility (pengganti template per jenis mesin)
-- Halaman Form Maintenance (kartu Mesin/Utility) untuk masuk ke form PM
+- Halaman Settings (kartu Mesin/Utility/Komponen/Suku Cadang) sebagai pusat pengelolaan aset, menggantikan item menu terpisah Mesin/Utility/Suku Cadang/Komponen
 - Pengisian checklist PM dengan aksi per item
 - Rantai tanda tangan 3 tahap (gambar) + penolakan + revisi
 - Tanda tangan tersimpan per akun (diisi sekali di Profil, dipakai ulang saat persetujuan)
@@ -99,6 +99,7 @@ Nilai utama yang dibawa produk ini:
 - Ekspor XLSX & PDF
 - Impor mesin dari CSV
 - Suku Cadang (global): master, transaksi stok masuk/keluar, riwayat transaksi, impor/unggah CSV
+- Pemakaian suku cadang ke unit (Mesin/Utility) per periode PM lewat `/form-maintenance/suku-cadang`
 
 ### Tidak Termasuk (v1)
 - Notifikasi email/WhatsApp otomatis
@@ -278,6 +279,35 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-PMR-01 | Pemegang `pm.manage` dapat melihat seluruh PM Record lintas mesin, status, periode, dan tahun |
 | REQ-PMR-02 | Daftar dapat difilter (status, periode, tahun, tipe mesin) dan dicari (nama teknisi, catatan, kode/nama/lokasi mesin) |
 | REQ-PMR-03 | Pemegang `pm.manage` dapat menghapus PM Record secara permanen beserta item, tanda tangan, revisi, dan audit log terkait |
+
+### 6.14 Menu Settings (REQ-SET)
+
+> Item sidebar terpisah **Form Maintenance**, **Mesin**, **Utility**, **Suku Cadang**, dan
+> **Komponen / Parts** digantikan satu menu **Settings** (`/settings`). Halaman lama tetap
+> ada dan dapat diakses lewat URL langsung, tetapi tidak lagi tampil di sidebar.
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-SET-01 | Menu **Settings** menampilkan kartu Mesin, Utility, Komponen / Parts, dan Suku Cadang |
+| REQ-SET-02 | Kartu **Mesin** mengarah ke halaman kelola `/machines` dan **Utility** ke `/utility` |
+| REQ-SET-03 | Kartu **Komponen / Parts** dan **Suku Cadang** tampil nonaktif dengan label "Segera hadir" |
+| REQ-SET-04 | Kartu hanya dapat diklik bila user memegang permission yang sama dengan rute tujuannya; selain itu tampil abu-abu (menghindari 403) |
+| REQ-SET-05 | Menu Settings tampil untuk user yang memegang `machine.manage`, `machine.view`, `utility.view`, atau `dashboard.view` |
+
+### 6.15 Form Maintenance Suku Cadang (REQ-USE)
+
+> Menu sidebar **Mesin**, **Utility**, dan **Suku Cadang** mengarah langsung ke halaman
+> pengisian form (`/form-maintenance/mesin`, `/form-maintenance/utility`,
+> `/form-maintenance/suku-cadang`), terpisah dari kartu kelola di halaman Settings.
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-USE-01 | Halaman `/form-maintenance/suku-cadang` dapat dibuka oleh pemegang `sparepart.view` |
+| REQ-USE-02 | Pemegang `sparepart.manage` dapat mencatat pemakaian: unit (Mesin/Utility), suku cadang, jumlah, tanggal, periode, tahun, dan catatan |
+| REQ-USE-03 | Pemakaian tersimpan sebagai transaksi stok **keluar** (`type = out`) yang menyimpan unit tujuan (`machine_id`) dan periode/tahun PM, lalu mengurangi stok terkini |
+| REQ-USE-04 | Pemakaian dengan jumlah melebihi stok tersedia ditolak dengan pesan validasi |
+| REQ-USE-05 | Halaman menampilkan riwayat pemakaian yang dapat difilter per tahun dan periode |
+| REQ-USE-06 | Aksi mencatat pemakaian tercatat di activity log (`sparepart.movement`) |
 
 ---
 

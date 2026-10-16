@@ -12,7 +12,9 @@ use App\Http\Controllers\PmRecordController;
 use App\Http\Controllers\PmSignatureController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SparePartController;
+use App\Http\Controllers\SparePartUsageController;
 use App\Http\Controllers\UtilityController;
 use Illuminate\Support\Facades\Route;
 
@@ -29,9 +31,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/form-maintenance/utility', [DashboardController::class, 'formMaintenanceUtility'])
         ->name('form-maintenance.utility')
         ->middleware('can_any:utility.view,dashboard.view');
+
+    // Form Maintenance - Suku Cadang: catat pemakaian suku cadang ke unit
+    // (Mesin/Utility) per periode PM. Semua user login boleh melihat; mencatat
+    // pemakaian hanya pemegang `sparepart.manage`.
+    Route::get('/form-maintenance/suku-cadang', [SparePartUsageController::class, 'index'])
+        ->name('form-maintenance.suku-cadang')
+        ->middleware('can:sparepart.view');
+    Route::post('/form-maintenance/suku-cadang', [SparePartUsageController::class, 'store'])
+        ->name('form-maintenance.suku-cadang.store')
+        ->middleware('can:sparepart.manage');
     Route::get('/dashboard/export', [DashboardController::class, 'export'])
         ->name('dashboard.export')
         ->middleware('can:report.export');
+
+    // Settings: pusat kartu menu pengelolaan aset (Mesin, Utility, Komponen /
+    // Parts, Suku Cadang), menggantikan item menu terpisah yang dulu tampil
+    // sendiri-sendiri di sidebar. Halaman ini hanya menampilkan kartu; otorisasi
+    // sebenarnya tetap di rute tujuan masing-masing kartu.
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
