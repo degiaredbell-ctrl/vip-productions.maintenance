@@ -297,3 +297,62 @@
         @apply ring-1 ring-neu-bad/25;
     }
 }
+/*
+ * Ikon peringatan "!" yang beranimasi: gelombang denyut keluar dari ikon dan
+ * tanda serunya bergoyang singkat setiap ~2 detik, supaya peringatan terbaca
+ * sebagai hal yang harus diprioritaskan. Warna gelombang mengikuti
+ * `--alert-color` (default: warna teks ikon).
+ *
+ * Pemakaian: <span class="neu-alert-icon ..."><span class="neu-alert-mark">!</span></span>
+ */
+.neu-alert-icon {
+    position: relative;
+    isolation: isolate;
+    --alert-color: currentColor;
+}
+
+.neu-alert-icon::before,
+.neu-alert-icon::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    border: 2px solid var(--alert-color);
+    opacity: 0;
+    pointer-events: none;
+    animation: neuAlertRing 2s cubic-bezier(0.2, 0.6, 0.35, 1) infinite;
+}
+
+.neu-alert-icon::after {
+    animation-delay: 0.6s;
+}
+
+.neu-alert-mark {
+    display: inline-block;
+    transform-origin: 50% 85%;
+    animation: neuAlertWiggle 2s ease-in-out infinite;
+}
+
+@keyframes neuAlertRing {
+    0% { transform: scale(1); opacity: 0.55; }
+    70% { opacity: 0; }
+    100% { transform: scale(1.75); opacity: 0; }
+}
+
+@keyframes neuAlertWiggle {
+    0%, 55%, 100% { transform: rotate(0) scale(1); }
+    60% { transform: rotate(-16deg) scale(1.2); }
+    68% { transform: rotate(14deg) scale(1.2); }
+    76% { transform: rotate(-10deg) scale(1.12); }
+    84% { transform: rotate(6deg) scale(1.05); }
+    92% { transform: rotate(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .neu-alert-icon::before,
+    .neu-alert-icon::after,
+    .neu-alert-mark {
+        animation: none;
+    }
+}

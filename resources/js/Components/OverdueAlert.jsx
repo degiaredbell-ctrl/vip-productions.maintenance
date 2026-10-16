@@ -22,7 +22,7 @@ export default function OverdueAlert({ count = 0, unitLabel = 'mesin', currentWe
             {toastOpen && (
                 <div role="alert" className="fixed z-50 left-1/2 -translate-x-1/2 top-4 md:top-6 w-[calc(100%-2rem)] max-w-sm">
                     <div className="flex items-start gap-3 rounded-[20px] bg-neu-bg shadow-neu-up px-4 py-3.5 text-neu-bad neu-card-overdue">
-                        <span className="mt-0.5 h-5 w-5 flex-none grid place-items-center rounded-full bg-neu-bad text-white text-xs font-bold" aria-hidden="true">!</span>
+                        <span className="neu-alert-icon [--alert-color:#B93A2E] mt-0.5 h-5 w-5 flex-none grid place-items-center rounded-full bg-neu-bad text-white text-xs font-bold" aria-hidden="true"><span className="neu-alert-mark">!</span></span>
                         <p className="text-sm font-semibold flex-1 leading-snug">{message}</p>
                         <button
                             type="button"
@@ -37,7 +37,7 @@ export default function OverdueAlert({ count = 0, unitLabel = 'mesin', currentWe
             )}
 
             <div role="status" className="neu-card-overdue rounded-[20px] shadow-neu-up-sm p-4 mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
-                <span className="h-9 w-9 flex-none grid place-items-center rounded-full bg-neu-bad text-white font-bold" aria-hidden="true">!</span>
+                <span className="neu-alert-icon [--alert-color:#B93A2E] h-9 w-9 flex-none grid place-items-center rounded-full bg-neu-bad text-white font-bold" aria-hidden="true"><span className="neu-alert-mark">!</span></span>
                 <div className="flex-1 min-w-0">
                     <b className="block text-sm text-neu-bad">{message}</b>
                     <span className="block text-xs text-neu-sub">

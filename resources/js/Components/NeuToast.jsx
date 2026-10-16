@@ -21,11 +21,11 @@ export default function NeuToast({ toast, onDismiss }) {
             >
                 <span
                     className={`mt-0.5 h-5 w-5 flex-none grid place-items-center rounded-full text-xs font-bold ${
-                        isError ? 'bg-neu-bad/15' : 'bg-neu-accent/15'
+                        isError ? 'neu-alert-icon bg-neu-bad/15' : 'bg-neu-accent/15'
                     }`}
                     aria-hidden="true"
                 >
-                    {isError ? '!' : '✓'}
+                    {isError ? <span className="neu-alert-mark">!</span> : '✓'}
                 </span>
                 <p className="text-sm font-semibold flex-1 leading-snug">{toast.message}</p>
                 <button

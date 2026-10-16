@@ -466,8 +466,8 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                 {existing?.reject_reason && (
                     <NeuCard className="mb-4 !bg-[#FCEFEC]">
                         <div className="flex items-start gap-3">
-                            <span className="neu-inset w-9 h-9 flex-none grid place-items-center text-neu-bad font-bold">
-                                !
+                            <span className="neu-alert-icon neu-inset w-9 h-9 flex-none grid place-items-center text-neu-bad font-bold" aria-hidden="true">
+                                <span className="neu-alert-mark">!</span>
                             </span>
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-bold text-neu-bad">
@@ -493,10 +493,10 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
                     <NeuCard className={`mb-4 ${queued.status === 'failed' ? '!bg-[#FCEFEC]' : '!bg-[#FFF5E6]'}`}>
                         <div className="flex items-start gap-3">
                             <span
-                                className={`neu-inset w-9 h-9 flex-none grid place-items-center font-bold ${queued.status === 'failed' ? 'text-neu-bad' : 'text-neu-warn'}`}
+                                className={`neu-inset w-9 h-9 flex-none grid place-items-center font-bold ${queued.status === 'failed' ? 'neu-alert-icon text-neu-bad' : 'text-neu-warn'}`}
                                 aria-hidden="true"
                             >
-                                {queued.status === 'failed' ? '!' : '⇅'}
+                                {queued.status === 'failed' ? <span className="neu-alert-mark">!</span> : '⇅'}
                             </span>
                             <div className="min-w-0 flex-1">
                                 <p className={`text-sm font-bold ${queued.status === 'failed' ? 'text-neu-bad' : 'text-neu-warn'}`}>

@@ -68,8 +68,8 @@ export default function UpdateProfileInformation({
                 {mustVerifyEmail && user.email_verified_at === null && (
                     <NeuCard className="!shadow-neu-in !bg-[#FEF3C7]">
                         <div className="flex items-start gap-3">
-                            <span className="neu-inset w-9 h-9 flex-none grid place-items-center text-neu-warn font-bold">
-                                !
+                            <span className="neu-alert-icon neu-inset w-9 h-9 flex-none grid place-items-center text-neu-warn font-bold" aria-hidden="true">
+                                <span className="neu-alert-mark">!</span>
                             </span>
                             <div className="min-w-0 flex-1">
                                 <p className="text-sm font-bold text-neu-warn">
