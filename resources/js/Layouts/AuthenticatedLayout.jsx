@@ -55,10 +55,10 @@ export default function Authenticated({ user: userProp, header, children }) {
         }
 
         if (item.path === '/settings') {
-            return SETTINGS_PATHS.some((path) => isActive(path));
+            return !isActive('/suku-cadang/dashboard') && SETTINGS_PATHS.some((path) => isActive(path));
         }
 
-        return isActive(item.path, item.exact);
+        return isActive(item.path, item.exact) || (item.extraPaths ?? []).some((path) => isActive(path));
     };
 
     // Badge antrean persetujuan dihitung di backend (SignatureChain), bukan di
@@ -91,9 +91,11 @@ export default function Authenticated({ user: userProp, header, children }) {
         },
         {
             name: 'Suku Cadang',
-            href: route('form-maintenance.suku-cadang'),
+            href: route('spareparts.dashboard'),
             path: '/form-maintenance/suku-cadang',
-            // Pemakaian suku cadang ke unit per periode PM.
+            // Dashboard monitoring stok + pemakaian suku cadang ke unit per
+            // periode PM; menu tetap aktif di kedua halaman itu.
+            extraPaths: ['/suku-cadang/dashboard'],
             show: can['sparepart.view'],
         },
         {

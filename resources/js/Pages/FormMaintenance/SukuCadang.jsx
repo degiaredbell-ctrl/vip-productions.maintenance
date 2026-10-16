@@ -65,8 +65,8 @@ export default function SukuCadang({ auth, units = [], parts = [], periods = [],
                 <div className="mb-5">
                     <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
                     <div className="flex items-center gap-3 mb-2">
-                        <NeuButton href={route('form-maintenance')} className="!px-3 !min-h-[36px] !py-1.5 text-xs">
-                            ‹ Kembali
+                        <NeuButton href={route('spareparts.dashboard')} className="!px-3 !min-h-[36px] !py-1.5 text-xs">
+                            ‹ Dashboard
                         </NeuButton>
                         <h1 className="text-xl sm:text-2xl font-bold">Form Maintenance - Suku Cadang</h1>
                     </div>

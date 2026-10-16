@@ -1,6 +1,6 @@
-export default function NeuCard({ children, className = '' }) {
+export default function NeuCard({ children, className = '', ...props }) {
     return (
-        <div className={`neu-card ${className}`}>
+        <div className={`neu-card ${className}`} {...props}>
             {children}
         </div>
     );

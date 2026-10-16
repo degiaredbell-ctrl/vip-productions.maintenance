@@ -15,6 +15,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SparePartController;
+use App\Http\Controllers\SparePartDashboardController;
 use App\Http\Controllers\SparePartUsageController;
 use App\Http\Controllers\UtilityController;
 use Illuminate\Support\Facades\Route;
@@ -166,6 +167,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Suku Cadang: master suku cadang + transaksi stok (barang masuk/keluar).
     // Semua user yang login boleh melihat; kelola & unggah CSV hanya pemegang
     // `sparepart.manage` (Admin & tech-all).
+    Route::get('/suku-cadang/dashboard', [SparePartDashboardController::class, 'index'])
+        ->name('spareparts.dashboard')
+        ->middleware('can:sparepart.view');
     Route::get('/suku-cadang', [SparePartController::class, 'index'])
         ->name('spareparts.index')
         ->middleware('can:sparepart.view');
