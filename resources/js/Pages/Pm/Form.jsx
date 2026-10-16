@@ -51,8 +51,8 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         const newItems = [...formItems];
         const updated = { ...newItems[index], [action]: !newItems[index][action] };
 
-        // Saat "Ganti" dimatikan, catatan detailnya ikut dikosongkan supaya
-        // tidak tersimpan catatan pergantian pada item yang tidak diganti.
+        // Saat "Perlu Pergantian" dimatikan, catatan detailnya ikut dikosongkan
+        // supaya tidak tersimpan catatan pergantian pada item yang tidak diganti.
         if (action === 'act_replace' && !updated.act_replace) {
             updated.replace_note = '';
         }
@@ -97,13 +97,13 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
             return;
         }
 
-        // Aksi "Ganti" wajib disertai keterangan bagian yang diganti, supaya
-        // riwayat PM tidak sekadar menampilkan centang tanpa detail komponen.
+        // Aksi "Perlu Pergantian" wajib disertai keterangan bagian yang diganti,
+        // supaya riwayat PM tidak sekadar menampilkan centang tanpa detail komponen.
         const missingReplaceNote = formItems.some(
             (item) => item.act_replace && !String(item.replace_note ?? '').trim(),
         );
         if (missingReplaceNote) {
-            setError('Isi detail bagian yang diganti untuk setiap item dengan aksi "Ganti".');
+            setError('Isi detail bagian yang diganti untuk setiap item dengan aksi "Perlu Pergantian".');
             return;
         }
 
@@ -149,7 +149,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         { key: 'act_clean', label: 'Bersihkan' },
         { key: 'act_repair', label: 'Perbaiki' },
         { key: 'act_lubricate', label: 'Lumasi' },
-        { key: 'act_replace', label: 'Ganti' },
+        { key: 'act_replace', label: 'Perlu Pergantian' },
     ];
 
     const readOnly = !canFill || isFuturePeriod;
@@ -377,9 +377,10 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
 
                                     {/*
                                         Catatan pergantian hanya muncul ketika aksi
-                                        "Ganti" dicentang, dan wajib diisi: inilah
-                                        yang menjelaskan bagian mana yang diganti,
-                                        bukan sekadar tandai "Ganti" tanpa keterangan.
+                                        "Perlu Pergantian" dicentang, dan wajib diisi:
+                                        inilah yang menjelaskan bagian mana yang
+                                        diganti, bukan sekadar tandai "Perlu
+                                        Pergantian" tanpa keterangan.
                                     */}
                                     {item.act_replace && (
                                         <div className="mt-3.5">

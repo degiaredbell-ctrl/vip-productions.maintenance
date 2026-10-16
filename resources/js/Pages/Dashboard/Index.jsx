@@ -361,7 +361,7 @@ export default function Dashboard({
                                     { label: 'Bersihkan', value: activeSummary.actions.clean },
                                     { label: 'Perbaiki', value: activeSummary.actions.repair },
                                     { label: 'Lumasi', value: activeSummary.actions.lubricate },
-                                    { label: 'Ganti', value: activeSummary.actions.replace },
+                                    { label: 'Perlu Pergantian', value: activeSummary.actions.replace },
                                 ].map((a) => (
                                     <div key={a.label} className="flex items-center justify-between">
                                         <span className="text-sm">{a.label}</span>

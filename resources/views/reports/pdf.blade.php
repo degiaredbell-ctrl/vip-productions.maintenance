@@ -55,7 +55,7 @@
             <tr><td>Bersihkan</td><td class="num">{{ $actions['clean'] }}</td></tr>
             <tr><td>Perbaiki</td><td class="num">{{ $actions['repair'] }}</td></tr>
             <tr><td>Lumasi</td><td class="num">{{ $actions['lubricate'] }}</td></tr>
-            <tr><td>Ganti</td><td class="num">{{ $actions['replace'] }}</td></tr>
+            <tr><td>Perlu Pergantian</td><td class="num">{{ $actions['replace'] }}</td></tr>
         </tbody>
     </table>
 
