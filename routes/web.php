@@ -67,6 +67,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/profile/signature', [ProfileController::class, 'destroySignature'])
         ->name('profile.signature.destroy');
 
+    // PIN login 6 digit. Dibatasi throttle karena pesan "PIN tidak dapat
+    // digunakan" (PIN unik) tidak boleh jadi alat menebak PIN milik orang lain.
+    Route::put('/profile/pin', [ProfileController::class, 'updatePin'])
+        ->middleware('throttle:6,1')
+        ->name('profile.pin.update');
+    Route::delete('/profile/pin', [ProfileController::class, 'destroyPin'])
+        ->name('profile.pin.destroy');
+
     // Persetujuan (rantai tanda tangan 3 tahap)
     Route::get('/approvals', [ApprovalController::class, 'index'])->name('approvals.index');
 
@@ -191,6 +199,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
         Route::put('/admin/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
         Route::put('/admin/users/{user}/password', [UserController::class, 'updatePassword'])->name('admin.users.update-password');
+        Route::put('/admin/users/{user}/pin', [UserController::class, 'updatePin'])->name('admin.users.update-pin');
+        Route::delete('/admin/users/{user}/pin', [UserController::class, 'destroyPin'])->name('admin.users.destroy-pin');
         Route::delete('/admin/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
     });
 

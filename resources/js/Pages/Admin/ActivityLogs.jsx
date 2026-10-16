@@ -30,6 +30,7 @@ const ACTION_LABELS = {
     'user.create': 'Tambah Pengguna',
     'user.update': 'Ubah Pengguna',
     'user.delete': 'Hapus Pengguna',
+    'user.pin': 'PIN Login Pengguna',
     'role.update': 'Ubah Role',
     'role.permissions': 'Ubah Permission Role',
     'pm.submit': 'Kirim PM',

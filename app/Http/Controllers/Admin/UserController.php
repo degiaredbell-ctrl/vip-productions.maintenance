@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\ValidPin;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +24,7 @@ class UserController extends Controller
                 'email' => $u->email,
                 'role' => $u->roles->first()?->name ?? '-',
                 'is_self' => $u->id === $request->user()->id,
+                'has_pin' => $u->hasPin(),
             ];
         });
 
@@ -120,6 +122,44 @@ class UserController extends Controller
         ]);
 
         return back()->with('success', "Password {$user->name} berhasil diubah.");
+    }
+
+    public function updatePin(Request $request, User $user): RedirectResponse
+    {
+        $this->authorize('updatePassword', $user);
+
+        $validated = $request->validate([
+            'pin' => ['required', 'confirmed', new ValidPin($user->id)],
+        ]);
+
+        $hadPin = $user->hasPin();
+        $user->setPin($validated['pin']);
+
+        // Seperti password, PIN tidak pernah ikut ditulis ke audit log.
+        AuditLogService::record('user.pin', User::class, $user->id, [
+            'name' => $user->name,
+            'email' => $user->email,
+            'aksi' => $hadPin ? 'ubah' : 'atur',
+        ]);
+
+        return back()->with('success', "PIN {$user->name} berhasil disimpan.");
+    }
+
+    public function destroyPin(User $user): RedirectResponse
+    {
+        $this->authorize('updatePassword', $user);
+
+        if ($user->hasPin()) {
+            $user->setPin(null);
+
+            AuditLogService::record('user.pin', User::class, $user->id, [
+                'name' => $user->name,
+                'email' => $user->email,
+                'aksi' => 'hapus',
+            ]);
+        }
+
+        return back()->with('success', "PIN {$user->name} dihapus.");
     }
 
     public function destroy(Request $request, User $user): RedirectResponse

@@ -2,10 +2,11 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
+import UpdatePinForm from './Partials/UpdatePinForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 import UpdateSignatureForm from './Partials/UpdateSignatureForm';
 
-export default function Edit({ mustVerifyEmail, status, savedSignature }) {
+export default function Edit({ mustVerifyEmail, status, savedSignature, hasPin }) {
     return (
         <AuthenticatedLayout>
             <Head title="Profile" />
@@ -23,6 +24,7 @@ export default function Edit({ mustVerifyEmail, status, savedSignature }) {
                     />
                     <UpdateSignatureForm savedSignature={savedSignature} />
                     <UpdatePasswordForm />
+                    <UpdatePinForm hasPin={hasPin} />
                     <DeleteUserForm />
                 </div>
             </div>

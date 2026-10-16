@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Http\Requests\StoreUserSignatureRequest;
+use App\Models\User;
+use App\Rules\ValidPin;
+use App\Services\AuditLogService;
 use App\Services\SignatureStorage;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
@@ -36,6 +39,7 @@ class ProfileController extends Controller
                     'version' => (int) ($user->updated_at?->timestamp ?? 0),
                 ]
                 : null,
+            'hasPin' => $user->hasPin(),
         ]);
     }
 
@@ -110,6 +114,55 @@ class ProfileController extends Controller
         }
 
         return Redirect::route('profile.edit')->with('success', 'Tanda tangan tersimpan dihapus.');
+    }
+
+    /**
+     * Atur/ganti PIN login milik user sendiri. Wajib konfirmasi password
+     * supaya sesi yang tertinggal terbuka tidak bisa dipakai memasang PIN.
+     */
+    public function updatePin(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'pin' => ['required', 'confirmed', new ValidPin($user->id)],
+        ]);
+
+        $hadPin = $user->hasPin();
+        $user->setPin($validated['pin']);
+
+        AuditLogService::record('user.pin', User::class, $user->id, [
+            'name' => $user->name,
+            'aksi' => $hadPin ? 'ubah' : 'atur',
+            'oleh' => 'sendiri',
+        ]);
+
+        return Redirect::route('profile.edit')->with('success', 'PIN login berhasil disimpan.');
+    }
+
+    /**
+     * Hapus PIN login milik user sendiri.
+     */
+    public function destroyPin(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+        ]);
+
+        $user = $request->user();
+
+        if ($user->hasPin()) {
+            $user->setPin(null);
+
+            AuditLogService::record('user.pin', User::class, $user->id, [
+                'name' => $user->name,
+                'aksi' => 'hapus',
+                'oleh' => 'sendiri',
+            ]);
+        }
+
+        return Redirect::route('profile.edit')->with('success', 'PIN login dihapus.');
     }
 
     /**

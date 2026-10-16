@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\PinLoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,6 +29,18 @@ class AuthenticatedSessionController extends Controller
      * Handle an incoming authentication request.
      */
     public function store(LoginRequest $request): RedirectResponse
+    {
+        $request->authenticate();
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    /**
+     * Login alternatif memakai PIN 6 digit saja.
+     */
+    public function storePin(PinLoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 

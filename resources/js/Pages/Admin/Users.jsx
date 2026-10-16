@@ -38,12 +38,14 @@ export default function AdminUsers({ auth, users, roles }) {
     // tidak ada dua formulir bertumpuk untuk pengguna yang sama.
     const [editingId, setEditingId] = useState(null);
     const [passwordId, setPasswordId] = useState(null);
+    const [pinId, setPinId] = useState(null);
     const [confirmingId, setConfirmingId] = useState(null);
     const [busyId, setBusyId] = useState(null);
     const [q, setQ] = useState('');
 
     const editForm = useForm({ role: 'user' });
     const passForm = useForm({ password: '', password_confirmation: '' });
+    const pinForm = useForm({ pin: '', pin_confirmation: '' });
 
     const roleOptions = roles ?? [];
 
@@ -60,6 +62,7 @@ export default function AdminUsers({ auth, users, roles }) {
 
     const startEdit = (user) => {
         setPasswordId(null);
+        setPinId(null);
         setConfirmingId(null);
         editForm.clearErrors();
         editForm.setData({ role: user.role });
@@ -82,6 +85,7 @@ export default function AdminUsers({ auth, users, roles }) {
 
     const startPassword = (user) => {
         setEditingId(null);
+        setPinId(null);
         setConfirmingId(null);
         passForm.clearErrors();
         passForm.reset();
@@ -102,9 +106,48 @@ export default function AdminUsers({ auth, users, roles }) {
         });
     };
 
+    const startPin = (user) => {
+        setEditingId(null);
+        setPasswordId(null);
+        setConfirmingId(null);
+        pinForm.clearErrors();
+        pinForm.reset();
+        setPinId(user.id);
+    };
+
+    const cancelPin = () => {
+        setPinId(null);
+        pinForm.clearErrors();
+    };
+
+    const submitPin = (e) => {
+        e.preventDefault();
+
+        pinForm.put(route('admin.users.update-pin', pinId), {
+            preserveScroll: true,
+            onSuccess: () => setPinId(null),
+            onError: () => pinForm.reset(),
+        });
+    };
+
+    const removePin = (user) => {
+        setBusyId(user.id);
+
+        router.delete(route('admin.users.destroy-pin', user.id), {
+            preserveScroll: true,
+            onFinish: () => {
+                setBusyId(null);
+                setPinId(null);
+            },
+        });
+    };
+
+    const pinDigits = (value) => value.replace(/\D/g, '').slice(0, 6);
+
     const askDelete = (user) => {
         setEditingId(null);
         setPasswordId(null);
+        setPinId(null);
         setConfirmingId(user.id);
     };
 
@@ -328,6 +371,66 @@ export default function AdminUsers({ auth, users, roles }) {
                                             <NeuButton onClick={cancelPassword}>Batal</NeuButton>
                                         </div>
                                     </form>
+                                ) : pinId === user.id ? (
+                                    <form onSubmit={submitPin}>
+                                        <p className="text-xs text-neu-sub mb-2">
+                                            PIN login 6 digit untuk <b>{user.name}</b> ({user.email})
+                                            {user.has_pin ? ' · PIN aktif, isian baru akan menggantinya.' : ''}
+                                        </p>
+                                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                            <div>
+                                                <label className="block text-xs text-neu-sub mb-1" htmlFor={`pin-${user.id}`}>
+                                                    PIN baru
+                                                </label>
+                                                <input
+                                                    id={`pin-${user.id}`}
+                                                    type="password"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    maxLength={6}
+                                                    autoComplete="off"
+                                                    value={pinForm.data.pin}
+                                                    onChange={(e) => pinForm.setData('pin', pinDigits(e.target.value))}
+                                                    className="neu-input tracking-[0.4em]"
+                                                    aria-invalid={Boolean(pinForm.errors.pin)}
+                                                    required
+                                                />
+                                                {fieldError(pinForm, 'pin')}
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-neu-sub mb-1" htmlFor={`pin2-${user.id}`}>
+                                                    Ulangi PIN
+                                                </label>
+                                                <input
+                                                    id={`pin2-${user.id}`}
+                                                    type="password"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    maxLength={6}
+                                                    autoComplete="off"
+                                                    value={pinForm.data.pin_confirmation}
+                                                    onChange={(e) => pinForm.setData('pin_confirmation', pinDigits(e.target.value))}
+                                                    className="neu-input tracking-[0.4em]"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2.5 flex-wrap mt-3.5">
+                                            <NeuButton type="submit" variant="primary" disabled={pinForm.processing}>
+                                                {pinForm.processing ? 'Menyimpan...' : 'Simpan PIN'}
+                                            </NeuButton>
+                                            {user.has_pin && (
+                                                <NeuButton
+                                                    onClick={() => removePin(user)}
+                                                    disabled={busyId === user.id}
+                                                    className="!text-neu-bad"
+                                                >
+                                                    {busyId === user.id ? 'Menghapus...' : 'Hapus PIN'}
+                                                </NeuButton>
+                                            )}
+                                            <NeuButton onClick={cancelPin}>Batal</NeuButton>
+                                        </div>
+                                    </form>
                                 ) : confirmingId === user.id ? (
                                     <div>
                                         <p className="text-sm text-neu-sub mb-3">
@@ -357,6 +460,9 @@ export default function AdminUsers({ auth, users, roles }) {
                                                 {user.is_self && <span className="text-neu-sub font-normal"> (Anda)</span>}
                                             </b>
                                             <span className="text-xs text-neu-sub truncate">{user.email}</span>
+                                            {user.has_pin && (
+                                                <span className="text-xs text-neu-accent"> · PIN aktif</span>
+                                            )}
                                         </div>
                                         <NeuPill variant={user.role === 'admin' ? 'issue' : user.role === 'manager' ? 'todo' : 'done'}>
                                             {labelOf(user.role)}
@@ -366,7 +472,7 @@ export default function AdminUsers({ auth, users, roles }) {
 
                                 {/* Aksi tetap terlihat saat form terbuka agar tidak
                                     perlu menutup form dulu untuk pindah ke aksi lain. */}
-                                {editingId !== user.id && passwordId !== user.id && confirmingId !== user.id && (
+                                {editingId !== user.id && passwordId !== user.id && pinId !== user.id && confirmingId !== user.id && (
                                     <div className="flex gap-2 flex-wrap mt-3">
                                         <NeuButton onClick={() => startEdit(user)} className="!min-h-[36px] !py-1.5 !px-3 !text-xs">
                                             Ubah
@@ -376,6 +482,12 @@ export default function AdminUsers({ auth, users, roles }) {
                                             className="!min-h-[36px] !py-1.5 !px-3 !text-xs"
                                         >
                                             Ubah Password
+                                        </NeuButton>
+                                        <NeuButton
+                                            onClick={() => startPin(user)}
+                                            className="!min-h-[36px] !py-1.5 !px-3 !text-xs"
+                                        >
+                                            {user.has_pin ? 'Ubah PIN' : 'Atur PIN'}
                                         </NeuButton>
                                         <NeuButton
                                             onClick={() => askDelete(user)}

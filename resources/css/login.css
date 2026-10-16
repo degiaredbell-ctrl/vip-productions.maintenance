@@ -135,6 +135,41 @@
 }
 .arc-alert-ok { color: #9ff0c8; background: rgba(47, 168, 115, 0.14); border: 1px solid rgba(47, 168, 115, 0.35); }
 
+.arc-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    margin-bottom: 20px;
+    padding: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.04);
+}
+.arc-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 9px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    font-weight: 600;
+    background: transparent;
+    cursor: pointer;
+    transition: color 180ms, background 180ms, box-shadow 180ms;
+}
+.arc-tab svg { width: 15px; height: 15px; }
+.arc-tab:hover { color: #fff; }
+.arc-tab:focus-visible { outline: 2px solid #c6a2ff; outline-offset: 2px; }
+.arc-tab-active {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(139, 69, 255, 0.55), rgba(44, 102, 230, 0.45));
+    box-shadow: 0 6px 18px rgba(81, 35, 143, 0.3);
+}
+
 .arc-form { display: grid; gap: 17px; }
 .arc-field { position: relative; display: flex; align-items: center; }
 .arc-field-icon {
@@ -172,6 +207,8 @@
 }
 .arc-field:focus-within .arc-field-icon { color: #c6a2ff; }
 .arc-field-invalid input { border-color: rgba(255, 107, 107, 0.6); }
+.arc-field input.arc-pin-input { font-size: 20px; letter-spacing: 0.5em; text-align: center; }
+.arc-field input.arc-pin-input::placeholder { letter-spacing: 0.5em; }
 .arc-error { margin: -9px 2px 0; color: #ff9b9b; font-size: 12.5px; }
 
 .arc-password-button {
