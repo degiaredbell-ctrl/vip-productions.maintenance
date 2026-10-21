@@ -84,8 +84,10 @@ function ApprovalProgress({ record }) {
 }
 
 export default function MySubmissionRow({ record }) {
+    const needsRevision = record.status === 'issue';
+
     return (
-        <tr>
+        <tr className={needsRevision ? 'neu-row-issue' : undefined}>
             <td className="neu-cell-lead">
                 <div className="flex items-start gap-3">
                     <span className="neu-inset w-11 h-11 flex-none grid place-items-center font-bold text-[11px] text-neu-accent">
@@ -114,9 +116,19 @@ export default function MySubmissionRow({ record }) {
             </td>
 
             <td data-label="Status">
-                <NeuPill variant={STATUS_VARIANTS[record.status] ?? 'todo'}>
-                    {record.status_label}
-                </NeuPill>
+                <div className="flex items-center gap-2">
+                    {needsRevision && (
+                        <span
+                            className="neu-alert-icon neu-inset w-7 h-7 flex-none grid place-items-center rounded-full text-neu-bad text-sm font-bold"
+                            aria-hidden="true"
+                        >
+                            <span className="neu-alert-mark">!</span>
+                        </span>
+                    )}
+                    <NeuPill variant={STATUS_VARIANTS[record.status] ?? 'todo'}>
+                        {record.status_label}
+                    </NeuPill>
+                </div>
                 <span className="block text-xs text-neu-sub mt-1.5">
                     {record.is_rejected
                         ? 'Dikembalikan untuk revisi'

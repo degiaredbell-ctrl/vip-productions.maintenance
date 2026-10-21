@@ -296,6 +296,15 @@
         background-image: linear-gradient(120deg, rgba(185, 58, 46, 0.30) 0%, rgba(185, 58, 46, 0.12) 50%, rgba(185, 58, 46, 0) 100%);
         @apply ring-1 ring-neu-bad/25;
     }
+
+    /* Baris PM "Perlu Revisi" di tabel Persetujuan: merah di kiri memudar ke
+       putih, supaya PM yang dikembalikan menonjol di antara yang lain. Juga
+       berlaku saat tabel dirakit jadi kartu di layar sempit. */
+    .neu-table tbody tr.neu-row-issue,
+    .neu-table tbody tr.neu-row-issue:focus-within {
+        background-color: #FFFFFF;
+        background-image: linear-gradient(90deg, rgba(185, 58, 46, 0.28) 0%, rgba(185, 58, 46, 0.10) 45%, rgba(255, 255, 255, 0) 100%);
+    }
 }
 /*
  * Ikon peringatan "!" yang beranimasi: gelombang denyut keluar dari ikon dan
