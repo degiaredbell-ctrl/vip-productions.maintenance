@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\MachineType;
+use App\Models\AssetType;
 use App\Models\ChecklistTemplate;
 use App\Models\Component;
+use App\Models\Location;
 use App\Models\Machine;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -72,12 +74,9 @@ class UtilityController extends Controller
             'utilities' => $utilities,
             'allComponents' => Component::options(),
             'trashed' => $trashed,
-            'types' => collect(MachineType::cases())
-                ->filter(fn ($t) => $t === MachineType::Utility)
-                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
-                ->values()
-                ->toArray(),
+            'types' => AssetType::options(utility: true),
             'templates' => ChecklistTemplate::options(ChecklistTemplate::SCOPE_UTILITY),
+            'locations' => Location::names(),
             'categories' => Machine::where('type', MachineType::Utility->value)
                 ->whereNotNull('category')
                 ->distinct()

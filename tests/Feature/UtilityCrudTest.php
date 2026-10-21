@@ -42,6 +42,8 @@ class UtilityCrudTest extends TestCase
     public function test_admin_bisa_menambah_utility(): void
     {
         $admin = User::factory()->create()->assignRole('admin');
+        // Lokasi unit harus terdaftar di master Lokasi / Site.
+        \App\Models\Location::create(['name' => 'Ruang Utility']);
 
         $this->actingAs($admin)->post(route('utility.store'), [
             'code' => 'UTL-NEW',

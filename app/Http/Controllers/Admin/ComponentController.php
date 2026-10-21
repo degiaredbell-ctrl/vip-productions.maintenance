@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\MachineType;
 use App\Http\Controllers\Controller;
+use App\Models\AssetType;
 use App\Models\Component;
 use App\Models\Machine;
 use Illuminate\Http\RedirectResponse;
@@ -49,7 +50,7 @@ class ComponentController extends Controller
                 'code' => $machine->code,
                 'name' => $machine->name,
                 'type' => $machine->type,
-                'type_label' => MachineType::tryFrom($machine->type)?->label() ?? $machine->type,
+                'type_label' => AssetType::labelFor($machine->type),
                 'is_utility' => $machine->type === MachineType::Utility->value,
                 'component_ids' => $machine->components->pluck('id')->all(),
             ]);

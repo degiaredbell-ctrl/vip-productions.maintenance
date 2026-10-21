@@ -6,8 +6,10 @@ use App\Enums\MachineType;
 use App\Enums\SignatureStage;
 use App\Http\Requests\StoreMachineRequest;
 use App\Http\Requests\UpdateMachineRequest;
+use App\Models\AssetType;
 use App\Models\ChecklistTemplate;
 use App\Models\Component;
+use App\Models\Location;
 use App\Models\Machine;
 use App\Models\PmRecord;
 use App\Models\User;
@@ -84,12 +86,9 @@ class MachineController extends Controller
             'machines' => $machines,
             'allComponents' => Component::options(),
             'trashed' => $trashed,
-            'types' => collect(MachineType::cases())
-                ->reject(fn ($t) => $t === MachineType::Utility)
-                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
-                ->values()
-                ->toArray(),
+            'types' => AssetType::options(utility: false),
             'templates' => ChecklistTemplate::options(ChecklistTemplate::SCOPE_MACHINE),
+            'locations' => Location::names(),
             'categories' => Machine::whereNotNull('category')
                 ->where('type', '!=', MachineType::Utility->value)
                 ->distinct()

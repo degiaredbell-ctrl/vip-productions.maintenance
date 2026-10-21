@@ -66,7 +66,7 @@ const groupComponents = (components) => {
     return sections;
 };
 
-export default function Machines({ auth, machines = [], allComponents = [], types = [], templates = [], categories = [], subCategories = [], trashed = [], can = {} }) {
+export default function Machines({ auth, machines = [], allComponents = [], types = [], templates = [], locations = [], categories = [], subCategories = [], trashed = [], can = {} }) {
     const createForm = useForm({ ...EMPTY_MACHINE });
     const editForm = useForm({ ...EMPTY_MACHINE });
     // Unit yang sedang disunting komponennya (modal Edit Komponen).
@@ -236,6 +236,7 @@ export default function Machines({ auth, machines = [], allComponents = [], type
                                 errors={createForm.errors}
                                 types={types}
                                 templates={templates}
+                                locations={locations}
                                 categories={categories}
                                 subCategories={subCategories}
                                 onSubCategoryChange={applySubCategory(createForm.setData)}
@@ -348,6 +349,7 @@ export default function Machines({ auth, machines = [], allComponents = [], type
                                                     errors={editForm.errors}
                                                     types={types}
                                                     templates={templates}
+                                                    locations={locations}
                                                     categories={categories}
                                                     subCategories={subCategories}
                                                     onSubCategoryChange={applySubCategory(editForm.setData)}

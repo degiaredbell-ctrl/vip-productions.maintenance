@@ -3,6 +3,8 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\ComponentController;
+use App\Http\Controllers\Admin\LocationController;
+use App\Http\Controllers\Admin\MachineTypeController;
 use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
@@ -236,6 +238,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/admin/komponen/{component}', [ComponentController::class, 'update'])->name('admin.components.update');
         Route::delete('/admin/komponen/{component}', [ComponentController::class, 'destroy'])->name('admin.components.destroy');
         Route::post('/admin/komponen/penugasan', [ComponentController::class, 'assign'])->name('admin.components.assign');
+    });
+
+    // Master data Tipe Mesin & Lokasi / Site: hanya Admin & tech-all.
+    Route::middleware('can:masterdata.manage')->group(function () {
+        Route::get('/admin/tipe-mesin', [MachineTypeController::class, 'index'])->name('admin.machine-types');
+        Route::post('/admin/tipe-mesin', [MachineTypeController::class, 'store'])->name('admin.machine-types.store');
+        Route::put('/admin/tipe-mesin/{type}', [MachineTypeController::class, 'update'])->name('admin.machine-types.update');
+        Route::delete('/admin/tipe-mesin/{type}', [MachineTypeController::class, 'destroy'])->name('admin.machine-types.destroy');
+
+        Route::get('/admin/lokasi', [LocationController::class, 'index'])->name('admin.locations');
+        Route::post('/admin/lokasi', [LocationController::class, 'store'])->name('admin.locations.store');
+        Route::put('/admin/lokasi/{location}', [LocationController::class, 'update'])->name('admin.locations.update');
+        Route::delete('/admin/lokasi/{location}', [LocationController::class, 'destroy'])->name('admin.locations.destroy');
     });
 
     Route::middleware('can:template.manage')->group(function () {

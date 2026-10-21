@@ -66,6 +66,35 @@ const MENU_CARDS = [
         color: 'bg-neu-accent/10 border-neu-accent/20',
     },
     {
+        name: 'Tipe Mesin',
+        description: 'Daftar tipe unit (Filling, Mixer, TOM, …) yang dipilih saat menambah Mesin dan membuat Template',
+        icon: (
+            <svg className="w-10 h-10 text-neu-info" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6Z" />
+            </svg>
+        ),
+        href: route('admin.machine-types'),
+        // Sama dengan middleware route: hanya Admin & tech-all.
+        permissions: ['masterdata.manage'],
+        lockedHint: 'Tipe Mesin hanya untuk role Admin dan tech-all.',
+        color: 'bg-neu-info/10 border-neu-info/20',
+    },
+    {
+        name: 'Lokasi / Site',
+        description: 'Daftar lokasi / site pabrik yang dipilih untuk unit Mesin dan Utility',
+        icon: (
+            <svg className="w-10 h-10 text-neu-bad" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
+            </svg>
+        ),
+        href: route('admin.locations'),
+        permissions: ['masterdata.manage'],
+        lockedHint: 'Lokasi / Site hanya untuk role Admin dan tech-all.',
+        color: 'bg-neu-bad/10 border-neu-bad/20',
+    },
+    {
         name: 'Suku Cadang',
         description: 'Master suku cadang & transaksi stok (masuk/keluar)',
         icon: (

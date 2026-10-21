@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\MachineType;
+use App\Models\AssetType;
 use App\Services\MachineImportService;
 use Illuminate\Console\Command;
 
@@ -47,7 +48,7 @@ class ImportMachinesCommand extends Command
         $this->table(
             ['Jenis', 'Jumlah'],
             array_map(
-                fn ($type, $count) => [MachineType::tryFrom($type)?->label() ?? $type, $count],
+                fn ($type, $count) => [AssetType::labelFor($type), $count],
                 array_keys($report['types']),
                 $report['types']
             )

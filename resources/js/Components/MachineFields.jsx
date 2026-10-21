@@ -14,6 +14,7 @@ export default function MachineFields({
     errors = {},
     types = [],
     templates = [],
+    locations = [],
     categories = [],
     subCategories = [],
     onSubCategoryChange,
@@ -64,7 +65,17 @@ export default function MachineFields({
             </Field>
 
             <Field name="location">
-                <input type="text" placeholder="Lokasi (opsional)" {...inputProps('location')} />
+                {/* Pilihan dari master Lokasi / Site (Settings). Lokasi lama yang
+                    belum ada di master tetap ditampilkan agar tidak hilang. */}
+                <select {...inputProps('location')} aria-label="Lokasi / Site">
+                    <option value="">Tanpa lokasi</option>
+                    {data.location && !locations.includes(data.location) && (
+                        <option value={data.location}>{data.location} (belum di master)</option>
+                    )}
+                    {locations.map((l) => (
+                        <option key={l} value={l}>{l}</option>
+                    ))}
+                </select>
             </Field>
 
             <Field name="category">
@@ -106,7 +117,7 @@ export default function MachineFields({
             </Field>
 
             <Field name="type">
-                <select {...inputProps('type')}>
+                <select {...inputProps('type')} aria-label="Tipe mesin">
                     {types.map((t) => (
                         <option key={t.value} value={t.value}>{t.label}</option>
                     ))}

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\MachineType;
 use App\Enums\Period;
+use App\Models\AssetType;
 use App\Models\Machine;
 use App\Models\SparePart;
 use App\Models\SparePartMovement;
@@ -53,7 +54,7 @@ class SparePartUsageController extends Controller
                 'code' => $machine->code,
                 'name' => $machine->name,
                 'type' => $machine->type,
-                'type_label' => MachineType::tryFrom((string) $machine->type)?->label() ?? 'Umum',
+                'type_label' => AssetType::labelFor((string) $machine->type) ?: 'Umum',
             ])
             ->values();
 

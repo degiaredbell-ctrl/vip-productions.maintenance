@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\MachineType;
 use App\Models\ChecklistTemplate;
 use App\Models\Component;
+use App\Models\Location;
 use App\Models\Machine;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -206,6 +207,12 @@ class MachineImportService
             ->pluck('id', 'machine_type');
 
         $components = $this->buildComponentsMap();
+
+        // Lokasi dari CSV didaftarkan ke master Lokasi / Site supaya unit
+        // hasil impor tetap bisa disunting (form memvalidasi lokasi ke master).
+        collect($rows)->pluck('location')->filter()->unique()->each(
+            fn (string $name) => Location::firstOrCreate(['name' => $name], ['sort_no' => ((int) Location::max('sort_no')) + 1])
+        );
 
         $created = 0;
         $updated = 0;

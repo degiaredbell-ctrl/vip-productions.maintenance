@@ -71,7 +71,7 @@ class ChecklistTemplate extends Model
             return 'Per-unit '.substr((string) $this->machine_type, strlen('utility:'));
         }
 
-        return MachineType::tryFrom((string) $this->machine_type)?->label() ?? (string) $this->machine_type;
+        return AssetType::labelFor((string) $this->machine_type);
     }
 
     /**

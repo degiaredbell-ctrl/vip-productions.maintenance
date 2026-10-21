@@ -58,7 +58,7 @@ const groupComponents = (components) => {
     return sections;
 };
 
-export default function UtilityIndex({ auth, utilities = [], allComponents = [], types = [], templates = [], categories = [], subCategories = [], trashed = [], can = {} }) {
+export default function UtilityIndex({ auth, utilities = [], allComponents = [], types = [], templates = [], locations = [], categories = [], subCategories = [], trashed = [], can = {} }) {
     const createForm = useForm({ ...EMPTY_UTILITY });
     const editForm = useForm({ ...EMPTY_UTILITY });
     // Unit yang sedang disunting komponennya (modal Edit Komponen).
@@ -194,6 +194,7 @@ export default function UtilityIndex({ auth, utilities = [], allComponents = [],
                                 errors={createForm.errors}
                                 types={types}
                                 templates={templates}
+                                locations={locations}
                                 categories={categories}
                                 subCategories={subCategories}
                                 onSubCategoryChange={applySubCategory(createForm.setData)}
@@ -297,6 +298,7 @@ export default function UtilityIndex({ auth, utilities = [], allComponents = [],
                                                     errors={editForm.errors}
                                                     types={types}
                                                     templates={templates}
+                                                    locations={locations}
                                                     categories={categories}
                                                     subCategories={subCategories}
                                                     onSubCategoryChange={applySubCategory(editForm.setData)}

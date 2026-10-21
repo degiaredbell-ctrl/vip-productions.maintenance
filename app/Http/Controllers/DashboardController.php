@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\MachineType;
 use App\Enums\Period;
 use App\Exports\MachineStatusExport;
+use App\Models\AssetType;
 use App\Services\DashboardReportService;
 use App\Services\DashboardService;
 use App\Services\PeriodService;
@@ -51,7 +52,7 @@ class DashboardController extends Controller
             'currentYear' => $year,
             'search' => $search,
             'statusFilter' => $status,
-            'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'types' => AssetType::options(),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
             // Data terpisah untuk report Mesin & Utility (Beranda baru)
             'reportMachine' => DashboardReportService::build($year, 'machine'),
@@ -200,7 +201,7 @@ class DashboardController extends Controller
             'currentYear' => $year,
             'search' => $search,
             'statusFilter' => $status,
-            'types' => collect(\App\Enums\MachineType::cases())->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])->toArray(),
+            'types' => AssetType::options(),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
             'currentWeek' => PeriodService::currentWeek($period, $year),
         ]);
@@ -241,11 +242,7 @@ class DashboardController extends Controller
             'currentYear' => $year,
             'search' => $search,
             'statusFilter' => $status,
-            'types' => collect(\App\Enums\MachineType::cases())
-                ->filter(fn ($t) => $t === MachineType::Utility)
-                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
-                ->values()
-                ->toArray(),
+            'types' => AssetType::options(utility: true),
             'isFuturePeriod' => PeriodService::isFuturePeriod($period, $year),
             'currentWeek' => PeriodService::currentWeek($period, $year),
         ]);

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\MachineType;
 use App\Enums\Period;
 use App\Enums\PmDisplayStatus;
+use App\Models\AssetType;
 use App\Models\Machine;
 use Illuminate\Support\Collection;
 
@@ -65,7 +66,7 @@ class DashboardService
                     'category' => $machine->category,
                     'sub_category' => $machine->sub_category,
                     'type' => $machine->type,
-                    'type_label' => MachineType::tryFrom($machine->type)?->label() ?? $machine->type,
+                    'type_label' => AssetType::labelFor($machine->type),
                     'week_group' => $machine->week_group,
                     'status' => $display->value,
                     'status_label' => $display->label(),

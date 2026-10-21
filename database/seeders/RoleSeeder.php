@@ -29,6 +29,8 @@ class RoleSeeder extends Seeder
             'backup.manage',
             // Master Komponen / Parts: hanya Admin & tech-all.
             'component.manage',
+            // Master Tipe Mesin & Lokasi / Site: hanya Admin & tech-all.
+            'masterdata.manage',
         ];
 
         foreach ($permissions as $perm) {
@@ -60,7 +62,7 @@ class RoleSeeder extends Seeder
             // Teknisi full: mesin & utility boleh CRUD (+utility.manage /
             // machine.manage), Template (template.manage), dan master Komponen
             // (component.manage).
-            'tech-all' => ['machine.view', 'machine.manage', 'utility.view', 'utility.manage', 'template.manage', 'component.manage', 'sparepart.view', 'sparepart.manage', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
+            'tech-all' => ['machine.view', 'machine.manage', 'utility.view', 'utility.manage', 'template.manage', 'component.manage', 'masterdata.manage', 'sparepart.view', 'sparepart.manage', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
         ];
 
         foreach ($roles as $roleName => $rolePerms) {

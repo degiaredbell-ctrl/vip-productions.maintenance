@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\MachineType;
 use App\Http\Controllers\Controller;
+use App\Models\AssetType;
 use App\Models\ChecklistTemplate;
 use App\Models\Component;
 use App\Models\Machine;
@@ -59,7 +60,7 @@ class TemplateController extends Controller
                 'code' => $m->code,
                 'name' => $m->name,
                 'type' => $m->type,
-                'type_label' => MachineType::tryFrom($m->type)?->label() ?? $m->type,
+                'type_label' => AssetType::labelFor($m->type),
                 'is_utility' => $m->type === MachineType::Utility->value,
                 'is_active' => (bool) $m->is_active,
                 'template_id' => $m->template_id,
@@ -70,10 +71,7 @@ class TemplateController extends Controller
             'templates' => $templates,
             'units' => $units,
             'allComponents' => Component::options(),
-            'machineTypes' => collect(MachineType::cases())
-                ->reject(fn ($t) => $t === MachineType::Utility)
-                ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
-                ->values(),
+            'machineTypes' => AssetType::options(utility: false),
         ]);
     }
 
@@ -180,7 +178,7 @@ class TemplateController extends Controller
             'machine_type' => $unitSpecific ? ['nullable'] : [
                 Rule::requiredIf($request->input('scope') === ChecklistTemplate::SCOPE_MACHINE),
                 'nullable',
-                Rule::in(collect(MachineType::cases())->reject(fn ($t) => $t === MachineType::Utility)->map->value->all()),
+                Rule::exists('machine_types', 'code')->where(fn ($q) => $q->where('code', '!=', MachineType::Utility->value)),
             ],
             'is_default' => ['boolean'],
             'components' => ['array'],
