@@ -46,7 +46,7 @@ const MENU_CARDS = [
             </svg>
         ),
         href: route('admin.components'),
-        permissions: ['template.manage'],
+        permissions: ['component.manage'],
         lockedHint: 'Role Anda tidak memiliki akses ke master Komponen.',
         color: 'bg-neu-warn/10 border-neu-warn/20',
     },

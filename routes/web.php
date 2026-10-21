@@ -229,15 +229,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     // Komponen / Parts: master komponen + penugasan ke Mesin & Utility.
-    // Menggantikan halaman Template lama; permission `template.manage` dipakai
-    // ulang supaya role yang sudah ada tidak perlu diatur ulang.
-    Route::middleware('can:template.manage')->group(function () {
+    // Hanya Admin & tech-all (permission `component.manage`).
+    Route::middleware('can:component.manage')->group(function () {
         Route::get('/admin/komponen', [ComponentController::class, 'index'])->name('admin.components');
         Route::post('/admin/komponen', [ComponentController::class, 'store'])->name('admin.components.store');
         Route::put('/admin/komponen/{component}', [ComponentController::class, 'update'])->name('admin.components.update');
         Route::delete('/admin/komponen/{component}', [ComponentController::class, 'destroy'])->name('admin.components.destroy');
         Route::post('/admin/komponen/penugasan', [ComponentController::class, 'assign'])->name('admin.components.assign');
+    });
 
+    Route::middleware('can:template.manage')->group(function () {
         // Template: kumpulan komponen untuk Mesin & Utility (Settings → Template).
         Route::get('/admin/templates', [TemplateController::class, 'index'])->name('admin.templates');
         Route::post('/admin/templates', [TemplateController::class, 'store'])->name('admin.templates.store');

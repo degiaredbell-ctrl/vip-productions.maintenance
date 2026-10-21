@@ -45,8 +45,10 @@ const MENU_CARDS = [
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 3h5.259a1.5 1.5 0 0 1 1.06.44l4.5 2.598a1.5 1.5 0 0 1 .3.939V19.5a1.5 1.5 0 0 1-1.5 1.5H15" />
             </svg>
         ),
-        href: null,
-        comingSoon: true,
+        href: route('admin.components'),
+        // Sama dengan middleware route /admin/komponen: hanya Admin & tech-all.
+        permissions: ['component.manage'],
+        lockedHint: 'Master Komponen hanya untuk role Admin dan tech-all.',
         color: 'bg-neu-warn/10 border-neu-warn/20',
     },
     {

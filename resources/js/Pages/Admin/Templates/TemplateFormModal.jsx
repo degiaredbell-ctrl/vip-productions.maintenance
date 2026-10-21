@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useForm } from '@inertiajs/react';
+import { Link, useForm, usePage } from '@inertiajs/react';
 import Modal from '@/Components/Modal';
 import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
@@ -15,6 +15,7 @@ const EMPTY = { name: '', description: '', scope: 'machine', machine_type: '', i
  */
 export default function TemplateFormModal({ show, onClose, template = null, allComponents = [], machineTypes = [] }) {
     const form = useForm({ ...EMPTY });
+    const canManageComponents = Boolean(usePage().props.auth?.can?.['component.manage']);
     const [search, setSearch] = useState('');
     const isEdit = Boolean(template);
     const unitSpecific = Boolean(template?.is_unit_specific);
@@ -147,9 +148,11 @@ export default function TemplateFormModal({ show, onClose, template = null, allC
                 <div className="mt-5">
                     <div className="flex items-center justify-between mb-2">
                         <b className="text-sm">Komponen template ({form.data.components.length})</b>
-                        <Link href={route('admin.components')} className="text-[11px] font-semibold text-neu-accent hover:underline">
-                            Kelola master Komponen
-                        </Link>
+                        {canManageComponents && (
+                            <Link href={route('admin.components')} className="text-[11px] font-semibold text-neu-accent hover:underline">
+                                Kelola master Komponen
+                            </Link>
+                        )}
                     </div>
                     {componentError && <p className="mb-2 text-[11px] font-bold text-neu-bad">{componentError}</p>}
                     {form.data.components.length === 0 ? (

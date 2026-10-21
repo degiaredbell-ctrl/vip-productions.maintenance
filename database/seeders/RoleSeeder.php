@@ -27,6 +27,8 @@ class RoleSeeder extends Seeder
             'sparepart.view', 'sparepart.manage',
             // Backup & Restore database: hanya Admin.
             'backup.manage',
+            // Master Komponen / Parts: hanya Admin & tech-all.
+            'component.manage',
         ];
 
         foreach ($permissions as $perm) {
@@ -56,9 +58,9 @@ class RoleSeeder extends Seeder
             // Teknisi khusus Utility: kebalikan dari tech-machines.
             'tech-utilities' => ['utility.view', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export', 'sparepart.view'],
             // Teknisi full: mesin & utility boleh CRUD (+utility.manage /
-            // machine.manage), form-maintenance lengkap termasuk kartu Komponen
-            // (template.manage).
-            'tech-all' => ['machine.view', 'machine.manage', 'utility.view', 'utility.manage', 'template.manage', 'sparepart.view', 'sparepart.manage', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
+            // machine.manage), Template (template.manage), dan master Komponen
+            // (component.manage).
+            'tech-all' => ['machine.view', 'machine.manage', 'utility.view', 'utility.manage', 'template.manage', 'component.manage', 'sparepart.view', 'sparepart.manage', 'pm.fill', 'pm.sign', 'pm.history.view', 'report.view', 'report.export'],
         ];
 
         foreach ($roles as $roleName => $rolePerms) {
