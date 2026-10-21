@@ -6,6 +6,7 @@ import NeuChip from '@/Components/NeuChip';
 import NeuRing from '@/Components/NeuRing';
 import NeuPill from '@/Components/NeuPill';
 import NeuButton from '@/Components/NeuButton';
+import SparePartDashboardPanel from '@/Components/SparePartDashboardPanel';
 
 const PERIOD_LABELS_LIST = {
     'Jan-Feb': 'Jan–Feb',
@@ -55,6 +56,7 @@ export default function Dashboard({
     reportUtility = { byPeriod: [], byStatus: { done:0,progress:0,todo:0,issue:0,total:0,percent:0 }, totalUnits: 0 },
     reportYears = [],
     reportSummary = null,
+    sparePartDashboard = null,
 }) {
     // Scope Beranda mengikuti hak akses aset: role teknisi khusus mesin tidak
     // melihat tab/report Utility, dan sebaliknya. Role general memakai
@@ -96,11 +98,16 @@ export default function Dashboard({
         else if (tab === 'utility' && !canViewUtilities) setTab('mesin');
     }, [tab, canViewMachines, canViewUtilities]);
 
+    // Rentang Dashboard Suku Cadang punya parameter sendiri (`sp_range`) dan
+    // ikut dibawa saat filter Beranda berubah supaya pilihannya tidak hilang.
+    const spRange = sparePartDashboard?.range;
+    const withSpRange = (params) => (spRange && spRange !== 6 ? { ...params, sp_range: spRange } : params);
+
     const applyFilters = (patch) => {
         const next = { ...filters, ...patch };
         setFilters(next);
         setIsLoading(true);
-        router.get(route('dashboard'), next, {
+        router.get(route('dashboard'), withSpRange(next), {
             preserveState: true,
             preserveScroll: true,
             replace: true,
@@ -119,7 +126,7 @@ export default function Dashboard({
         clearTimeout(searchTimer.current);
         searchTimer.current = setTimeout(() => {
             setIsLoading(true);
-            router.get(route('dashboard'), { ...filters, q }, {
+            router.get(route('dashboard'), withSpRange({ ...filters, q }), {
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
@@ -158,6 +165,16 @@ export default function Dashboard({
         year: filters.year,
         period: periodFilter === 'all' ? undefined : periodFilter,
         format: 'xlsx',
+    };
+
+    // Hanya data Suku Cadang yang dimuat ulang saat rentangnya diganti.
+    const changeSpRange = (value) => {
+        router.get(route('dashboard'), { ...filters, sp_range: value }, {
+            only: ['sparePartDashboard'],
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        });
     };
 
     const activeReport = tab === 'utility' ? reportUtility : reportMachine;
@@ -407,6 +424,23 @@ export default function Dashboard({
                             </div>
                         ) : null}
                     </>
+                ) : null}
+
+                {/* Dashboard Suku Cadang: isi yang sama dengan
+                    /suku-cadang/dashboard, hanya untuk pemegang `sparepart.view`. */}
+                {sparePartDashboard ? (
+                    <section className="mt-8" aria-labelledby="dashboard-suku-cadang">
+                        <div className="flex flex-wrap items-end justify-between gap-3 mb-4">
+                            <div>
+                                <h2 id="dashboard-suku-cadang" className="text-lg sm:text-xl font-bold">Dashboard Suku Cadang</h2>
+                                <p className="text-xs text-neu-sub mt-0.5">Pantau stok, kebutuhan restock, dan pemakaian suku cadang ke unit.</p>
+                            </div>
+                            <NeuButton href={route('spareparts.dashboard')} className="!min-h-[40px] !py-2 !text-sm">
+                                Buka Dashboard Suku Cadang
+                            </NeuButton>
+                        </div>
+                        <SparePartDashboardPanel data={sparePartDashboard} onRangeChange={changeSpRange} />
+                    </section>
                 ) : null}
             </div>
         </AuthenticatedLayout>

@@ -107,6 +107,68 @@ class SparePartDashboardTest extends TestCase
         $this->assertNotNull($habis);
     }
 
+    public function test_grafik_garis_harian_mingguan_bulanan(): void
+    {
+        $part = $this->part('A1', 20, 2);
+
+        $this->move($part, 'in', 10, now()->toDateString());
+        $this->move($part, 'out', 4, now()->toDateString());
+        $this->move($part, 'out', 2, now()->toDateString());
+        // Kemarin: tetap di bulan/minggu yang bisa berbeda, jadi hanya dicek di harian.
+        $this->move($part, 'out', 3, now()->subDay()->toDateString());
+        // Di luar 30 hari, tapi masih masuk 12 bulan.
+        $this->move($part, 'in', 7, now()->subDays(40)->toDateString());
+
+        $this->actingAs(User::factory()->create()->assignRole('viewer'))
+            ->get(route('spareparts.dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('lineTrend.daily', 30)
+                ->has('lineTrend.weekly', 12)
+                ->has('lineTrend.monthly', 12)
+                // Titik terakhir = hari ini.
+                ->where('lineTrend.daily.29.key', now()->toDateString())
+                ->where('lineTrend.daily.29.in', 10)
+                ->where('lineTrend.daily.29.out', 6)
+                ->where('lineTrend.daily.28.out', 3)
+                // Total 30 hari tidak memuat transaksi 40 hari lalu.
+                ->where('lineTrend.daily', fn ($rows) => collect($rows)->sum('in') === 10)
+                // Minggu berjalan dimulai hari Senin.
+                ->where('lineTrend.weekly.11.key', now()->startOfWeek()->toDateString())
+                ->where('lineTrend.monthly.11.key', now()->startOfMonth()->toDateString())
+                // Setahun memuat semua transaksi.
+                ->where('lineTrend.monthly', fn ($rows) => collect($rows)->sum('in') === 17
+                    && collect($rows)->sum('out') === 9)
+            );
+    }
+
+    public function test_dashboard_suku_cadang_juga_tampil_di_beranda(): void
+    {
+        $part = $this->part('A1', 0, 2);
+        $this->move($part, 'out', 5, now()->toDateString());
+
+        $this->actingAs(User::factory()->create()->assignRole('viewer'))
+            ->get(route('dashboard', ['sp_range' => 3]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('Dashboard/Index')
+                ->where('sparePartDashboard.range', 3)
+                ->where('sparePartDashboard.kpi.out', 1)
+                ->where('sparePartDashboard.lineTrend.daily.29.out', 5)
+            );
+    }
+
+    public function test_beranda_tanpa_izin_sparepart_view_tidak_memuat_suku_cadang(): void
+    {
+        $user = User::factory()->create();
+        $user->givePermissionTo('dashboard.view');
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('sparePartDashboard', null));
+    }
+
     public function test_rentang_tidak_valid_kembali_ke_6_bulan(): void
     {
         $user = User::factory()->create()->assignRole('viewer');

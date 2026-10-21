@@ -9,6 +9,7 @@ use App\Services\DashboardReportService;
 use App\Services\DashboardService;
 use App\Services\PeriodService;
 use App\Services\ReportService;
+use App\Services\SparePartDashboardService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -62,6 +63,16 @@ class DashboardController extends Controller
             // tambahannya. Berisi data tiap periode + agregat setahun (`all`).
             'reportSummary' => $request->user()?->can('report.view')
                 ? ReportService::summaryByPeriod($year)
+                : null,
+            // Dashboard Suku Cadang yang sama dengan /suku-cadang/dashboard,
+            // hanya untuk pemegang `sparepart.view`. Rentangnya memakai
+            // parameter sendiri (`sp_range`) supaya tidak bentrok dengan
+            // filter Beranda.
+            'sparePartDashboard' => $request->user()?->can('sparepart.view')
+                ? SparePartDashboardService::build(
+                    SparePartDashboardService::normalizeRange($request->query('sp_range')),
+                    $request->user()->can('sparepart.manage'),
+                )
                 : null,
         ]);
     }
