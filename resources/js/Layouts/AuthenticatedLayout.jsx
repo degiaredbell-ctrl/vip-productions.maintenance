@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import NeuToast from '@/Components/NeuToast';
 import OfflineOutbox from '@/Components/OfflineOutbox';
 import WibClock from '@/Components/WibClock';
+import NotificationBell from '@/Components/NotificationBell';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
@@ -46,7 +47,7 @@ export default function Authenticated({ user: userProp, header, children }) {
     // Komponen/Suku Cadang), jadi menu "Settings" tetap ditandai aktif saat
     // berada di halaman modul tersebut — kecuali halaman detail PM mesin
     // (/machines/{id}/...) yang menandai menu form Mesin/Utility.
-    const SETTINGS_PATHS = ['/settings', '/machines', '/utility', '/admin/komponen', '/admin/templates', '/admin/tipe-mesin', '/admin/lokasi', '/admin/integrate', '/suku-cadang'];
+    const SETTINGS_PATHS = ['/settings', '/settings/notifications', '/machines', '/utility', '/admin/komponen', '/admin/templates', '/admin/tipe-mesin', '/admin/lokasi', '/admin/integrate', '/suku-cadang'];
 
     const isNavActive = (item) => {
         if (machineDetailUrl) {
@@ -103,9 +104,9 @@ export default function Authenticated({ user: userProp, header, children }) {
             name: 'Settings',
             href: route('settings'),
             path: '/settings',
-            // Scope aset (machine.view / utility.view) atau baseline
-            // dashboard.view; kartu yang tak terjangkau tampil abu-abu.
-            show: can['machine.manage'] || can['machine.view'] || can['utility.view'] || can['dashboard.view'],
+            // Semua user: kartu Notifications (kotak masuk) terbuka untuk
+            // siapa pun; kartu lain yang tak terjangkau tampil abu-abu.
+            show: true,
         },
         { name: 'PM Records', href: route('admin.pm-records'), path: '/admin/pm-records', show: can['pm.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },
@@ -171,11 +172,13 @@ export default function Authenticated({ user: userProp, header, children }) {
                         <ApplicationLogo className="w-7 h-7 flex-none" />
                         <span className="truncate">PM Preventive</span>
                     </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                    <NotificationBell />
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className="neu-btn !min-h-[36px] !px-2.5 !py-1.5 text-sm">
                                 <span className="flex flex-col items-end leading-tight min-w-0">
-                                    <span className="truncate max-w-[45vw]">{user.name}</span>
+                                    <span className="truncate max-w-[35vw]">{user.name}</span>
                                     <WibClock className="text-[10px] font-medium text-neu-sub whitespace-nowrap" />
                                 </span>
                                 <svg className="w-4 h-4 flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -188,10 +191,12 @@ export default function Authenticated({ user: userProp, header, children }) {
                             <Dropdown.Link href={route('logout')} method="post" as="button">Keluar</Dropdown.Link>
                         </Dropdown.Content>
                     </Dropdown>
+                    </div>
                 </header>
 
                 {/* Header - desktop */}
-                <header className="hidden lg:flex items-center justify-end px-5 py-3">
+                <header className="hidden lg:flex items-center justify-end gap-3 px-5 py-3">
+                    <NotificationBell />
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className="neu-btn !min-h-[36px] !px-2.5 !py-1.5 text-sm">

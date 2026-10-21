@@ -2,15 +2,15 @@
 
 namespace App\Console\Commands;
 
-use App\Mail\PmReportMail;
 use App\Services\Integration\IntegrationSettings;
 use App\Services\Integration\PmReportBuilder;
+use App\Services\Notifications\PmReportSender;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Mail;
+use Throwable;
 
 /**
- * Kirim laporan PM otomatis ke penerima di Settings → Integrate.
- * Dijadwalkan di routes/console.php sesuai hari & jam di halaman Integrate.
+ * Kirim laporan PM otomatis ke Atasan (+ email tambahan) sesuai Settings →
+ * Notifications. Dijadwalkan di routes/console.php.
  */
 class SendPmReportCommand extends Command
 {
@@ -20,27 +20,18 @@ class SendPmReportCommand extends Command
 
     protected $description = 'Kirim laporan PM mingguan/bulanan lewat email Microsoft 365';
 
-    public function handle(IntegrationSettings $settings): int
+    public function handle(PmReportSender $sender): int
     {
         $type = $this->argument('type') === PmReportBuilder::MONTHLY ? PmReportBuilder::MONTHLY : PmReportBuilder::WEEKLY;
+        $to = $this->option('to') ? IntegrationSettings::parseRecipients(implode(',', $this->option('to'))) : null;
 
-        if (! $settings->mailReady()) {
-            $this->error('Koneksi email belum aktif. Atur di Settings → Integrate.');
-
-            return self::FAILURE;
-        }
-
-        $recipients = $this->option('to')
-            ? IntegrationSettings::parseRecipients(implode(',', $this->option('to')))
-            : $settings->recipients('report.recipients');
-
-        if ($recipients === []) {
-            $this->error('Belum ada penerima laporan.');
+        try {
+            $recipients = $sender->send($type, $to);
+        } catch (Throwable $e) {
+            $this->error($e->getMessage());
 
             return self::FAILURE;
         }
-
-        Mail::to($recipients)->send(new PmReportMail(PmReportBuilder::build($type)));
 
         $this->info('Laporan '.($type === PmReportBuilder::MONTHLY ? 'bulanan' : 'mingguan').' dikirim ke '.implode(', ', $recipients).'.');
 

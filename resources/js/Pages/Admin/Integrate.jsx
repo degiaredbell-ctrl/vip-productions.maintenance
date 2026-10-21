@@ -6,8 +6,6 @@ import NeuCard from '@/Components/NeuCard';
 import NeuChip from '@/Components/NeuChip';
 import NeuPill from '@/Components/NeuPill';
 
-const DAYS = ['', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-
 function Toggle({ checked, onChange, label, hint, disabled = false }) {
     return (
         <label className={`flex items-start gap-3 py-2 ${disabled ? 'opacity-50' : 'cursor-pointer'}`}>
@@ -76,7 +74,6 @@ export default function Integrate({ auth, settings, status, defaultTestRecipient
 
     const [testTo, setTestTo] = useState(defaultTestRecipient);
     const [testing, setTesting] = useState(false);
-    const [sending, setSending] = useState(null);
     const [showGuide, setShowGuide] = useState(!status.ready);
 
     const save = (ev) => {
@@ -92,11 +89,6 @@ export default function Integrate({ auth, settings, status, defaultTestRecipient
         router.post(route('admin.integrate.test'), { to: testTo }, { preserveScroll: true, onFinish: () => setTesting(false) });
     };
 
-    const sendReport = (type) => {
-        setSending(type);
-        router.post(route('admin.integrate.report'), { type }, { preserveScroll: true, onFinish: () => setSending(null) });
-    };
-
     const mailOn = d.mail_enabled;
     const featuresNeedMail = !status.ready;
 
@@ -108,7 +100,7 @@ export default function Integrate({ auth, settings, status, defaultTestRecipient
                         <p className="text-neu-sub text-sm">PT Verra Inter Pangan</p>
                         <h1 className="text-xl sm:text-2xl font-bold">Integrate</h1>
                         <p className="text-sm text-neu-sub mt-0.5 max-w-2xl">
-                            Hubungkan aplikasi dengan email <b>Microsoft Office 365</b> perusahaan untuk notifikasi, laporan otomatis, verifikasi login, dan lupa password.
+                            Hubungkan aplikasi dengan email <b>Microsoft Office 365</b> perusahaan. Koneksi ini dipakai notifikasi &amp; laporan (Settings → Notifications), verifikasi login, dan lupa password.
                         </p>
                     </div>
                     <NeuButton href={route('settings')} className="!min-h-[40px] !py-2 !text-sm">‹ Settings</NeuButton>
@@ -248,10 +240,14 @@ export default function Integrate({ auth, settings, status, defaultTestRecipient
                     </Section>
 
                     {/* Notifikasi */}
-                    <Section title="Notifikasi Email" hint="Dikirim otomatis di latar belakang. Penerima diambil dari akun pengguna masing-masing.">
-                        <Toggle checked={d.notify_pm_awaiting} onChange={set('notify_pm_awaiting')} label="PM menunggu persetujuan" hint="Ke User PIC yang ditunjuk saat teknisi submit, dan ke Atasan saat User PIC menyetujui." />
-                        <Toggle checked={d.notify_pm_rejected} onChange={set('notify_pm_rejected')} label="PM ditolak" hint="Ke teknisi pembuat, beserta alasan penolakan." />
-                        <Toggle checked={d.notify_pm_approved} onChange={set('notify_pm_approved')} label="PM selesai disetujui" hint="Ke teknisi pembuat saat Atasan menyetujui (tahap akhir)." />
+                    <Section
+                        title="Notifikasi Email"
+                        hint="Dikirim otomatis di latar belakang."
+                        right={<NeuButton href={route('notifications.index', { tab: 'matrix' })} className="!min-h-[36px] !py-1.5 !px-3 !text-xs">Notifikasi &amp; Laporan PM ›</NeuButton>}
+                    >
+                        <p className="text-xs text-neu-sub mb-2 neu-inset px-3 py-2">
+                            Notifikasi PM (jadwal Minggu ke-2, keterlambatan, dokumen approval) dan laporan mingguan/bulanan kini diatur di <b>Settings → Notifications</b>, lengkap dengan saluran Apps &amp; Email per jenis notifikasi.
+                        </p>
                         <Toggle checked={d.notify_low_stock} onChange={set('notify_low_stock')} label="Stok suku cadang habis / menipis" hint="Dikirim sekali saat stok melewati batas minimum atau habis." />
                         {d.notify_low_stock && (
                             <div className="ml-14 mt-1">
@@ -260,50 +256,6 @@ export default function Integrate({ auth, settings, status, defaultTestRecipient
                                 </Field>
                             </div>
                         )}
-                    </Section>
-
-                    {/* Laporan */}
-                    <Section title="Laporan Otomatis" hint="Ringkasan status PM, aktivitas, antrean persetujuan, dan stok suku cadang + lampiran Excel.">
-                        <Field label="Penerima laporan *" error={e.report_recipients} hint="Pisahkan dengan koma atau baris baru." className="mb-3">
-                            <textarea {...input('report_recipients')} rows={2} className="neu-input resize-y" placeholder="manager@perusahaan.com, plant.head@perusahaan.com" />
-                        </Field>
-
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                            <div className="neu-inset px-4 py-3">
-                                <Toggle checked={d.report_weekly_enabled} onChange={set('report_weekly_enabled')} label="Laporan mingguan" hint="Rekap 7 hari terakhir + lampiran periode berjalan." />
-                                <div className="grid grid-cols-2 gap-3 mt-2">
-                                    <Field label="Hari" error={e.report_weekly_day}>
-                                        <select {...input('report_weekly_day')} disabled={!d.report_weekly_enabled}>
-                                            {DAYS.slice(1).map((day, i) => <option key={day} value={i + 1}>{day}</option>)}
-                                        </select>
-                                    </Field>
-                                    <Field label="Jam (WIB)" error={e.report_weekly_time}>
-                                        <input type="time" {...input('report_weekly_time')} disabled={!d.report_weekly_enabled} />
-                                    </Field>
-                                </div>
-                                <NeuButton type="button" onClick={() => sendReport('weekly')} disabled={!status.ready || sending !== null} className="mt-3 !min-h-[36px] !py-1.5 !px-3 !text-xs">
-                                    {sending === 'weekly' ? 'Mengirim…' : 'Kirim laporan mingguan sekarang'}
-                                </NeuButton>
-                            </div>
-
-                            <div className="neu-inset px-4 py-3">
-                                <Toggle checked={d.report_monthly_enabled} onChange={set('report_monthly_enabled')} label="Laporan bulanan" hint="Rekap bulan sebelumnya + lampiran setahun penuh." />
-                                <div className="grid grid-cols-2 gap-3 mt-2">
-                                    <Field label="Tanggal" error={e.report_monthly_day}>
-                                        <select {...input('report_monthly_day')} disabled={!d.report_monthly_enabled}>
-                                            {Array.from({ length: 28 }, (_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
-                                        </select>
-                                    </Field>
-                                    <Field label="Jam (WIB)" error={e.report_monthly_time}>
-                                        <input type="time" {...input('report_monthly_time')} disabled={!d.report_monthly_enabled} />
-                                    </Field>
-                                </div>
-                                <NeuButton type="button" onClick={() => sendReport('monthly')} disabled={!status.ready || sending !== null} className="mt-3 !min-h-[36px] !py-1.5 !px-3 !text-xs">
-                                    {sending === 'monthly' ? 'Mengirim…' : 'Kirim laporan bulanan sekarang'}
-                                </NeuButton>
-                            </div>
-                        </div>
-                        <p className="mt-3 text-[11px] text-neu-sub">Tombol "kirim sekarang" memakai pengaturan yang sudah tersimpan. Tautan di email mengarah ke {appUrl}.</p>
                     </Section>
 
                     <div className="sticky bottom-[84px] lg:bottom-4 z-20 flex justify-end mb-4">

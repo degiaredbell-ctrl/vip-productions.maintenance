@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MachineController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PmRecordController;
 use App\Http\Controllers\PmSignatureController;
 use App\Http\Controllers\PmSyncController;
@@ -56,6 +57,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // sendiri-sendiri di sidebar. Halaman ini hanya menampilkan kartu; otorisasi
     // sebenarnya tetap di rute tujuan masing-masing kartu.
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+
+    // Settings → Notifications. Kotak masuk in-app terbuka untuk semua user
+    // (hanya notifikasi miliknya sendiri); matriks, PIC perangkat, dan kirim
+    // manual hanya untuk pemegang `notification.manage`.
+    Route::get('/settings/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+    Route::delete('/notifications/read', [NotificationController::class, 'clearRead'])->name('notifications.clear-read');
+    Route::get('/notifications/{id}/open', [NotificationController::class, 'open'])->whereUuid('id')->name('notifications.open');
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->whereUuid('id')->name('notifications.read');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->whereUuid('id')->name('notifications.destroy');
+
+    Route::middleware('can:notification.manage')->group(function () {
+        Route::put('/settings/notifications', [NotificationController::class, 'updateMatrix'])->name('notifications.update');
+        Route::put('/settings/notifications/pic', [NotificationController::class, 'assignPic'])->name('notifications.pic');
+        Route::post('/settings/notifications/preview', [NotificationController::class, 'preview'])
+            ->middleware('throttle:20,1')
+            ->name('notifications.preview');
+        Route::post('/settings/notifications/send', [NotificationController::class, 'send'])
+            ->middleware('throttle:6,1')
+            ->name('notifications.send');
+    });
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -248,9 +271,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/admin/integrate/test', [IntegrationController::class, 'test'])
             ->middleware('throttle:6,1')
             ->name('admin.integrate.test');
-        Route::post('/admin/integrate/laporan', [IntegrationController::class, 'sendReport'])
-            ->middleware('throttle:4,1')
-            ->name('admin.integrate.report');
     });
 
     // Master data Tipe Mesin & Lokasi / Site: hanya Admin & tech-all.

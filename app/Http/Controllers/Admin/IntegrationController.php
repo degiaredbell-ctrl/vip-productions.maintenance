@@ -3,11 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Mail\PmReportMail;
 use App\Services\AuditLogService;
 use App\Services\Integration\IntegrationSettings;
 use App\Services\Integration\MailConfigurator;
-use App\Services\Integration\PmReportBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Mail\Message;
@@ -18,8 +16,9 @@ use Inertia\Response;
 use Throwable;
 
 /**
- * Settings → Integrate: koneksi email Microsoft 365 perusahaan dan fitur yang
- * memakainya (lupa password, verifikasi login OTP, notifikasi, laporan).
+ * Settings → Integrate: koneksi email Microsoft 365 perusahaan dan fitur akun
+ * yang memakainya (lupa password, verifikasi login OTP, peringatan stok).
+ * Notifikasi & laporan PM diatur di Settings → Notifications.
  * Hanya Admin (permission `integration.manage`).
  */
 class IntegrationController extends Controller
@@ -47,18 +46,10 @@ class IntegrationController extends Controller
                 'feature_password_reset' => $s->bool('feature.password_reset'),
                 'feature_login_otp' => $s->bool('feature.login_otp'),
                 'login_otp_remember_days' => (int) $s->get('feature.login_otp_remember_days'),
-                'notify_pm_awaiting' => $s->bool('notify.pm_awaiting'),
-                'notify_pm_rejected' => $s->bool('notify.pm_rejected'),
-                'notify_pm_approved' => $s->bool('notify.pm_approved'),
                 'notify_low_stock' => $s->bool('notify.low_stock'),
                 'low_stock_recipients' => $s->get('notify.low_stock_recipients'),
-                'report_recipients' => $s->get('report.recipients'),
                 'report_weekly_enabled' => $s->bool('report.weekly_enabled'),
-                'report_weekly_day' => (int) $s->get('report.weekly_day'),
-                'report_weekly_time' => $s->get('report.weekly_time'),
                 'report_monthly_enabled' => $s->bool('report.monthly_enabled'),
-                'report_monthly_day' => (int) $s->get('report.monthly_day'),
-                'report_monthly_time' => $s->get('report.monthly_time'),
             ],
             'status' => [
                 'ready' => $s->mailReady(),
@@ -89,18 +80,8 @@ class IntegrationController extends Controller
             'feature_password_reset' => ['boolean'],
             'feature_login_otp' => ['boolean'],
             'login_otp_remember_days' => ['required', 'integer', 'between:1,365'],
-            'notify_pm_awaiting' => ['boolean'],
-            'notify_pm_rejected' => ['boolean'],
-            'notify_pm_approved' => ['boolean'],
             'notify_low_stock' => ['boolean'],
             'low_stock_recipients' => ['nullable', 'string', 'max:2000'],
-            'report_recipients' => ['nullable', 'string', 'max:2000'],
-            'report_weekly_enabled' => ['boolean'],
-            'report_weekly_day' => ['required', 'integer', 'between:1,7'],
-            'report_weekly_time' => ['required', 'date_format:H:i'],
-            'report_monthly_enabled' => ['boolean'],
-            'report_monthly_day' => ['required', 'integer', 'between:1,28'],
-            'report_monthly_time' => ['required', 'date_format:H:i'],
         ], [
             'from_address.required' => 'Isi email pengirim (mailbox Microsoft 365).',
             'graph_tenant_id.required' => 'Isi Tenant ID (Directory ID) dari Microsoft Entra.',
@@ -111,10 +92,6 @@ class IntegrationController extends Controller
 
         if ($enabling && $data['mail_driver'] === 'graph' && blank($data['graph_client_secret'] ?? null) && ! $this->settings->hasSecret('graph.client_secret')) {
             return back()->withErrors(['graph_client_secret' => 'Isi Client Secret dari app registration.']);
-        }
-
-        if ((($data['report_weekly_enabled'] ?? false) || ($data['report_monthly_enabled'] ?? false)) && IntegrationSettings::parseRecipients((string) ($data['report_recipients'] ?? '')) === []) {
-            return back()->withErrors(['report_recipients' => 'Isi minimal satu email penerima laporan.']);
         }
 
         $values = [
@@ -131,18 +108,8 @@ class IntegrationController extends Controller
             'feature.password_reset' => $request->boolean('feature_password_reset'),
             'feature.login_otp' => $request->boolean('feature_login_otp'),
             'feature.login_otp_remember_days' => (int) $data['login_otp_remember_days'],
-            'notify.pm_awaiting' => $request->boolean('notify_pm_awaiting'),
-            'notify.pm_rejected' => $request->boolean('notify_pm_rejected'),
-            'notify.pm_approved' => $request->boolean('notify_pm_approved'),
             'notify.low_stock' => $request->boolean('notify_low_stock'),
             'notify.low_stock_recipients' => implode(', ', IntegrationSettings::parseRecipients((string) ($data['low_stock_recipients'] ?? ''))),
-            'report.recipients' => implode(', ', IntegrationSettings::parseRecipients((string) ($data['report_recipients'] ?? ''))),
-            'report.weekly_enabled' => $request->boolean('report_weekly_enabled'),
-            'report.weekly_day' => (int) $data['report_weekly_day'],
-            'report.weekly_time' => $data['report_weekly_time'],
-            'report.monthly_enabled' => $request->boolean('report_monthly_enabled'),
-            'report.monthly_day' => (int) $data['report_monthly_day'],
-            'report.monthly_time' => $data['report_monthly_time'],
         ];
 
         // Rahasia hanya diganti bila diisi; kosong = pertahankan yang lama.
@@ -195,31 +162,6 @@ class IntegrationController extends Controller
         $this->recordTest(true, null);
 
         return back()->with('success', "Email uji terkirim ke {$data['to']}. Periksa kotak masuk (dan folder Junk).");
-    }
-
-    public function sendReport(Request $request): RedirectResponse
-    {
-        $data = $request->validate([
-            'type' => ['required', Rule::in([PmReportBuilder::WEEKLY, PmReportBuilder::MONTHLY])],
-        ]);
-
-        if (! $this->settings->mailReady()) {
-            return back()->with('error', 'Aktifkan dan simpan koneksi email terlebih dahulu.');
-        }
-
-        $recipients = $this->settings->recipients('report.recipients') ?: [$request->user()->email];
-
-        MailConfigurator::apply($this->settings);
-
-        try {
-            Mail::to($recipients)->send(new PmReportMail(PmReportBuilder::build($data['type'])));
-        } catch (Throwable $e) {
-            report($e);
-
-            return back()->with('error', 'Laporan gagal dikirim: '.$e->getMessage());
-        }
-
-        return back()->with('success', 'Laporan '.($data['type'] === PmReportBuilder::MONTHLY ? 'bulanan' : 'mingguan').' dikirim ke '.implode(', ', $recipients).'.');
     }
 
     private function recordTest(bool $ok, ?string $error): void

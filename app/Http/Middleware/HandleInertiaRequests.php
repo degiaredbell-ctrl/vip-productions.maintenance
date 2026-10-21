@@ -31,6 +31,8 @@ class HandleInertiaRequests extends Middleware
             // sidebar di semua halaman bisa menampilkannya tanpa tiap controller
             // harus mengirim ulang.
             'pendingApprovals' => fn () => SignatureChain::pendingCountFor($request->user()),
+            // Jumlah notifikasi in-app belum dibaca untuk lonceng di header.
+            'notificationsUnread' => fn () => $request->user()?->unreadNotifications()->count() ?? 0,
             // Jam server (epoch ms) untuk jam WIB di header, supaya jam yang
             // tampil tidak ikut salah kalau jam perangkat pengguna meleset.
             'serverNow' => fn () => now()->getTimestampMs(),

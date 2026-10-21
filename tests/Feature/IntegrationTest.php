@@ -2,23 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Actions\Pm\RejectPmRecord;
-use App\Enums\Period;
-use App\Enums\PmStatus;
-use App\Enums\SignatureStage;
-use App\Mail\PmReportMail;
 use App\Models\AppSetting;
-use App\Models\Machine;
-use App\Models\PmRecord;
 use App\Models\SparePart;
 use App\Models\User;
 use App\Notifications\LoginOtpNotification;
 use App\Notifications\LowStockNotification;
-use App\Notifications\PmStatusNotification;
 use App\Services\Auth\LoginOtp;
 use App\Services\Integration\IntegrationSettings;
-use App\Services\Integration\MailNotifier;
-use App\Services\Integration\PmReportBuilder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -87,18 +77,8 @@ class IntegrationTest extends TestCase
             'feature_password_reset' => true,
             'feature_login_otp' => false,
             'login_otp_remember_days' => 30,
-            'notify_pm_awaiting' => true,
-            'notify_pm_rejected' => true,
-            'notify_pm_approved' => true,
             'notify_low_stock' => true,
             'low_stock_recipients' => '',
-            'report_recipients' => 'manager@redbellgroup.com',
-            'report_weekly_enabled' => false,
-            'report_weekly_day' => 1,
-            'report_weekly_time' => '07:00',
-            'report_monthly_enabled' => false,
-            'report_monthly_day' => 1,
-            'report_monthly_time' => '07:00',
             ...$overrides,
         ];
     }
@@ -150,10 +130,6 @@ class IntegrationTest extends TestCase
         $this->actingAs($this->admin)
             ->put(route('admin.integrate.update'), $this->payload(['graph_client_secret' => '']))
             ->assertSessionHasErrors('graph_client_secret');
-
-        $this->actingAs($this->admin)
-            ->put(route('admin.integrate.update'), $this->payload(['report_weekly_enabled' => true, 'report_recipients' => 'bukan-email']))
-            ->assertSessionHasErrors('report_recipients');
     }
 
     // ----------------------------------------------------- Graph transport
@@ -300,84 +276,6 @@ class IntegrationTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
-    // --------------------------------------------------------- Notifikasi PM
-
-    private function record(PmStatus $status, ?User $pic = null, ?User $tech = null): PmRecord
-    {
-        $machine = Machine::create(['code' => 'M-'.uniqid(), 'name' => 'Mixer 1', 'type' => 'mixer', 'week_group' => 1, 'is_active' => true, 'sort_no' => 1]);
-
-        return PmRecord::create([
-            'machine_id' => $machine->id,
-            'year' => now()->year,
-            'period' => Period::current()->value,
-            'technician_id' => $tech?->id,
-            'technician_name' => $tech?->name,
-            'pic_user_id' => $pic?->id,
-            'status' => $status,
-        ]);
-    }
-
-    public function test_notifikasi_menunggu_persetujuan_ke_pic_lalu_atasan_dan_selesai_ke_teknisi(): void
-    {
-        $this->enableMail();
-        Notification::fake();
-
-        $tech = User::factory()->create()->assignRole('technician');
-        $pic = User::factory()->create()->assignRole('user');
-        $piclain = User::factory()->create()->assignRole('user');
-        $atasan = User::factory()->create()->assignRole('manager');
-
-        $notifier = app(MailNotifier::class);
-
-        $record = $this->record(PmStatus::Submitted, $pic, $tech);
-        $notifier->afterSign($record, SignatureStage::Technician);
-        Notification::assertSentTo($pic, PmStatusNotification::class, fn ($n) => $n->event === PmStatusNotification::AWAITING);
-        Notification::assertNotSentTo([$piclain, $atasan, $this->admin], PmStatusNotification::class);
-
-        $record->update(['status' => PmStatus::PicApproved]);
-        $notifier->afterSign($record, SignatureStage::Pic);
-        // Admin tidak ikut dikirimi bila ada Atasan lain.
-        Notification::assertSentTo($atasan, PmStatusNotification::class, fn ($n) => $n->event === PmStatusNotification::AWAITING);
-        Notification::assertNotSentTo($this->admin, PmStatusNotification::class);
-
-        $record->update(['status' => PmStatus::Approved]);
-        $notifier->afterSign($record, SignatureStage::Supervisor);
-        Notification::assertSentTo($tech, PmStatusNotification::class, fn ($n) => $n->event === PmStatusNotification::APPROVED);
-    }
-
-    public function test_penolakan_mengirim_email_ke_teknisi_dengan_alasan(): void
-    {
-        $this->enableMail();
-        Notification::fake();
-
-        $tech = User::factory()->create()->assignRole('technician');
-        $record = $this->record(PmStatus::Submitted, null, $tech);
-
-        app(RejectPmRecord::class)->handle($record, 'Foto bearing kurang jelas');
-
-        Notification::assertSentTo($tech, PmStatusNotification::class, function (PmStatusNotification $n) use ($tech) {
-            $mail = $n->toMail($tech);
-
-            return $n->event === PmStatusNotification::REJECTED
-                && str_contains(implode(' ', $mail->introLines), 'Foto bearing kurang jelas');
-        });
-    }
-
-    public function test_notifikasi_tidak_dikirim_bila_saklar_mati_atau_email_belum_siap(): void
-    {
-        Notification::fake();
-        $tech = User::factory()->create()->assignRole('technician');
-
-        // Email belum siap.
-        app(RejectPmRecord::class)->handle($this->record(PmStatus::Submitted, null, $tech), 'x');
-        Notification::assertNothingSent();
-
-        // Email siap tapi saklar "PM ditolak" mati.
-        $this->enableMail(['notify.pm_rejected' => false]);
-        app(RejectPmRecord::class)->handle($this->record(PmStatus::Submitted, null, $tech), 'x');
-        Notification::assertNothingSent();
-    }
-
     // ------------------------------------------------------------ Stok
 
     public function test_peringatan_stok_hanya_saat_melewati_batas(): void
@@ -399,43 +297,6 @@ class IntegrationTest extends TestCase
 
         $part->update(['stock' => 0]); // menipis → habis
         Notification::assertSentOnDemandTimes(LowStockNotification::class, 2);
-    }
-
-    // ---------------------------------------------------------- Laporan
-
-    public function test_laporan_pm_terkirim_ke_penerima_dengan_lampiran(): void
-    {
-        $this->enableMail(['report.recipients' => 'manager@redbellgroup.com, plant@redbellgroup.com']);
-        Mail::fake();
-
-        $tech = User::factory()->create();
-        $this->record(PmStatus::Submitted, null, $tech)->update(['submitted_at' => now()]);
-
-        $this->artisan('integration:send-pm-report', ['type' => 'weekly'])->assertSuccessful();
-
-        Mail::assertSent(PmReportMail::class, function (PmReportMail $mail) {
-            return $mail->hasTo('manager@redbellgroup.com')
-                && $mail->hasTo('plant@redbellgroup.com')
-                && $mail->report['activity']['submitted'] === 1
-                && $mail->report['pending']['pic'] === 1
-                && count($mail->attachments()) === 1;
-        });
-
-        $report = PmReportBuilder::build(PmReportBuilder::MONTHLY);
-        $this->assertSame('Laporan PM Bulanan', $report['title']);
-        $this->assertStringContainsString((string) now()->subMonthNoOverflow()->year, $report['rangeLabel']);
-    }
-
-    public function test_tombol_kirim_laporan_sekarang(): void
-    {
-        $this->enableMail(['report.recipients' => 'manager@redbellgroup.com']);
-        Mail::fake();
-
-        $this->actingAs($this->admin)
-            ->post(route('admin.integrate.report'), ['type' => 'monthly'])
-            ->assertSessionHas('success');
-
-        Mail::assertSent(PmReportMail::class, fn ($m) => $m->report['type'] === 'monthly');
     }
 
     public function test_perintah_darurat_mematikan_otp(): void

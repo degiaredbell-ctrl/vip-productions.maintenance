@@ -24,7 +24,18 @@ class Machine extends Model
         'is_active' => 'boolean',
         'week_group' => 'integer',
         'sort_no' => 'integer',
+        'pic_user_id' => 'integer',
     ];
+
+    /**
+     * User PIC penanggung jawab perangkat (Settings → Notifications → PIC
+     * Perangkat). Membatasi notifikasi User/PIC ke perangkatnya sendiri dan
+     * menjadi pilihan awal PIC di form PM.
+     */
+    public function picUser(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class, 'pic_user_id');
+    }
 
     public function template(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {

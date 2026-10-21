@@ -56,7 +56,7 @@ const formatSavedAt = (iso) => {
 };
 
 
-export default function PmForm({ auth, machine, items, period, year, dashboardUrl, approvalReturnUrl = null, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain, savedSignature = null }) {
+export default function PmForm({ auth, machine, items, period, year, dashboardUrl, approvalReturnUrl = null, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], defaultPicId = null, chain, savedSignature = null }) {
     const userId = auth.user.id;
 
     /*
@@ -134,7 +134,11 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
         // User PIC yang menunggu tahap 2. Saat revisi, penugasan sebelumnya
         // sudah terpilih supaya tidak diam-diam berganti orang; teknisi tetap
         // bisa mengubahnya sebelum submit ulang.
-        pic_user_id: existing?.pic_user_id ? String(existing.pic_user_id) : '',
+        // PM baru memakai PIC penanggung jawab perangkat (Settings →
+        // Notifications → PIC Perangkat) sebagai pilihan awal.
+        pic_user_id: existing?.pic_user_id
+            ? String(existing.pic_user_id)
+            : (defaultPicId && (picCandidates ?? []).some((pic) => String(pic.id) === String(defaultPicId)) ? String(defaultPicId) : ''),
     };
 
     const fieldsFromDraft = (draft) => ({

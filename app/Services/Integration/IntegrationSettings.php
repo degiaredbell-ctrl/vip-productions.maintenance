@@ -46,6 +46,36 @@ class IntegrationSettings
         'notify.low_stock' => true,
         'notify.low_stock_recipients' => '',
 
+        // Settings → Notifications (lihat App\Services\Notifications\NotificationMatrix)
+        // 1. Reminder Minggu ke-2 periode
+        'notif.reminder.enabled' => true,
+        'notif.reminder.app' => true,
+        'notif.reminder.email' => true,
+        'notif.reminder.to_technician' => true,
+        'notif.reminder.to_pic' => true,
+        'notif.reminder.to_supervisor' => true,
+        'notif.reminder.time' => '07:00',
+        // 2. Keterlambatan PM (diulang setiap hari pada jam-jam berikut)
+        'notif.overdue.enabled' => true,
+        'notif.overdue.app' => true,
+        'notif.overdue.email' => true,
+        'notif.overdue.to_technician' => true,
+        'notif.overdue.to_supervisor' => true,
+        'notif.overdue.times' => '07:00,14:00',
+        // 3. Dokumen approval (event-driven)
+        'notif.submitted.app' => true,
+        'notif.submitted.email' => true,
+        'notif.pic_approved.app' => true,
+        'notif.pic_approved.email' => true,
+        'notif.approved.app' => true,
+        'notif.approved.email' => true,
+        'notif.revision.app' => true,
+        'notif.revision.email' => false,
+        // 4. Laporan: penerima otomatis = Atasan, plus report.recipients (tambahan)
+        'report.to_supervisor' => true,
+        'report.attach_pdf' => true,
+        'report.attach_excel' => true,
+
         // Laporan otomatis
         'report.recipients' => '',
         'report.weekly_enabled' => false,

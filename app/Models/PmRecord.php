@@ -26,6 +26,16 @@ class PmRecord extends Model
         'approved_at' => 'datetime',
     ];
 
+    /**
+     * Nomor dokumen PM untuk notifikasi & email, mis. "PM/2026/SEP-OKT/00023".
+     * Diturunkan dari tahun, periode, dan ID record sehingga tetap stabil
+     * tanpa kolom tambahan.
+     */
+    public function documentNumber(): string
+    {
+        return sprintf('PM/%d/%s/%05d', $this->year, strtoupper((string) $this->period), $this->id);
+    }
+
     public function machine(): BelongsTo
     {
         return $this->belongsTo(Machine::class);

@@ -33,6 +33,8 @@ class RoleSeeder extends Seeder
             'masterdata.manage',
             // Integrate (email Microsoft 365 + kredensial): hanya Admin.
             'integration.manage',
+            // Settings → Notifications (matriks notifikasi, PIC perangkat): hanya Admin.
+            'notification.manage',
         ];
 
         foreach ($permissions as $perm) {

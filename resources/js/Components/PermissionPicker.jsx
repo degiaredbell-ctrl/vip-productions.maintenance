@@ -28,6 +28,7 @@ const PERMISSION_INFO = {
     'activity.view': ['Lihat Activity Log', 'Jejak aktivitas pengguna'],
     'backup.manage': ['Backup & Restore', 'Cadangkan & pulihkan database'],
     'integration.manage': ['Integrate', 'Email Microsoft 365 & kredensial'],
+    'notification.manage': ['Kelola Notifikasi', 'Matriks notifikasi, PIC perangkat, kirim manual'],
 };
 
 const GROUPS = [
@@ -35,7 +36,7 @@ const GROUPS = [
     { key: 'report', label: 'Beranda & Laporan', color: '#1F6FEB', match: (p) => p.startsWith('dashboard.') || p.startsWith('report.') },
     { key: 'asset', label: 'Aset Mesin & Utility', color: '#A86B0B', match: (p) => /^(machine|utility|template|component|masterdata)\./.test(p) },
     { key: 'sparepart', label: 'Suku Cadang', color: '#7C4DCC', match: (p) => p.startsWith('sparepart.') },
-    { key: 'admin', label: 'Administrasi Sistem', color: '#B93A2E', match: (p) => /^(user|activity|backup|integration)\./.test(p) },
+    { key: 'admin', label: 'Administrasi Sistem', color: '#B93A2E', match: (p) => /^(user|activity|backup|integration|notification)\./.test(p) },
 ];
 
 const OTHER = { key: 'other', label: 'Lainnya', color: '#5A6475' };

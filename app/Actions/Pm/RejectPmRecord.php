@@ -6,7 +6,7 @@ use App\Enums\PmStatus;
 use App\Enums\SignatureStage;
 use App\Models\PmRecord;
 use App\Services\AuditLogService;
-use App\Services\Integration\MailNotifier;
+use App\Services\Notifications\PmApprovalNotifier;
 use App\Services\SignatureStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +51,7 @@ class RejectPmRecord
             return $record;
         });
 
-        app(MailNotifier::class)->pmRejected($record, $reason, Auth::user()?->name);
+        app(PmApprovalNotifier::class)->revision($record, $stage, $reason, Auth::user());
 
         return $record;
     }

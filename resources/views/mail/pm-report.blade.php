@@ -2,23 +2,46 @@
 # {{ $report['title'] }}
 
 **Rentang:** {{ $report['rangeLabel'] }}<br>
-**Periode PM berjalan:** {{ $report['periodLabel'] }}
+**Periode PM berjalan:** {{ $report['periodLabel'] }}@if (! empty($report['currentWeek'])) · Minggu ke-{{ $report['currentWeek'] }}@endif
 
-## Status PM periode berjalan
+## Ringkasan pencapaian PM
 
 <x-mail::table>
-| | Total | Selesai | Approval | Belum | Revisi | Progres |
-|:--|--:|--:|--:|--:|--:|--:|
+| Terjadwal | Selesai | Dalam Approval | Revisi | Belum | Terlambat | Pencapaian |
+|--:|--:|--:|--:|--:|--:|--:|
+| **{{ $report['summary']['total'] }}** | **{{ $report['summary']['done'] }}** | {{ $report['summary']['progress'] }} | {{ $report['summary']['issue'] }} | {{ $report['summary']['todo'] }} | **{{ $report['summary']['overdue'] }}** | **{{ $report['summary']['percent'] }}%** |
+</x-mail::table>
+
+<x-mail::table>
+| | Terjadwal | Selesai | Approval | Revisi | Belum | Terlambat | Pencapaian |
+|:--|--:|--:|--:|--:|--:|--:|--:|
 @foreach (['machine' => 'Mesin', 'utility' => 'Utility'] as $key => $label)
-| **{{ $label }}** | {{ $report['status'][$key]['total'] }} | {{ $report['status'][$key]['done'] }} | {{ $report['status'][$key]['progress'] }} | {{ $report['status'][$key]['todo'] }} | {{ $report['status'][$key]['issue'] }} | {{ $report['status'][$key]['percent'] }}% |
+| **{{ $label }}** | {{ $report['status'][$key]['total'] }} | {{ $report['status'][$key]['done'] }} | {{ $report['status'][$key]['progress'] }} | {{ $report['status'][$key]['issue'] }} | {{ $report['status'][$key]['todo'] }} | {{ $report['status'][$key]['overdue'] }} | {{ $report['status'][$key]['percent'] }}% |
 @endforeach
 </x-mail::table>
+
+## Perangkat terlambat ({{ count($report['overdueList']) }})
+
+@if (count($report['overdueList']) > 0)
+<x-mail::table>
+| No | Perangkat | Lokasi | Minggu | Batas | Terlambat |
+|:--|:--|:--|:--:|:--|--:|
+@foreach (array_slice($report['overdueList'], 0, 50) as $i => $item)
+| {{ $i + 1 }} | [{{ $item['code'] }} — {{ str_replace(['[', ']', '|'], ['(', ')', '/'], $item['name']) }}]({{ $base.$item['path'] }}) | {{ str_replace('|', '/', $item['location'] ?: '-') }} | W{{ $item['week'] }} | {{ $item['deadline'] }} | {{ $item['days_late'] }} hari |
+@endforeach
+</x-mail::table>
+@if (count($report['overdueList']) > 50)
+<small>…dan {{ count($report['overdueList']) - 50 }} perangkat lainnya (lihat lampiran PDF).</small>
+@endif
+@else
+Tidak ada perangkat terlambat. 👍
+@endif
 
 ## Aktivitas selama rentang ini
 
 - Checklist disubmit teknisi: **{{ $report['activity']['submitted'] }}**
 - PM selesai disetujui Atasan: **{{ $report['activity']['approved'] }}**
-- PM ditolak (perlu revisi): **{{ $report['activity']['rejected'] }}**
+- PM dikembalikan untuk revisi: **{{ $report['activity']['rejected'] }}**
 
 ## Menunggu tindakan saat ini
 
@@ -44,7 +67,9 @@ Habis: **{{ $report['stock']['out'] }}** item · Menipis: **{{ $report['stock'][
 Buka Dashboard PM
 </x-mail::button>
 
-Rekap lengkap terlampir dalam file Excel.
+@if ($attachPdf || $attachExcel)
+Terlampir: {{ implode(' dan ', array_filter([$attachPdf ? 'ringkasan PDF' : null, $attachExcel ? 'rekap lengkap Excel' : null])) }}.
+@endif
 
 <small>Dibuat otomatis {{ $report['generatedAt'] }} WIB oleh PM Preventive — PT Verra Inter Pangan.</small>
 </x-mail::message>

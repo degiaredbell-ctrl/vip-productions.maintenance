@@ -7,7 +7,7 @@ use App\Enums\SignatureStage;
 use App\Models\PmRecord;
 use App\Models\PmSignature;
 use App\Services\AuditLogService;
-use App\Services\Integration\MailNotifier;
+use App\Services\Notifications\PmApprovalNotifier;
 use App\Services\SignatureStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -130,9 +130,10 @@ class SignPmRecord
             return $signature;
         });
 
-        // Email ke tahap berikutnya / pembuat (Settings → Integrate). Dikirim
-        // setelah transaksi tersimpan dan tidak pernah menggagalkan tanda tangan.
-        app(MailNotifier::class)->afterSign($record, $stage);
+        // Notifikasi in-app + email ke tahap berikutnya / pembuat (Settings →
+        // Notifications). Dikirim setelah transaksi tersimpan dan tidak pernah
+        // menggagalkan tanda tangan.
+        app(PmApprovalNotifier::class)->afterSign($record, $stage);
 
         return $signature;
     }

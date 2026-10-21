@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Models\PmRecord;
 use App\Models\SparePart;
 use App\Services\DashboardService;
+use App\Services\Notifications\PmScheduleScanner;
 use Carbon\CarbonImmutable;
 
 /**
@@ -42,7 +43,7 @@ class PmReportBuilder
                 $now->subDays(6)->format('d/m/Y').' – '.$now->format('d/m/Y'),
             ];
 
-        $period = Period::current();
+        $period = Period::fromMonth((int) $now->month);
         $year = (int) $now->year;
 
         $status = [];
@@ -51,6 +52,19 @@ class PmReportBuilder
             $stats['percent'] = $stats['total'] > 0 ? (int) round($stats['done'] / $stats['total'] * 100) : 0;
             $status[$key] = $stats;
         }
+
+        // Ringkasan gabungan mesin + utility: terjadwal, selesai, dalam
+        // approval, revisi, belum, terlambat, dan persentase pencapaian.
+        $summary = [];
+        foreach (['total', 'done', 'progress', 'todo', 'issue', 'overdue'] as $k) {
+            $summary[$k] = $status['machine'][$k] + $status['utility'][$k];
+        }
+        $summary['percent'] = $summary['total'] > 0 ? round($summary['done'] / $summary['total'] * 100, 1) : 0;
+
+        $overdueList = PmScheduleScanner::overdue($period, $year)
+            ->map(fn ($m) => PmScheduleScanner::item($m, $period, $year))
+            ->values()
+            ->all();
 
         $activity = [
             'submitted' => PmRecord::whereBetween('submitted_at', [$from, $to])->count(),
@@ -75,6 +89,9 @@ class PmReportBuilder
             'title' => $type === self::MONTHLY ? 'Laporan PM Bulanan' : 'Laporan PM Mingguan',
             'rangeLabel' => $rangeLabel,
             'periodLabel' => $period->label().' '.$year,
+            'currentWeek' => \App\Services\PeriodService::currentWeek($period, $year),
+            'summary' => $summary,
+            'overdueList' => $overdueList,
             'period' => $period->value,
             'year' => $year,
             'status' => $status,

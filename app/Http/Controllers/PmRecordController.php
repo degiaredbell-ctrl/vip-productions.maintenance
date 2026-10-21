@@ -215,6 +215,8 @@ class PmRecordController extends Controller
                 ])
                 ->values()
                 ->all(),
+            // PIC penanggung jawab perangkat, jadi pilihan awal untuk PM baru.
+            'defaultPicId' => $machine->pic_user_id,
             // Tanda tangan yang sudah disimpan akun login di halaman Profile,
             // supaya panel persetujuan bisa memakainya langsung.
             'savedSignature' => $this->userSignatureProps($user),

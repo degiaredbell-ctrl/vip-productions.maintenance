@@ -20,11 +20,33 @@ Schedule::command('backup:database --type=scheduled --prune')
     ->withoutOverlapping()
     ->onOneServer();
 
-// Laporan PM otomatis lewat email (Settings → Integrate). Jadwal dibaca dari
-// pengaturan setiap kali scheduler berjalan, jadi perubahan hari/jam di
-// halaman Integrate langsung berlaku tanpa restart.
+// Notifikasi & laporan PM (Settings → Notifications). Jadwal dibaca dari
+// pengaturan setiap kali scheduler berjalan, jadi perubahan jam di halaman
+// Notifications langsung berlaku tanpa restart.
 try {
     $integration = app(\App\Services\Integration\IntegrationSettings::class);
+    $validTime = fn ($t) => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', trim((string) $t)) === 1;
+
+    // 1. Reminder Minggu ke-2: dicek setiap hari pada jam yang diatur; command
+    //    sendiri yang memastikan hanya terkirim sekali saat Minggu ke-2.
+    if ($integration->bool('notif.reminder.enabled') && $validTime($integration->get('notif.reminder.time'))) {
+        Schedule::command('notifications:pm-alert reminder')
+            ->dailyAt(trim((string) $integration->get('notif.reminder.time')))
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping()
+            ->onOneServer();
+    }
+
+    // 2. Keterlambatan PM: diulang setiap hari pada tiap jam (default 07:00 & 14:00).
+    if ($integration->bool('notif.overdue.enabled')) {
+        foreach (array_unique(array_filter(array_map('trim', explode(',', (string) $integration->get('notif.overdue.times'))), $validTime)) as $time) {
+            Schedule::command('notifications:pm-alert overdue')
+                ->dailyAt($time)
+                ->timezone('Asia/Jakarta')
+                ->withoutOverlapping()
+                ->onOneServer();
+        }
+    }
 
     if ($integration->mailReady() && $integration->bool('report.weekly_enabled')) {
         Schedule::command('integration:send-pm-report weekly')
