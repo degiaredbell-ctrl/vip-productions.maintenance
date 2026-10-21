@@ -59,11 +59,13 @@ class NewPasswordController extends Controller
         // the application's home authenticated view. If there is an error we can
         // redirect them back to where they came from with their error message.
         if ($status == Password::PASSWORD_RESET) {
-            return redirect()->route('login')->with('status', __($status));
+            return redirect()->route('login')->with('status', 'Password berhasil diatur ulang. Silakan masuk dengan password baru.');
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'email' => [$status == Password::INVALID_TOKEN
+                ? 'Tautan reset password tidak valid atau sudah kedaluwarsa. Minta tautan baru.'
+                : 'Password tidak dapat diatur ulang. Periksa email Anda dan coba lagi.'],
         ]);
     }
 }

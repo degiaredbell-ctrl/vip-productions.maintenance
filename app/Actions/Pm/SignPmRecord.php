@@ -7,6 +7,7 @@ use App\Enums\SignatureStage;
 use App\Models\PmRecord;
 use App\Models\PmSignature;
 use App\Services\AuditLogService;
+use App\Services\Integration\MailNotifier;
 use App\Services\SignatureStorage;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +75,7 @@ class SignPmRecord
 
         $signedByName = $this->resolveSignerName($stage, $signerName);
 
-        return DB::transaction(function () use ($record, $stage, $dataUrl, $note, $signedByName, $useSavedSignature, $saveToProfile) {
+        $signature = DB::transaction(function () use ($record, $stage, $dataUrl, $note, $signedByName, $useSavedSignature, $saveToProfile) {
             $user = Auth::user();
 
             // Simpan ke profil dulu (kalau diminta), lalu snapshot untuk
@@ -128,6 +129,12 @@ class SignPmRecord
 
             return $signature;
         });
+
+        // Email ke tahap berikutnya / pembuat (Settings → Integrate). Dikirim
+        // setelah transaksi tersimpan dan tidak pernah menggagalkan tanda tangan.
+        app(MailNotifier::class)->afterSign($record, $stage);
+
+        return $signature;
     }
 
     /**

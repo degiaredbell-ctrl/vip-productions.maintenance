@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Services\Integration\IntegrationSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
@@ -17,6 +18,8 @@ class PasswordResetLinkController extends Controller
      */
     public function create(): Response
     {
+        $this->ensureEnabled();
+
         return Inertia::render('Auth/ForgotPassword', [
             'status' => session('status'),
         ]);
@@ -29,6 +32,8 @@ class PasswordResetLinkController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $this->ensureEnabled();
+
         $request->validate([
             'email' => 'required|email',
         ]);
@@ -40,12 +45,26 @@ class PasswordResetLinkController extends Controller
             $request->only('email')
         );
 
-        if ($status == Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
+        // Pesan sama untuk email terdaftar maupun tidak, supaya formulir ini
+        // tidak bisa dipakai menebak email siapa saja yang punya akun.
+        if ($status == Password::RESET_LINK_SENT || $status == Password::INVALID_USER) {
+            return back()->with('status', 'Jika email terdaftar, tautan reset password sudah dikirim. Periksa kotak masuk (dan folder Junk) Anda.');
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'email' => [$status == Password::RESET_THROTTLED
+                ? 'Tunggu sebentar sebelum meminta tautan reset lagi.'
+                : 'Tautan reset password tidak dapat dikirim. Coba lagi nanti.'],
         ]);
+    }
+
+    /** Lupa password hanya tersedia bila diaktifkan di Settings → Integrate. */
+    private function ensureEnabled(): void
+    {
+        abort_unless(
+            app(IntegrationSettings::class)->featureOn('feature.password_reset'),
+            404,
+            'Fitur lupa password belum diaktifkan. Hubungi admin.'
+        );
     }
 }

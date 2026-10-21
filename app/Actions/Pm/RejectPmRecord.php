@@ -6,7 +6,9 @@ use App\Enums\PmStatus;
 use App\Enums\SignatureStage;
 use App\Models\PmRecord;
 use App\Services\AuditLogService;
+use App\Services\Integration\MailNotifier;
 use App\Services\SignatureStorage;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,7 +29,7 @@ class RejectPmRecord
             throw new \LogicException('Hanya User PIC dan Atasan yang dapat menolak PM.');
         }
 
-        return DB::transaction(function () use ($record, $stage, $reason) {
+        $record = DB::transaction(function () use ($record, $stage, $reason) {
             // Hapus tanda tangan yang sudah ada: setelah ditolak, PM yang
             // ditandatangani bukan lagi versi yang sedang direview.
             $record->signatures->each(fn ($signature) => SignatureStorage::delete($signature->image_path));
@@ -48,5 +50,9 @@ class RejectPmRecord
 
             return $record;
         });
+
+        app(MailNotifier::class)->pmRejected($record, $reason, Auth::user()?->name);
+
+        return $record;
     }
 }

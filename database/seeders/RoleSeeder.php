@@ -31,6 +31,8 @@ class RoleSeeder extends Seeder
             'component.manage',
             // Master Tipe Mesin & Lokasi / Site: hanya Admin & tech-all.
             'masterdata.manage',
+            // Integrate (email Microsoft 365 + kredensial): hanya Admin.
+            'integration.manage',
         ];
 
         foreach ($permissions as $perm) {

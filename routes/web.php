@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\ComponentController;
+use App\Http\Controllers\Admin\IntegrationController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\MachineTypeController;
 use App\Http\Controllers\Admin\TemplateController;
@@ -238,6 +239,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('/admin/komponen/{component}', [ComponentController::class, 'update'])->name('admin.components.update');
         Route::delete('/admin/komponen/{component}', [ComponentController::class, 'destroy'])->name('admin.components.destroy');
         Route::post('/admin/komponen/penugasan', [ComponentController::class, 'assign'])->name('admin.components.assign');
+    });
+
+    // Integrate: email Microsoft 365 + fitur email. Hanya Admin.
+    Route::middleware('can:integration.manage')->group(function () {
+        Route::get('/admin/integrate', [IntegrationController::class, 'index'])->name('admin.integrate');
+        Route::put('/admin/integrate', [IntegrationController::class, 'update'])->name('admin.integrate.update');
+        Route::post('/admin/integrate/test', [IntegrationController::class, 'test'])
+            ->middleware('throttle:6,1')
+            ->name('admin.integrate.test');
+        Route::post('/admin/integrate/laporan', [IntegrationController::class, 'sendReport'])
+            ->middleware('throttle:4,1')
+            ->name('admin.integrate.report');
     });
 
     // Master data Tipe Mesin & Lokasi / Site: hanya Admin & tech-all.

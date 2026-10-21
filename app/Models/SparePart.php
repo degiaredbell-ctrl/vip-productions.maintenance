@@ -35,6 +35,35 @@ class SparePart extends Model
         'sort_no' => 'integer',
     ];
 
+    protected static function booted(): void
+    {
+        // Peringatan email (Settings → Integrate) hanya saat stok MELEWATI
+        // batas: aman → menipis/habis, atau menipis → habis. Transaksi yang
+        // membuat stok tetap di bawah batas tidak mengirim email lagi.
+        static::updated(function (SparePart $part) {
+            if (! $part->wasChanged('stock')) {
+                return;
+            }
+
+            $before = self::levelOf((int) $part->getOriginal('stock'), (int) $part->getOriginal('min_stock'));
+            $after = self::levelOf($part->stock, $part->min_stock);
+
+            if ($after > $before) {
+                app(\App\Services\Integration\MailNotifier::class)->lowStock($part);
+            }
+        });
+    }
+
+    /** 0 = aman, 1 = menipis, 2 = habis. */
+    private static function levelOf(int $stock, int $min): int
+    {
+        if ($stock <= 0) {
+            return 2;
+        }
+
+        return $min > 0 && $stock <= $min ? 1 : 0;
+    }
+
     public function movements(): HasMany
     {
         return $this->hasMany(SparePartMovement::class)->orderByDesc('moved_at')->orderByDesc('id');

@@ -46,7 +46,7 @@ export default function Authenticated({ user: userProp, header, children }) {
     // Komponen/Suku Cadang), jadi menu "Settings" tetap ditandai aktif saat
     // berada di halaman modul tersebut — kecuali halaman detail PM mesin
     // (/machines/{id}/...) yang menandai menu form Mesin/Utility.
-    const SETTINGS_PATHS = ['/settings', '/machines', '/utility', '/admin/komponen', '/admin/templates', '/admin/tipe-mesin', '/admin/lokasi', '/suku-cadang'];
+    const SETTINGS_PATHS = ['/settings', '/machines', '/utility', '/admin/komponen', '/admin/templates', '/admin/tipe-mesin', '/admin/lokasi', '/admin/integrate', '/suku-cadang'];
 
     const isNavActive = (item) => {
         if (machineDetailUrl) {

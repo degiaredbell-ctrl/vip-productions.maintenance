@@ -12,6 +12,24 @@ class PasswordResetTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Lupa password hanya aktif bila email Microsoft 365 tersambung
+        // (Settings → Integrate).
+        app(\App\Services\Integration\IntegrationSettings::class)->set([
+            'mail.enabled' => true,
+            'mail.driver' => 'graph',
+            'mail.from_address' => 'pm-noreply@redbellgroup.com',
+            'graph.tenant_id' => 'tenant',
+            'graph.client_id' => 'client',
+            'graph.client_secret' => 'secret',
+            'feature.password_reset' => true,
+        ]);
+        app()->forgetScopedInstances();
+    }
+
     public function test_reset_password_link_screen_can_be_rendered(): void
     {
         $response = $this->get('/forgot-password');

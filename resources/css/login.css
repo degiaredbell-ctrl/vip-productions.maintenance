@@ -134,6 +134,10 @@
     line-height: 1.45;
 }
 .arc-alert-ok { color: #9ff0c8; background: rgba(47, 168, 115, 0.14); border: 1px solid rgba(47, 168, 115, 0.35); }
+.arc-alert-error { color: #ffb4a8; background: rgba(185, 58, 46, 0.16); border: 1px solid rgba(185, 58, 46, 0.4); }
+.arc-link-button { background: none; border: 0; padding: 0; color: rgba(255, 255, 255, 0.75); font: inherit; cursor: pointer; transition: color 180ms; }
+.arc-link-button:hover:not(:disabled) { color: #d0b1ff; }
+.arc-link-button:disabled { opacity: 0.5; cursor: default; }
 
 .arc-tabs {
     display: grid;

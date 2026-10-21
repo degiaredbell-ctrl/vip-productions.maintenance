@@ -1,12 +1,48 @@
 services:
   app:
     build: .
+    image: vip-maintenance-app
     container_name: vip_app
     restart: unless-stopped
     env_file: .env
     volumes:
       - app_public:/var/www/html/public
       - ./storage:/var/www/html/storage
+    networks:
+      - vipnet
+
+  # Pekerja antrean: mengirim email notifikasi (Settings → Integrate) di latar
+  # belakang supaya tanda tangan/approval tidak menunggu server email.
+  queue:
+    image: vip-maintenance-app
+    pull_policy: never
+    container_name: vip_queue
+    restart: unless-stopped
+    env_file: .env
+    user: www-data
+    entrypoint: ["php", "artisan"]
+    command: ["queue:work", "--tries=3", "--backoff=30", "--sleep=3", "--max-time=3600"]
+    volumes:
+      - ./storage:/var/www/html/storage
+    depends_on:
+      - app
+    networks:
+      - vipnet
+
+  # Penjadwal: laporan PM otomatis (Integrate) dan backup database harian.
+  scheduler:
+    image: vip-maintenance-app
+    pull_policy: never
+    container_name: vip_scheduler
+    restart: unless-stopped
+    env_file: .env
+    user: www-data
+    entrypoint: ["php", "artisan"]
+    command: ["schedule:work"]
+    volumes:
+      - ./storage:/var/www/html/storage
+    depends_on:
+      - app
     networks:
       - vipnet
 

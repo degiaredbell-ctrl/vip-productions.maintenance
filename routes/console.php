@@ -19,3 +19,35 @@ Schedule::command('backup:database --type=scheduled --prune')
     ->timezone(config('backup.timezone', 'Asia/Jakarta'))
     ->withoutOverlapping()
     ->onOneServer();
+
+// Laporan PM otomatis lewat email (Settings → Integrate). Jadwal dibaca dari
+// pengaturan setiap kali scheduler berjalan, jadi perubahan hari/jam di
+// halaman Integrate langsung berlaku tanpa restart.
+try {
+    $integration = app(\App\Services\Integration\IntegrationSettings::class);
+
+    if ($integration->mailReady() && $integration->bool('report.weekly_enabled')) {
+        Schedule::command('integration:send-pm-report weekly')
+            ->weeklyOn((int) $integration->get('report.weekly_day') % 7, (string) $integration->get('report.weekly_time'))
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping()
+            ->onOneServer();
+    }
+
+    if ($integration->mailReady() && $integration->bool('report.monthly_enabled')) {
+        Schedule::command('integration:send-pm-report monthly')
+            ->monthlyOn((int) $integration->get('report.monthly_day'), (string) $integration->get('report.monthly_time'))
+            ->timezone('Asia/Jakarta')
+            ->withoutOverlapping()
+            ->onOneServer();
+    }
+} catch (\Throwable) {
+    // Pengaturan belum bisa dibaca (mis. saat migrasi pertama) → lewati.
+}
+
+// Darurat: matikan verifikasi kode email bila email bermasalah dan admin
+// tidak bisa login. Jalankan: php artisan integration:disable-otp
+Artisan::command('integration:disable-otp', function () {
+    app(\App\Services\Integration\IntegrationSettings::class)->set(['feature.login_otp' => false]);
+    $this->info('Verifikasi login lewat kode email dinonaktifkan.');
+})->purpose('Nonaktifkan verifikasi login (OTP) email — untuk keadaan darurat');

@@ -95,6 +95,20 @@ const MENU_CARDS = [
         color: 'bg-neu-bad/10 border-neu-bad/20',
     },
     {
+        name: 'Integrate',
+        description: 'Email Microsoft 365 perusahaan: notifikasi, laporan otomatis, verifikasi login & lupa password',
+        icon: (
+            <svg className="w-10 h-10 text-neu-info" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+            </svg>
+        ),
+        href: route('admin.integrate'),
+        // Menyimpan kredensial email perusahaan: hanya Admin.
+        permissions: ['integration.manage'],
+        lockedHint: 'Integrate hanya untuk role Admin.',
+        color: 'bg-neu-info/10 border-neu-info/20',
+    },
+    {
         name: 'Suku Cadang',
         description: 'Master suku cadang & transaksi stok (masuk/keluar)',
         icon: (
