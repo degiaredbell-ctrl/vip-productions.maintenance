@@ -4,8 +4,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
-import NeuPill from '@/Components/NeuPill';
 import MachineFields from '@/Components/MachineFields';
+import StatusDot from '@/Components/StatusDot';
 import ComponentAssignModal from '@/Components/ComponentAssignModal';
 
 const EMPTY_UTILITY = {
@@ -235,7 +235,7 @@ export default function UtilityIndex({ auth, utilities = [], allComponents = [],
                                             <span className="block text-xs text-neu-sub truncate">{unit.code} · {typeLabels[unit.type] ?? unit.type} · Minggu {unit.week_group}</span>
                                             <span className="block text-xs text-neu-sub truncate">{unit.location ?? 'Tanpa lokasi'}{unit.category && ` · ${unit.category}`}{unit.component_count > 0 && ` · ${unit.component_count} komponen`}</span>
                                         </div>
-                                        <NeuPill variant={unit.is_active ? 'done' : 'todo'}>{unit.is_active ? 'Aktif' : 'Nonaktif'}</NeuPill>
+                                        <StatusDot active={unit.is_active} className="mx-2" />
                                     </div>
 
                                     {expanded && (

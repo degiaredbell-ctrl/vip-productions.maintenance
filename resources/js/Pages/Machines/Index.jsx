@@ -4,8 +4,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuButton from '@/Components/NeuButton';
 import NeuChip from '@/Components/NeuChip';
-import NeuPill from '@/Components/NeuPill';
 import MachineFields from '@/Components/MachineFields';
+import StatusDot from '@/Components/StatusDot';
 import ComponentAssignModal from '@/Components/ComponentAssignModal';
 
 const EMPTY_MACHINE = {
@@ -286,9 +286,7 @@ export default function Machines({ auth, machines = [], allComponents = [], type
                                                 {machine.template_name && ` · ${machine.template_name}`}
                                             </span>
                                         </div>
-                                        <NeuPill variant={machine.is_active ? 'done' : 'todo'}>
-                                            {machine.is_active ? 'Aktif' : 'Nonaktif'}
-                                        </NeuPill>
+                                        <StatusDot active={machine.is_active} className="mx-2" />
                                     </div>
 
                                     {expanded && (

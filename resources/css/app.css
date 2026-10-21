@@ -358,10 +358,78 @@
     92% { transform: rotate(0) scale(1); }
 }
 
+/*
+ * Dot status unit Mesin/Utility (Aktif/Nonaktif) dengan gelombang denyut.
+ * Hijau berdenyut tenang; merah berdenyut sedikit lebih cepat supaya unit
+ * nonaktif lebih menarik perhatian.
+ *
+ * Pemakaian: <StatusDot active={…} />
+ */
+.neu-status-dot {
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 9999px;
+    background-color: var(--status-color);
+    box-shadow: 0 0 0 3px #E8ECF1, 0 0 8px 1px var(--status-glow);
+    animation: neuStatusBreath 2.4s ease-in-out infinite;
+}
+
+.neu-status-dot::before,
+.neu-status-dot::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background-color: var(--status-color);
+    opacity: 0;
+    pointer-events: none;
+    animation: neuStatusPing 2.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.neu-status-dot::after {
+    animation-delay: 1.2s;
+}
+
+.neu-status-dot-on {
+    --status-color: #1F9D63;
+    --status-glow: rgba(31, 157, 99, 0.45);
+}
+
+.neu-status-dot-off {
+    --status-color: #B93A2E;
+    --status-glow: rgba(185, 58, 46, 0.45);
+}
+
+.neu-status-dot-off,
+.neu-status-dot-off::before,
+.neu-status-dot-off::after {
+    animation-duration: 1.6s;
+}
+
+.neu-status-dot-off::after {
+    animation-delay: 0.8s;
+}
+
+@keyframes neuStatusPing {
+    0% { transform: scale(1); opacity: 0.6; }
+    80%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+@keyframes neuStatusBreath {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(0.85); }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .neu-alert-icon::before,
     .neu-alert-icon::after,
-    .neu-alert-mark {
+    .neu-alert-mark,
+    .neu-status-dot,
+    .neu-status-dot::before,
+    .neu-status-dot::after {
         animation: none;
     }
 }
