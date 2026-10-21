@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Enums\Role as AppRole;
 use App\Models\User;
+use App\Policies\UserPolicy;
 use App\Rules\ValidPin;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
@@ -17,14 +19,18 @@ class UserController extends Controller
 {
     public function index(Request $request): Response
     {
-        $users = User::with('roles')->orderBy('name')->get()->map(function (User $u) use ($request) {
+        $actor = $request->user();
+
+        $users = User::with('roles')->orderBy('name')->get()->map(function (User $u) use ($actor) {
             return [
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
                 'role' => $u->roles->first()?->name ?? '-',
-                'is_self' => $u->id === $request->user()->id,
+                'is_self' => $u->id === $actor->id,
                 'has_pin' => $u->hasPin(),
+                // Akun Admin terkunci bagi pengelola non-Admin.
+                'locked' => ! UserPolicy::mayTouch($actor, $u),
             ];
         });
 
@@ -32,7 +38,10 @@ class UserController extends Controller
             'users' => $users,
             // Dibaca dari tabel roles, bukan daftar hardcoded, supaya role yang
             // baru dibuat di halaman /admin/roles langsung bisa dipilih di sini.
-            'roles' => Role::orderBy('name')->pluck('name'),
+            // Role Admin hanya ditawarkan kepada Admin.
+            'roles' => Role::orderBy('name')
+                ->when(! UserPolicy::canAssignAdmin($actor), fn ($q) => $q->where('name', '!=', AppRole::Admin->value))
+                ->pluck('name'),
         ]);
     }
 
@@ -44,7 +53,7 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'role' => ['required', Rule::exists('roles', 'name')],
+            'role' => ['required', Rule::exists('roles', 'name'), $this->adminRoleGuard($request)],
         ]);
 
         $user = User::create([
@@ -75,7 +84,7 @@ class UserController extends Controller
          * mereka sendiri. Yang boleh diubah di sini hanya role.
          */
         $validated = $request->validate([
-            'role' => ['required', Rule::exists('roles', 'name')],
+            'role' => ['required', Rule::exists('roles', 'name'), $this->adminRoleGuard($request)],
         ]);
 
         $isSelf = $user->id === $request->user()->id;
@@ -201,5 +210,15 @@ class UserController extends Controller
                 ? "Pengguna {$snapshot['name']} dihapus. {$pmCount} riwayat PM miliknya tetap tersimpan."
                 : "Pengguna {$snapshot['name']} berhasil dihapus."
         );
+    }
+
+    /** Tolak role Admin bila yang mengatur bukan Admin. */
+    private function adminRoleGuard(Request $request): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($request) {
+            if ($value === AppRole::Admin->value && ! UserPolicy::canAssignAdmin($request->user())) {
+                $fail('Role Admin hanya dapat diberikan oleh Admin.');
+            }
+        };
     }
 }

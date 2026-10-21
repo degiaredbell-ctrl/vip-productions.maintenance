@@ -472,7 +472,11 @@ export default function AdminUsers({ auth, users, roles }) {
 
                                 {/* Aksi tetap terlihat saat form terbuka agar tidak
                                     perlu menutup form dulu untuk pindah ke aksi lain. */}
-                                {editingId !== user.id && passwordId !== user.id && pinId !== user.id && confirmingId !== user.id && (
+                                {user.locked ? (
+                                    <p className="text-xs text-neu-sub mt-3">
+                                        Akun Admin hanya dapat diubah oleh Admin.
+                                    </p>
+                                ) : editingId !== user.id && passwordId !== user.id && pinId !== user.id && confirmingId !== user.id && (
                                     <div className="flex gap-2 flex-wrap mt-3">
                                         <NeuButton onClick={() => startEdit(user)} className="!min-h-[36px] !py-1.5 !px-3 !text-xs">
                                             Ubah
