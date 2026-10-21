@@ -4,7 +4,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import NeuCard from '@/Components/NeuCard';
 import NeuButton from '@/Components/NeuButton';
 import NeuPill from '@/Components/NeuPill';
-import NeuChip from '@/Components/NeuChip';
+import PermissionPicker from '@/Components/PermissionPicker';
 
 export default function Roles({ auth, roles = [], permissions = [] }) {
     const createForm = useForm({ name: '' });
@@ -33,15 +33,6 @@ export default function Roles({ auth, roles = [], permissions = [] }) {
     const cancelEdit = () => {
         setEditingId(null);
         editForm.clearErrors();
-    };
-
-    const togglePermission = (perm) => {
-        const current = editForm.data.permissions || [];
-        if (current.includes(perm)) {
-            editForm.setData('permissions', current.filter((p) => p !== perm));
-        } else {
-            editForm.setData('permissions', [...current, perm]);
-        }
     };
 
     const submitEdit = (e) => {
@@ -112,21 +103,12 @@ export default function Roles({ auth, roles = [], permissions = [] }) {
 
                                     <div>
                                         <label className="block text-xs text-neu-sub mb-2">Permissions</label>
-                                        <div className="flex flex-wrap gap-2 max-h-64 overflow-y-auto p-1.5 neu-inset">
-                                            {permissions.map((perm) => {
-                                                const active = editForm.data.permissions?.includes(perm);
-                                                return (
-                                                    <NeuChip
-                                                        key={perm}
-                                                        active={active}
-                                                        onClick={() => togglePermission(perm)}
-                                                        type="button"
-                                                    >
-                                                        {perm}
-                                                    </NeuChip>
-                                                );
-                                            })}
-                                        </div>
+                                        <PermissionPicker
+                                            permissions={permissions}
+                                            value={editForm.data.permissions || []}
+                                            onChange={(next) => editForm.setData('permissions', next)}
+                                            disabled={editForm.processing}
+                                        />
                                         {editForm.errors.permissions && (
                                             <p className="mt-1 text-[11px] font-bold text-neu-bad">{editForm.errors.permissions}</p>
                                         )}

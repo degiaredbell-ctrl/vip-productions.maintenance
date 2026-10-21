@@ -1,4 +1,4 @@
-export default function NeuRing({ percentage, size = 118, strokeWidth = 9 }) {
+export default function NeuRing({ percentage, size = 118, strokeWidth = 9, label = 'selesai', value = null }) {
     const radius = (size - strokeWidth * 2) / 2;
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (percentage / 100) * circumference;
@@ -7,8 +7,8 @@ export default function NeuRing({ percentage, size = 118, strokeWidth = 9 }) {
         <div className="relative flex-none" style={{ width: size, height: size }}>
             <div className="absolute inset-0 rounded-full shadow-neu-up grid place-items-center">
                 <div className="text-center">
-                    <span className="text-2xl font-bold block">{percentage}%</span>
-                    <span className="text-[11px] text-neu-sub">selesai</span>
+                    <span className="text-2xl font-bold block">{value ?? `${percentage}%`}</span>
+                    <span className="text-[11px] text-neu-sub">{label}</span>
                 </div>
             </div>
             <svg className="absolute inset-0" width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
