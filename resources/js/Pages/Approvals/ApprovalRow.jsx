@@ -98,6 +98,7 @@ export default function ApprovalRow({ record }) {
                         year: record.year,
                         period: record.period,
                         return: 'approvals',
+                        tab: 'queue',
                     })}
                 >
                     Buka Checklist

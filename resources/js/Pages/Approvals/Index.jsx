@@ -7,7 +7,7 @@ import NeuPill from '@/Components/NeuPill';
 import ApprovalRow from '@/Pages/Approvals/ApprovalRow';
 import MySubmissionRow from '@/Pages/Approvals/MySubmissionRow';
 
-export default function Approvals({ auth, records, mySubmissions = [], canSubmit = false, years, year, period, periods, myStages, hasStages }) {
+export default function Approvals({ auth, records, mySubmissions = [], canSubmit = false, years, year, period, periods, myStages, hasStages, tab = null }) {
     const [selectedYear, setSelectedYear] = useState(year);
     const [selectedPeriod, setSelectedPeriod] = useState(period);
     // Switch kategori PM: default "Mesin". Daftar difilter di sisi klien
@@ -15,11 +15,23 @@ export default function Approvals({ auth, records, mySubmissions = [], canSubmit
     // tahun/periode ini sudah terkirim dalam satu muatan.
     const [category, setCategory] = useState('machine');
     const showMine = canSubmit || mySubmissions.length > 0;
-    // Tab "PM Saya" dibuka langsung kalau tidak ada yang menunggu tindakan
-    // tetapi ada PM buatan user ini yang sedang diproses.
-    const [view, setView] = useState(() =>
-        !hasStages || (records.length === 0 && mySubmissions.length > 0) ? 'mine' : 'queue'
-    );
+    /*
+        Tab yang dibuka pertama kali:
+
+        - `tab=mine` dari URL: dipakai redirect setelah submit checklist, jadi
+          teknisi langsung mendarat di "Status PM Saya" dan melihat PM-nya
+          berjalan di rantai approval, bukan di antrean tanda tangan yang
+          memang bukan miliknya.
+        - tab "PM Saya" juga dibuka sendiri kalau tidak ada yang menunggu
+          tindakan tetapi ada PM buatan user ini yang sedang diproses.
+    */
+    const [view, setView] = useState(() => {
+        if (!hasStages) return 'mine';
+        if (tab === 'mine') return 'mine';
+        if (tab === 'queue') return 'queue';
+
+        return records.length === 0 && mySubmissions.length > 0 ? 'mine' : 'queue';
+    });
 
     useEffect(() => {
         setSelectedYear(year);
@@ -34,10 +46,26 @@ export default function Approvals({ auth, records, mySubmissions = [], canSubmit
         });
     };
 
+    // Status PM Saya memuat semua tahun/periode, jadi penyaringnya sendiri:
+    // status approval, bukan filter tahun/periode yang hanya untuk antrean.
+    const [mineStatus, setMineStatus] = useState('all');
+
+    const statusCount = (key) => mySubmissions.filter((record) => record.status === key).length;
+    const mineStatusChips = [
+        { key: 'all', label: 'Semua', count: mySubmissions.length },
+        { key: 'progress', label: 'Sedang Approval', count: statusCount('progress') },
+        { key: 'issue', label: 'Perlu Revisi', count: statusCount('issue') },
+        { key: 'done', label: 'Selesai', count: statusCount('done') },
+    ];
+
     const activeList = view === 'mine' ? mySubmissions : records;
     const machineCount = activeList.filter((record) => record.category === 'machine').length;
     const utilityCount = activeList.filter((record) => record.category === 'utility').length;
-    const visibleRecords = activeList.filter((record) => record.category === category);
+    const visibleRecords = activeList.filter(
+        (record) =>
+            record.category === category &&
+            (view !== 'mine' || mineStatus === 'all' || record.status === mineStatus)
+    );
     const categoryLabel = category === 'utility' ? 'Utility' : 'Mesin';
     const inProgressCount = mySubmissions.filter((record) => record.status === 'progress').length;
 
@@ -75,7 +103,10 @@ export default function Approvals({ auth, records, mySubmissions = [], canSubmit
                                     role="tab"
                                     aria-selected={view === 'mine'}
                                     active={view === 'mine'}
-                                    onClick={() => setView('mine')}
+                                    onClick={() => {
+                                        setView('mine');
+                                        setMineStatus('all');
+                                    }}
                                 >
                                     Status PM Saya ({mySubmissions.length})
                                 </NeuChip>
@@ -94,8 +125,11 @@ export default function Approvals({ auth, records, mySubmissions = [], canSubmit
                         ) : (
                             <NeuCard className="mb-4 !shadow-neu-in">
                                 <p className="text-xs text-neu-sub">
-                                    PM yang Anda isi dan tanda tangani. Pantau apakah sudah
-                                    sampai tahap <b className="text-neu-text">Approval by User PIC</b> atau{' '}
+                                    Semua PM yang Anda buat dari tahun/periode mana pun —
+                                    masih <b className="text-neu-text">menunggu approval</b>,{' '}
+                                    <b className="text-neu-text">perlu revisi</b>, maupun yang{' '}
+                                    <b className="text-neu-text">sudah selesai</b>. Pantau apakah
+                                    sudah sampai tahap <b className="text-neu-text">Approval by User PIC</b> atau{' '}
                                     <b className="text-neu-text">Approval by Atasan</b>.
                                 </p>
                                 {inProgressCount > 0 && (
@@ -106,54 +140,79 @@ export default function Approvals({ auth, records, mySubmissions = [], canSubmit
                             </NeuCard>
                         )}
 
-                        <div
-                            className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-2 lg:flex-nowrap lg:overflow-x-auto"
-                            role="group"
-                            aria-label="Filter tahun"
-                        >
-                            {years.map((y) => (
-                                <NeuChip
-                                    key={y}
-                                    active={selectedYear === y}
-                                    onClick={() => {
-                                        setSelectedYear(y);
-                                        applyFilters({ year: y });
-                                    }}
-                                    aria-label={`Tahun ${y}`}
+                        {/* Filter tahun/periode hanya mengatur antrean tanda
+                            tangan; "Status PM Saya" selalu menampilkan semua
+                            periode sehingga filter statusnya sendiri. */}
+                        {view === 'queue' && (
+                            <>
+                                <div
+                                    className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-2 lg:flex-nowrap lg:overflow-x-auto"
+                                    role="group"
+                                    aria-label="Filter tahun"
                                 >
-                                    {y}
-                                </NeuChip>
-                            ))}
-                        </div>
+                                    {years.map((y) => (
+                                        <NeuChip
+                                            key={y}
+                                            active={selectedYear === y}
+                                            onClick={() => {
+                                                setSelectedYear(y);
+                                                applyFilters({ year: y });
+                                            }}
+                                            aria-label={`Tahun ${y}`}
+                                        >
+                                            {y}
+                                        </NeuChip>
+                                    ))}
+                                </div>
 
-                        <div
-                            className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-4 lg:flex-nowrap lg:overflow-x-auto"
-                            role="group"
-                            aria-label="Filter periode"
-                        >
-                            <NeuChip
-                                active={selectedPeriod === 'all'}
-                                onClick={() => {
-                                    setSelectedPeriod('all');
-                                    applyFilters({ period: 'all' });
-                                }}
-                            >
-                                Semua Periode
-                            </NeuChip>
-                            {periods.map((p) => (
-                                <NeuChip
-                                    key={p.value}
-                                    active={selectedPeriod === p.value}
-                                    onClick={() => {
-                                        setSelectedPeriod(p.value);
-                                        applyFilters({ period: p.value });
-                                    }}
-                                    aria-label={`Periode ${p.label}`}
+                                <div
+                                    className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-4 lg:flex-nowrap lg:overflow-x-auto"
+                                    role="group"
+                                    aria-label="Filter periode"
                                 >
-                                    {p.label}
-                                </NeuChip>
-                            ))}
-                        </div>
+                                    <NeuChip
+                                        active={selectedPeriod === 'all'}
+                                        onClick={() => {
+                                            setSelectedPeriod('all');
+                                            applyFilters({ period: 'all' });
+                                        }}
+                                    >
+                                        Semua Periode
+                                    </NeuChip>
+                                    {periods.map((p) => (
+                                        <NeuChip
+                                            key={p.value}
+                                            active={selectedPeriod === p.value}
+                                            onClick={() => {
+                                                setSelectedPeriod(p.value);
+                                                applyFilters({ period: p.value });
+                                            }}
+                                            aria-label={`Periode ${p.label}`}
+                                        >
+                                            {p.label}
+                                        </NeuChip>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+
+                        {view === 'mine' && (
+                            <div
+                                className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-4 lg:flex-nowrap lg:overflow-x-auto"
+                                role="group"
+                                aria-label="Filter status PM saya"
+                            >
+                                {mineStatusChips.map((chip) => (
+                                    <NeuChip
+                                        key={chip.key}
+                                        active={mineStatus === chip.key}
+                                        onClick={() => setMineStatus(chip.key)}
+                                    >
+                                        {chip.label} ({chip.count})
+                                    </NeuChip>
+                                ))}
+                            </div>
+                        )}
 
                         <div
                             className="flex flex-wrap gap-2.5 px-1.5 py-2 mb-1 lg:flex-nowrap lg:overflow-x-auto"
@@ -176,7 +235,7 @@ export default function Approvals({ auth, records, mySubmissions = [], canSubmit
 
                         <p className="text-xs text-neu-sub mb-3">
                             {view === 'mine'
-                                ? `${visibleRecords.length} PM ${categoryLabel} buatan Anda`
+                                ? `${visibleRecords.length} PM ${categoryLabel} buatan Anda${mineStatus === 'all' ? ' (semua status)' : ` — ${mineStatusChips.find((chip) => chip.key === mineStatus)?.label}`}`
                                 : `${visibleRecords.length} PM ${categoryLabel} menunggu tindakan Anda`}
                         </p>
 
@@ -184,7 +243,7 @@ export default function Approvals({ auth, records, mySubmissions = [], canSubmit
                             <NeuCard>
                                 <p className="text-sm text-neu-sub text-center py-4">
                                     {view === 'mine'
-                                        ? `Belum ada PM ${categoryLabel} buatan Anda yang dikirim ke persetujuan pada filter ini.`
+                                        ? `Belum ada PM ${categoryLabel} buatan Anda dengan status ${mineStatusChips.find((chip) => chip.key === mineStatus)?.label ?? ''}.`
                                         : `Tidak ada PM ${categoryLabel} yang menunggu persetujuan Anda pada filter ini.`}
                                 </p>
                             </NeuCard>

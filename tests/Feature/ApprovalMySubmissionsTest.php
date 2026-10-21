@@ -46,7 +46,7 @@ class ApprovalMySubmissionsTest extends TestCase
         parent::tearDown();
     }
 
-    private function record(User $owner, PmStatus $status): PmRecord
+    private function record(User $owner, PmStatus $status, ?int $year = null, ?string $period = null): PmRecord
     {
         $this->sort++;
 
@@ -61,8 +61,8 @@ class ApprovalMySubmissionsTest extends TestCase
 
         return PmRecord::create([
             'machine_id' => $machine->id,
-            'year' => now()->year,
-            'period' => Period::current()->value,
+            'year' => $year ?? now()->year,
+            'period' => $period ?? Period::current()->value,
             'technician_id' => $owner->id,
             'pic_user_id' => $this->pic->id,
             'status' => $status,
@@ -133,6 +133,33 @@ class ApprovalMySubmissionsTest extends TestCase
                 ->where('mySubmissions.0.stages.1.rejected', true)
                 ->where('mySubmissions.0.rejection.reason', 'Foto kurang jelas')
                 ->where('mySubmissions.0.rejection.by', 'Pak PIC')
+            );
+    }
+
+    public function test_status_pm_saya_memuat_semua_tahun_dan_periode(): void
+    {
+        $tahunLalu = $this->record($this->teknisi, PmStatus::Approved, now()->year - 1, 'nov-des');
+        $periodeLain = $this->record($this->teknisi, PmStatus::Rejected, now()->year, 'jan-feb');
+        $sekarang = $this->record($this->teknisi, PmStatus::Submitted);
+        // Punya orang lain tetap tidak ikut.
+        $this->record($this->teknisiLain, PmStatus::Approved, now()->year - 1, 'nov-des');
+
+        // Filter tahun/periode hanya untuk antrean "Perlu Tindakan Saya";
+        // tab PM Saya tetap memuat semua riwayat milik pembuat.
+        $this->actingAs($this->teknisi)
+            ->get(route('approvals.index', ['year' => now()->year, 'period' => Period::current()->value]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->has('mySubmissions', 3)
+                ->where('mySubmissions', fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all()
+                    === collect([$tahunLalu->id, $periodeLain->id, $sekarang->id])->sort()->values()->all())
+                // Masih berjalan didahulukan, lalu revisi, terakhir selesai.
+                ->where('mySubmissions.0.id', $sekarang->id)
+                ->where('mySubmissions.1.id', $periodeLain->id)
+                ->where('mySubmissions.2.id', $tahunLalu->id)
+                ->where('mySubmissions.0.year', now()->year)
+                ->where('mySubmissions.2.year', now()->year - 1)
+                ->where('mySubmissions.2.status', 'done')
             );
     }
 

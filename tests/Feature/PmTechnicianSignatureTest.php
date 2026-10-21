@@ -168,6 +168,14 @@ class PmTechnicianSignatureTest extends TestCase
         Storage::disk('public')->assertExists($signature->image_path);
     }
 
+    public function test_submit_mengarah_ke_halaman_persetujuan_tab_pm_saya(): void
+    {
+        // Submit HTML biasa (endpoint store) harus mendarat di tempat yang
+        // sama dengan jalur JSON: halaman Persetujuan tab "Status PM Saya".
+        $this->store($this->user('technician'))
+            ->assertRedirect(route('approvals.index', ['tab' => 'mine']));
+    }
+
     public function test_nama_teknisi_dipakai_di_daftar_persetujuan(): void
     {
         $this->store($this->user('technician'));

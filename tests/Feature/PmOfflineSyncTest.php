@@ -83,6 +83,29 @@ class PmOfflineSyncTest extends TestCase
         $this->assertSame($this->pic->id, $record->pic_user_id);
     }
 
+    /**
+     * Setelah submit, teknisi tidak lagi kembali ke daftar asal form. Yang
+     * ditunggunya adalah perjalanan PM-nya di rantai approval, jadi kedua
+     * jalur (form JSON maupun submit HTML biasa) mendarat di halaman
+     * Persetujuan dengan tab "Status PM Saya" terbuka.
+     */
+    public function test_submit_mengarah_ke_halaman_persetujuan_tab_pm_saya(): void
+    {
+        $expected = route('approvals.index', ['tab' => 'mine']);
+
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload())
+            ->assertOk()
+            ->assertJsonPath('redirect', $expected);
+
+        // Kiriman ulang dari perangkat harus membawa tujuan yang sama; kalau
+        // tidak, antrean offline yang baru tersinkron mendarat di tempat lain.
+        $this->actingAs($this->teknisi)
+            ->postJson(route('pm.sync'), $this->payload())
+            ->assertOk()
+            ->assertJsonPath('redirect', $expected);
+    }
+
     public function test_kiriman_ulang_dengan_client_id_sama_tidak_dobel(): void
     {
         $this->actingAs($this->teknisi)->postJson(route('pm.sync'), $this->payload())->assertOk();

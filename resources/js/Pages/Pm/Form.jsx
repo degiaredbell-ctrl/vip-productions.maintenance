@@ -56,8 +56,17 @@ const formatSavedAt = (iso) => {
 };
 
 
-export default function PmForm({ auth, machine, items, period, year, dashboardUrl, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain, savedSignature = null }) {
+export default function PmForm({ auth, machine, items, period, year, dashboardUrl, approvalReturnUrl = null, existing, isFuturePeriod, canFill, canSignTechnician, picCandidates = [], chain, savedSignature = null }) {
     const userId = auth.user.id;
+
+    /*
+        Setelah submit, checklist dianggap selesai bagi teknisi: yang tersisa
+        adalah perjalanannya di rantai approval. Jadi tombol "Kembali" sengaja
+        mengarah ke tempat yang sama dengan redirect setelah submit — halaman
+        Persetujuan tab "Status PM Saya" — bukan kembali ke daftar "Kembali"
+        yang membuka form ini.
+    */
+    const backUrl = approvalReturnUrl ?? dashboardUrl ?? route('dashboard');
 
     // Checklist hanya bisa diisi (dan disimpan sebagai draft di perangkat)
     // selama masih di tahap teknisi.
@@ -441,7 +450,7 @@ export default function PmForm({ auth, machine, items, period, year, dashboardUr
             <div className="page-container">
                 {/* Header */}
                 <div className="flex items-center gap-3 mb-4">
-                    <NeuButton href={dashboardUrl ?? route('dashboard')} className="!px-3">
+                    <NeuButton href={backUrl} className="!px-3">
                         ‹ Kembali
                     </NeuButton>
                     <div className="flex-1">

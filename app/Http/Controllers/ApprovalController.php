@@ -46,10 +46,14 @@ class ApprovalController extends Controller
             ->get()
             ->map(fn (PmRecord $record) => $this->mapRecord($record, $user));
 
+        // Sengaja TANPA filter tahun/periode: tab "Status PM Saya" adalah
+        // riwayat lengkap milik pembuat — semua PM yang pernah ia buat,
+        // baik masih di rantai approval, perlu revisi, maupun sudah selesai,
+        // dari tahun/periode mana pun. Filter di atas hanya untuk antrean
+        // "Perlu Tindakan Saya" yang memang menunggu tanda tangan sekarang.
         $mySubmissions = $this->mySubmissionsQuery($user)
             ->with(['machine', 'picUser', 'signatures'])
-            ->where('year', $year)
-            ->when($period !== 'all' && $this->isValidPeriod($period, $year), fn ($q) => $q->where('period', $period))
+            ->orderByDesc('year')
             ->orderByDesc('updated_at')
             ->get()
             // Yang masih berjalan di rantai didahulukan, lalu yang perlu
@@ -71,6 +75,15 @@ class ApprovalController extends Controller
             'years' => $years,
             'year' => $year,
             'period' => $period,
+            /*
+                Tab yang harus dibuka halaman ini. Diisi oleh redirect setelah
+                submit checklist (teknisi diarahkan ke "Status PM Saya").
+                Hanya `mine`/`queue` yang diteruskan, sisanya null supaya tab
+                default yang menentukan.
+            */
+            'tab' => in_array($request->query('tab'), ['mine', 'queue'], true)
+                ? $request->query('tab')
+                : null,
             'periods' => collect(Period::cases())
                 ->filter(fn (Period $p) => ! $p->isFuture($year))
                 ->map(fn (Period $p) => ['value' => $p->value, 'label' => $p->label()])

@@ -177,6 +177,55 @@ class PmApproverViewTest extends TestCase
         }
     }
 
+    /**
+     * Tab halaman Persetujuan yang sedang dibuka ikut dibawa masuk ke form,
+     * supaya tombol "Kembali" mengembalikan approver ke daftar yang sama.
+     */
+    public function test_tab_persetujuan_ikut_terbawa_masuk_ke_form(): void
+    {
+        $this->record($this->machine, PmStatus::Submitted);
+
+        $this->actingAs($this->pic)
+            ->get(route('machines.pm.create', [
+                'machine' => $this->machine->id,
+                'return' => 'approvals',
+                'tab' => 'queue',
+            ]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('dashboardUrl', route('approvals.index', ['tab' => 'queue'])));
+    }
+
+    /**
+     * Tombol "Kembali" di form tidak lagi mengikuti daftar asal, melainkan
+     * tujuan redirect setelah submit: halaman Persetujuan tab "Status PM Saya".
+     */
+    public function test_kembali_mengarah_ke_status_pm_saya(): void
+    {
+        $this->actingAs($this->teknisi)
+            ->get(route('machines.pm.create', $this->machine))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('approvalReturnUrl', route('approvals.index', ['tab' => 'mine'])));
+    }
+
+    public function test_halaman_persetujuan_membuka_tab_yang_diminta(): void
+    {
+        $this->record($this->machine, PmStatus::Submitted);
+
+        $this->actingAs($this->pic)
+            ->get(route('approvals.index', ['tab' => 'mine']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('tab', 'mine'));
+
+        // Nilai tab di luar daftar tidak diteruskan, jadi tab default tetap
+        // yang menentukan dan URL tidak bisa memaksa tampilan sembarangan.
+        $this->actingAs($this->pic)
+            ->get(route('approvals.index', ['tab' => 'terserah']))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('tab', null));
+    }
+
     public function test_viewer_tetap_tidak_bisa_membuka_form_pm(): void
     {
         $this->record($this->machine, PmStatus::Submitted);

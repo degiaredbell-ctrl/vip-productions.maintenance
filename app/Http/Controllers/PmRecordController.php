@@ -108,8 +108,9 @@ class PmRecordController extends Controller
         if ($request->query('return') === 'approvals') {
             // Approver membuka form (mesin maupun utility) dari halaman
             // Persetujuan; tombol "Kembali" harus mengembalikannya ke antrean
-            // itu, bukan ke Beranda/Daftar Utility.
-            $dashboardUrl = route('approvals.index');
+            // itu, bukan ke Beranda/Daftar Utility. Tabnya diingat supaya
+            // kembali ke daftar yang sama seperti saat form dibuka.
+            $dashboardUrl = $this->approvalsUrl($request->query('tab'));
             $request->session()->put('pm_dashboard_url', $dashboardUrl);
         } elseif ($machine->type === MachineType::Utility->value) {
             $return = $request->query('return');
@@ -158,6 +159,14 @@ class PmRecordController extends Controller
             'period' => $period->value,
             'year' => $year,
             'dashboardUrl' => $dashboardUrl,
+            /*
+                Dipakai tombol "Kembali" di form: tujuan yang sama dengan
+                redirect setelah submit (halaman Persetujuan, tab "Status PM
+                Saya"). Dikirim terpisah dari `dashboardUrl` supaya "Kembali"
+                dari form tetap mengikuti tujuan redirect, sementara
+                `dashboardUrl` masih menyimpan asal form dibuka.
+            */
+            'approvalReturnUrl' => $this->approvalsUrl('mine'),
             'existing' => $existing ? [
                 'id' => $existing->id,
                 'status' => $existing->status->value,
@@ -223,6 +232,13 @@ class PmRecordController extends Controller
         // tidak ada data yang hilang tanpa jejak.
         $record = app(SubmitPmRecord::class)->handle($data);
 
+        // Tujuan setelah simpan tidak lagi ditentukan URL "Kembali": begitu
+        // ditandatangani, yang ditunggu teknisi adalah perjalanan PM-nya di
+        // rantai persetujuan. Jadi keduanya mendarat di halaman Persetujuan —
+        // termasuk saat tanda tangan gagal, karena checklist-nya sendiri sudah
+        // tersimpan dan statusnya bisa dipantau dari sana.
+        $redirectUrl = $this->approvalsUrl('mine');
+
         try {
             app(SignPmRecord::class)->handle(
                 $record,
@@ -236,13 +252,27 @@ class PmRecordController extends Controller
             report($exception);
 
             return redirect()
-                ->to($request->session()->pull('pm_dashboard_url', route('dashboard')))
+                ->to($redirectUrl)
                 ->with('error', 'Checklist PM tersimpan, tetapi tanda tangan gagal disimpan. Buka kembali PM untuk menandatangani.');
         }
 
         return redirect()
-            ->to($request->session()->pull('pm_dashboard_url', route('dashboard')))
+            ->to($redirectUrl)
             ->with('success', 'Checklist PM tersimpan dan sudah ditandatangani. Menunggu persetujuan User PIC.');
+    }
+
+    /**
+     * Halaman Persetujuan sebagai tujuan setelah checklist disimpan, dengan tab
+     * yang diminta dibuka sejak awal (`mine` = "Status PM Saya", `queue` =
+     * antrean "Perlu Tindakan Saya"). Daftar pending/tab dihitung ulang di
+     * controller dari query string, jadi satu URL sudah cukup menjelaskan
+     * halaman mana yang harus tampil.
+     */
+    private function approvalsUrl(?string $tab = null): string
+    {
+        $query = in_array($tab, ['mine', 'queue'], true) ? ['tab' => $tab] : [];
+
+        return route('approvals.index', $query);
     }
 
     /**

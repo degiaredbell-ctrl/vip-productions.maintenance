@@ -149,6 +149,7 @@ export default function MySubmissionRow({ record }) {
                         year: record.year,
                         period: record.period,
                         return: 'approvals',
+                        tab: 'mine',
                     })}
                 >
                     {record.is_rejected ? 'Revisi Checklist' : 'Lihat Checklist'}

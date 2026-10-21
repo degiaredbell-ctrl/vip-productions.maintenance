@@ -76,7 +76,7 @@ class PmSyncController extends Controller
                     'ok' => true,
                     'signed' => false,
                     'message' => 'Checklist PM tersimpan, tetapi tanda tangan gagal disimpan. Buka kembali PM untuk menandatangani.',
-                    'redirect' => $this->redirectUrl($request),
+                    'redirect' => $this->redirectUrl(),
                 ]);
             }
 
@@ -101,13 +101,20 @@ class PmSyncController extends Controller
             'duplicate' => $duplicate,
             'record_id' => $record?->id,
             'message' => $message,
-            'redirect' => $this->redirectUrl($request),
+            'redirect' => $this->redirectUrl(),
         ]);
     }
 
-    private function redirectUrl(Request $request): string
+    /**
+     * Checklist yang baru saja ditandatangani teknisi mendarat di halaman
+     * Persetujuan, bukan kembali ke Beranda: dari sana teknisi bisa memantau
+     * PM-nya berjalan di rantai approval. Tab "Status PM Saya" dibuka langsung
+     * karena antrean "Perlu Tindakan Saya" memang kosong untuknya — yang
+     * menunggu tanda tangan berikutnya adalah User PIC.
+     */
+    private function redirectUrl(): string
     {
-        return $request->session()->pull('pm_dashboard_url', route('dashboard'));
+        return route('approvals.index', ['tab' => 'mine']);
     }
 
     /**
