@@ -142,7 +142,7 @@ export default function NotificationBell() {
                     </div>
 
                     <Link
-                        href={route('notifications.index')}
+                        href={route('notifications.inbox')}
                         onClick={() => setOpen(false)}
                         className="neu-btn w-full justify-center mt-2 !min-h-[36px] !py-1.5 text-xs"
                     >

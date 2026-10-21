@@ -25,11 +25,12 @@ use Inertia\Response;
 use Throwable;
 
 /**
- * Settings → Notifications.
+ * Notifikasi in-app & email.
  *
- * - Kotak Masuk (semua user): notifikasi in-app milik akun sendiri.
- * - Matriks & Jadwal, PIC Perangkat, Kirim & Riwayat: pemegang
- *   `notification.manage` (Admin).
+ * - Kotak Masuk (/notifications, semua user): halaman berdiri sendiri berisi
+ *   notifikasi milik akun sendiri, dibuka dari lonceng di header.
+ * - Settings → Notifications (Matriks & Jadwal, PIC Perangkat, Kirim &
+ *   Riwayat): pemegang `notification.manage` (Admin).
  */
 class NotificationController extends Controller
 {
@@ -63,10 +64,10 @@ class NotificationController extends Controller
 
     public function __construct(private readonly IntegrationSettings $settings) {}
 
-    public function index(Request $request): Response
+    /** Kotak Masuk: halaman berdiri sendiri, dibuka dari lonceng di header. */
+    public function inbox(Request $request): Response
     {
         $user = $request->user();
-        $manage = $user->can('notification.manage');
         $filter = in_array($request->query('filter'), ['unread', 'schedule', 'overdue', 'approval'], true) ? $request->query('filter') : 'all';
 
         $inbox = $user->notifications()
@@ -76,13 +77,19 @@ class NotificationController extends Controller
             ->withQueryString()
             ->through(fn (DatabaseNotification $n) => $this->present($n));
 
-        return Inertia::render('Settings/Notifications', [
-            'tab' => $manage && in_array($request->query('tab'), ['matrix', 'pic', 'dispatch'], true) ? $request->query('tab') : 'inbox',
+        return Inertia::render('Notifications/Inbox', [
             'filter' => $filter,
             'inbox' => $inbox,
             'unreadCount' => $user->unreadNotifications()->count(),
-            'canManage' => $manage,
-            'admin' => $manage ? fn () => $this->adminProps() : null,
+        ]);
+    }
+
+    /** Settings → Notifications (pengaturan, khusus `notification.manage`). */
+    public function index(Request $request): Response
+    {
+        return Inertia::render('Settings/Notifications', [
+            'tab' => in_array($request->query('tab'), ['matrix', 'pic', 'dispatch'], true) ? $request->query('tab') : 'matrix',
+            'admin' => $this->adminProps(),
         ]);
     }
 
@@ -293,7 +300,7 @@ class NotificationController extends Controller
         // Hanya path internal, supaya data notifikasi tidak bisa jadi open redirect.
         return str_starts_with($url, '/') && ! str_starts_with($url, '//')
             ? redirect($url)
-            : redirect()->route('notifications.index');
+            : redirect()->route('notifications.inbox');
     }
 
     public function markRead(Request $request, string $id): RedirectResponse|JsonResponse

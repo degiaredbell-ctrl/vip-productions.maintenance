@@ -110,16 +110,16 @@ const MENU_CARDS = [
     },
     {
         name: 'Notifications',
-        description: 'Kotak masuk notifikasi, matriks Apps & Email (jadwal PM, keterlambatan, approval, laporan), dan PIC perangkat',
+        description: 'Matriks notifikasi Apps & Email (jadwal PM, keterlambatan, approval, laporan), PIC perangkat, dan riwayat pengiriman',
         icon: (
             <svg className="w-10 h-10 text-neu-warn" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" />
             </svg>
         ),
         href: route('notifications.index'),
-        // Kotak masuk terbuka untuk semua user; pengaturan dibatasi di halamannya.
-        permissions: [],
-        always: true,
+        // Sama dengan middleware route /settings/notifications.
+        permissions: ['notification.manage'],
+        lockedHint: 'Pengaturan notifikasi hanya untuk role Admin.',
         color: 'bg-neu-warn/10 border-neu-warn/20',
     },
     {
@@ -139,7 +139,7 @@ const MENU_CARDS = [
 export default function SettingsIndex({ auth }) {
     const cards = MENU_CARDS.map((card) => ({
         ...card,
-        allowed: !card.comingSoon && (card.always || hasAny(auth, card.permissions ?? [])),
+        allowed: !card.comingSoon && hasAny(auth, card.permissions ?? []),
     }));
     const hasAnyCard = cards.some((card) => card.allowed);
 

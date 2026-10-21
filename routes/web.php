@@ -58,10 +58,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // sebenarnya tetap di rute tujuan masing-masing kartu.
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
 
-    // Settings → Notifications. Kotak masuk in-app terbuka untuk semua user
-    // (hanya notifikasi miliknya sendiri); matriks, PIC perangkat, dan kirim
-    // manual hanya untuk pemegang `notification.manage`.
-    Route::get('/settings/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+    // Kotak Masuk notifikasi in-app: halaman berdiri sendiri (tidak di menu),
+    // dibuka dari lonceng di header. Hanya notifikasi milik akun sendiri.
+    Route::get('/notifications', [NotificationController::class, 'inbox'])->name('notifications.inbox');
     Route::get('/notifications/feed', [NotificationController::class, 'feed'])->name('notifications.feed');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
     Route::delete('/notifications/read', [NotificationController::class, 'clearRead'])->name('notifications.clear-read');
@@ -69,7 +68,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->whereUuid('id')->name('notifications.read');
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->whereUuid('id')->name('notifications.destroy');
 
+    // Settings → Notifications: matriks, PIC perangkat, kirim manual.
     Route::middleware('can:notification.manage')->group(function () {
+        Route::get('/settings/notifications', [NotificationController::class, 'index'])->name('notifications.index');
         Route::put('/settings/notifications', [NotificationController::class, 'updateMatrix'])->name('notifications.update');
         Route::put('/settings/notifications/pic', [NotificationController::class, 'assignPic'])->name('notifications.pic');
         Route::post('/settings/notifications/preview', [NotificationController::class, 'preview'])

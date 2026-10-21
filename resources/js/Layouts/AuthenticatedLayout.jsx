@@ -104,9 +104,9 @@ export default function Authenticated({ user: userProp, header, children }) {
             name: 'Settings',
             href: route('settings'),
             path: '/settings',
-            // Semua user: kartu Notifications (kotak masuk) terbuka untuk
-            // siapa pun; kartu lain yang tak terjangkau tampil abu-abu.
-            show: true,
+            // Scope aset (machine.view / utility.view) atau baseline
+            // dashboard.view; kartu yang tak terjangkau tampil abu-abu.
+            show: can['machine.manage'] || can['machine.view'] || can['utility.view'] || can['dashboard.view'] || can['notification.manage'],
         },
         { name: 'PM Records', href: route('admin.pm-records'), path: '/admin/pm-records', show: can['pm.manage'] },
         { name: 'Pengguna', href: route('admin.users'), path: '/admin/users', show: can['user.manage'] },

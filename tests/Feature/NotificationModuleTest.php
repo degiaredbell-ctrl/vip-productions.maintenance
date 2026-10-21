@@ -338,27 +338,36 @@ class NotificationModuleTest extends TestCase
 
     // ------------------------------------------------------- Halaman
 
-    public function test_kotak_masuk_untuk_semua_user_pengaturan_hanya_admin(): void
+    public function test_kotak_masuk_halaman_sendiri_untuk_semua_user_pengaturan_hanya_admin(): void
     {
-        $this->actingAs($this->techMachine)->get(route('notifications.index', ['tab' => 'matrix']))
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page->component('Settings/Notifications')
-                ->where('tab', 'inbox')
-                ->where('canManage', false)
-                ->where('admin', null));
+        $this->assertSame(url('/notifications'), route('notifications.inbox'));
 
+        foreach ([$this->techMachine, $this->pic, $this->admin] as $user) {
+            $this->actingAs($user)->get(route('notifications.inbox'))
+                ->assertOk()
+                ->assertInertia(fn ($page) => $page->component('Notifications/Inbox')
+                    ->has('inbox.data')
+                    ->missing('admin'));
+        }
+
+        // Settings → Notifications tidak lagi berisi kotak masuk dan tertutup bagi non-admin.
+        $this->actingAs($this->techMachine)->get(route('notifications.index'))->assertForbidden();
         $this->actingAs($this->techMachine)->put(route('notifications.update'), [])->assertForbidden();
         $this->actingAs($this->techMachine)->put(route('notifications.pic'), [])->assertForbidden();
         $this->actingAs($this->techMachine)->post(route('notifications.send'), ['type' => 'overdue'])->assertForbidden();
 
         $this->actingAs($this->admin)->get(route('notifications.index', ['tab' => 'pic']))
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->where('tab', 'pic')
-                ->where('canManage', true)
+            ->assertInertia(fn ($page) => $page->component('Settings/Notifications')
+                ->where('tab', 'pic')
+                ->missing('inbox')
                 ->has('admin.matrix')
                 ->has('admin.devices')
                 ->where('admin.matrix.overdue_times', '07:00,14:00')
                 ->where('admin.matrix.revision_email', false));
+
+        $this->actingAs($this->admin)->get(route('notifications.index', ['tab' => 'inbox']))
+            ->assertInertia(fn ($page) => $page->where('tab', 'matrix'));
     }
 
     public function test_admin_menyimpan_matriks_dan_menetapkan_pic(): void
