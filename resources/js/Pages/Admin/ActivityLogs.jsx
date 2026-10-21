@@ -146,7 +146,7 @@ export default function ActivityLogs({ auth, logs, filters = {}, actions = [], u
                         <div className="relative flex-1">
                             <input
                                 type="search"
-                                placeholder="Cari aksi, pelaku, subjek, atau IP…"
+                                placeholder="Cari aksi, pelaku, subjek, IP, atau perangkat…"
                                 value={localFilters.q ?? ''}
                                 onChange={(e) => {
                                     setLocalFilters((prev) => ({ ...prev, q: e.target.value }));
@@ -255,7 +255,23 @@ export default function ActivityLogs({ auth, logs, filters = {}, actions = [], u
                                                     <span className="text-neu-sub"> · {log.subject_type}{log.subject_id ? ` #${log.subject_id}` : ''}</span>
                                                 )}
                                             </p>
-                                            {log.ip && <p className="text-xs text-neu-sub mt-0.5">IP {log.ip}</p>}
+                                            {log.is_system ? (
+                                                <p className="text-xs text-neu-sub mt-0.5">Sistem (otomatis, tanpa perangkat)</p>
+                                            ) : (log.ip || log.device) && (
+                                                <p className="text-xs text-neu-sub mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                                                    {log.ip && (
+                                                        <span>
+                                                            IP <span className="font-mono text-neu-text">{log.ip}</span>
+                                                            {log.ip_label && <span> · {log.ip_label}</span>}
+                                                        </span>
+                                                    )}
+                                                    {log.device && (
+                                                        <span title={log.user_agent ?? undefined} className="inline-flex items-center gap-1">
+                                                            <span aria-hidden="true">·</span> {log.device}
+                                                        </span>
+                                                    )}
+                                                </p>
+                                            )}
                                         </div>
                                         <div className="text-right flex-none">
                                             <p className="text-xs text-neu-sub whitespace-nowrap">{log.created_at}</p>

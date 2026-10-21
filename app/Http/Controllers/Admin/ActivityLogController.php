@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\ClientInfo;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -39,6 +40,7 @@ class ActivityLogController extends Controller
                     $inner->where('action', 'like', $needle)
                         ->orWhere('subject_type', 'like', $needle)
                         ->orWhere('ip', 'like', $needle)
+                        ->orWhere('user_agent', 'like', $needle)
                         ->orWhereHas('user', fn ($u) => $u->where('name', 'like', $needle));
                 });
             })
@@ -60,6 +62,12 @@ class ActivityLogController extends Controller
             'subject_type' => $log->subject_type ? class_basename($log->subject_type) : null,
             'subject_id' => $log->subject_id,
             'ip' => $log->ip,
+            // Keterangan jaringan (mis. gateway NAT/VPN, internal server) dan
+            // perangkat, karena satu IP bisa dipakai banyak perangkat.
+            'ip_label' => ClientInfo::describeIp($log->ip),
+            'device' => ClientInfo::device($log->user_agent),
+            'user_agent' => $log->user_agent,
+            'is_system' => $log->ip === null && $log->user_agent === null,
             'changes' => $log->changes,
             'created_at' => $log->created_at?->format('d M Y H:i'),
             'created_at_human' => $log->created_at?->diffForHumans(),

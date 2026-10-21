@@ -26,7 +26,20 @@ return Application::configure(basePath: dirname(__DIR__))
             'can_any' => \App\Http\Middleware\EnsureAnyPermission::class,
         ]);
 
-        //
+        // IP klien yang akurat di belakang reverse proxy / load balancer:
+        // header X-Forwarded-* hanya dipercaya bila datang dari alamat di
+        // TRUSTED_PROXIES (config/audit.php). Tanpa daftar ini header itu
+        // diabaikan supaya IP di Activity Logs tidak bisa dipalsukan klien.
+        $proxies = array_values(array_filter(array_map('trim', explode(',', (string) env('TRUSTED_PROXIES', '')))));
+        if ($proxies !== []) {
+            $middleware->trustProxies(
+                at: $proxies,
+                headers: \Illuminate\Http\Request::HEADER_X_FORWARDED_FOR
+                    | \Illuminate\Http\Request::HEADER_X_FORWARDED_HOST
+                    | \Illuminate\Http\Request::HEADER_X_FORWARDED_PORT
+                    | \Illuminate\Http\Request::HEADER_X_FORWARDED_PROTO,
+            );
+        }
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
