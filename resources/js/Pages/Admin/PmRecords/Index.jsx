@@ -298,7 +298,7 @@ export default function AdminPmRecordsIndex({ auth, records, filters, years, per
                                                     </NeuPill>
                                                 </td>
                                                 <td className="whitespace-nowrap text-sm text-neu-sub">
-                                                    {record.updated_at ? new Date(record.updated_at).toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                                    {record.updated_at ? new Date(record.updated_at).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
                                                 </td>
                                                 <td>
                                                     <div className="flex items-center gap-1.5 justify-end">

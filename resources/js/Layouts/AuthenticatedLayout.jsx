@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import NeuToast from '@/Components/NeuToast';
 import OfflineOutbox from '@/Components/OfflineOutbox';
+import WibClock from '@/Components/WibClock';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
@@ -173,8 +174,11 @@ export default function Authenticated({ user: userProp, header, children }) {
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className="neu-btn !min-h-[36px] !px-2.5 !py-1.5 text-sm">
-                                <span>{user.name}</span>
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <span className="flex flex-col items-end leading-tight min-w-0">
+                                    <span className="truncate max-w-[45vw]">{user.name}</span>
+                                    <WibClock className="text-[10px] font-medium text-neu-sub whitespace-nowrap" />
+                                </span>
+                                <svg className="w-4 h-4 flex-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </button>
@@ -191,7 +195,10 @@ export default function Authenticated({ user: userProp, header, children }) {
                     <Dropdown>
                         <Dropdown.Trigger>
                             <button className="neu-btn !min-h-[36px] !px-2.5 !py-1.5 text-sm">
-                                <span>{user.name}</span>
+                                <span className="flex flex-col items-end leading-tight">
+                                    <span>{user.name}</span>
+                                    <WibClock className="text-[11px] font-medium text-neu-sub whitespace-nowrap" />
+                                </span>
                                 <span className="neu-pill text-neu-accent text-[10px] py-0.5 px-2">{user.roles?.[0] ?? '-'}</span>
                             </button>
                         </Dropdown.Trigger>

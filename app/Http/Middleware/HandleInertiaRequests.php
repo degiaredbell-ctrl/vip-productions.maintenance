@@ -31,6 +31,9 @@ class HandleInertiaRequests extends Middleware
             // sidebar di semua halaman bisa menampilkannya tanpa tiap controller
             // harus mengirim ulang.
             'pendingApprovals' => fn () => SignatureChain::pendingCountFor($request->user()),
+            // Jam server (epoch ms) untuk jam WIB di header, supaya jam yang
+            // tampil tidak ikut salah kalau jam perangkat pengguna meleset.
+            'serverNow' => fn () => now()->getTimestampMs(),
             'ziggy' => fn () => [
                 'location' => url()->current(),
             ],
