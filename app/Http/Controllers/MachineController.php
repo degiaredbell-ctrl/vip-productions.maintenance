@@ -13,6 +13,7 @@ use App\Models\PmRecord;
 use App\Models\User;
 use App\Services\AssetScope;
 use App\Services\AuditLogService;
+use App\Services\TemplateService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -31,7 +32,7 @@ class MachineController extends Controller
 
     public function index(Request $request): Response
     {
-        $machines = Machine::with(['template.items', 'components'])
+        $machines = Machine::with(['template.components', 'components'])
             // Halaman ini khusus mesin produksi; utility dikelola lewat
             // halaman "Utility" terpisah.
             ->where('type', '!=', MachineType::Utility->value)
@@ -88,12 +89,7 @@ class MachineController extends Controller
                 ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
                 ->values()
                 ->toArray(),
-            'templates' => ChecklistTemplate::orderBy('name')
-                // Template per-unit utility ("utility:{kode}") dibuat dari CSV,
-                // bukan milik halaman mesin ini.
-                ->where('machine_type', 'NOT LIKE', 'utility:%')
-                ->get(['id', 'name', 'machine_type'])
-                ->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'machine_type' => $t->machine_type]),
+            'templates' => ChecklistTemplate::options(ChecklistTemplate::SCOPE_MACHINE),
             'categories' => Machine::whereNotNull('category')
                 ->where('type', '!=', MachineType::Utility->value)
                 ->distinct()
@@ -149,13 +145,18 @@ class MachineController extends Controller
 
         $machine = Machine::create($data);
 
+        // Template yang dipilih langsung mengisi komponen unit baru.
+        $applied = $this->applyChosenTemplate($machine);
+
         AuditLogService::record('machine.create', Machine::class, $machine->id, [
             'code' => $machine->code,
             'name' => $machine->name,
             'fields' => $machine->only(self::MANAGED_FIELDS),
         ]);
 
-        return back()->with('success', "Mesin {$machine->code} berhasil ditambahkan.");
+        return back()->with('success', $applied
+            ? "Mesin {$machine->code} berhasil ditambahkan dengan komponen dari template \"{$applied}\"."
+            : "Mesin {$machine->code} berhasil ditambahkan.");
     }
 
     public function update(UpdateMachineRequest $request, Machine $machine): RedirectResponse
@@ -168,6 +169,12 @@ class MachineController extends Controller
         // sort_no tidak ada di payload yang divalidasi, jadi urutan daftar tetap
         // seperti saat mesin dibuat.
         $machine->fill($data)->save();
+
+        // Ganti template = komponen unit diganti dengan isi template baru.
+        // Menyimpan tanpa mengganti template tidak menyentuh komponen.
+        $applied = (string) ($before['template_id'] ?? '') !== (string) ($machine->template_id ?? '')
+            ? $this->applyChosenTemplate($machine)
+            : null;
 
         $changes = [];
         foreach ($data as $key => $value) {
@@ -183,7 +190,39 @@ class MachineController extends Controller
             ]);
         }
 
-        return back()->with('success', "Mesin {$machine->code} berhasil diperbarui.");
+        return back()->with('success', $applied
+            ? "Mesin {$machine->code} berhasil diperbarui. Komponen diganti dari template \"{$applied}\"."
+            : "Mesin {$machine->code} berhasil diperbarui.");
+    }
+
+    /**
+     * Terapkan template yang dipilih di form ke unit. Template hanya diterapkan
+     * bila cakupannya cocok (Mesin ↔ Utility); mengembalikan nama template
+     * yang diterapkan, atau null.
+     */
+    private function applyChosenTemplate(Machine $machine): ?string
+    {
+        $template = $machine->template_id ? ChecklistTemplate::find($machine->template_id) : null;
+
+        if (! $template) {
+            return null;
+        }
+
+        $isUtility = $machine->type === MachineType::Utility->value;
+        $expected = $isUtility ? ChecklistTemplate::SCOPE_UTILITY : ChecklistTemplate::SCOPE_MACHINE;
+
+        if ($template->scope !== $expected) {
+            return null;
+        }
+
+        TemplateService::applyToMachine($template, $machine);
+
+        AuditLogService::record('template.apply', ChecklistTemplate::class, $template->id, [
+            'name' => $template->name,
+            'units' => [$machine->code],
+        ]);
+
+        return $template->name;
     }
 
     public function destroy(Request $request, Machine $machine): RedirectResponse

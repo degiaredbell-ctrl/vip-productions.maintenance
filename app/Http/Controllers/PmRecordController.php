@@ -42,9 +42,9 @@ class PmRecordController extends Controller
         $template = $machine->template ?? ($machine->type ? ChecklistTemplate::where('machine_type', $machine->type)->where('is_default', true)->first() : null);
 
         // Sumber item form PM: snapshot record yang sudah ada lebih dulu, lalu
-        // master Komponen milik unit ini. Template lama hanya dipakai sebagai
-        // cadangan bila unit belum punya komponen sama sekali (data yang belum
-        // ikut termigrasi), supaya form tidak kosong tanpa penjelasan.
+        // master Komponen milik unit ini. Komponen template unit (atau template
+        // default tipenya) hanya dipakai sebagai cadangan bila unit belum punya
+        // komponen sama sekali, supaya form tidak kosong tanpa penjelasan.
         if ($existing) {
             $items = $existing->items->map(function ($item) {
                 return [
@@ -82,11 +82,11 @@ class PmRecordController extends Controller
                 ];
             })->toArray();
         } else {
-            $items = $template ? $template->items->map(function ($item) {
+            $items = $template ? $template->components->map(function ($component) {
                 return [
-                    'item_name' => $item->name,
-                    'category' => $item->category,
-                    'spec' => $item->spec,
+                    'item_name' => $component->name,
+                    'category' => $component->category,
+                    'spec' => $component->pivot->standard ?: $component->spec,
                     'actual' => '',
                     'act_clean' => false,
                     'act_repair' => false,

@@ -29,6 +29,13 @@ class Component extends Model
             ->withTimestamps();
     }
 
+    public function templates(): BelongsToMany
+    {
+        return $this->belongsToMany(ChecklistTemplate::class, 'component_template', 'component_id', 'template_id')
+            ->withPivot('sort_no', 'standard')
+            ->withTimestamps();
+    }
+
     /**
      * Daftar master komponen untuk pemilih (multi-select) di halaman
      * Mesin/Utility. Dikirim sekali per halaman supaya modal "Edit Komponen"

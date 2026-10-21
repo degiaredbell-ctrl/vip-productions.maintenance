@@ -18,6 +18,8 @@ export default function MachineFields({
     subCategories = [],
     onSubCategoryChange,
     idPrefix = 'mesin',
+    // Template unit sebelum disunting; null/undefined untuk form tambah.
+    originalTemplateId,
 }) {
     const inputProps = (name) => ({
         id: `${idPrefix}-${name}`,
@@ -43,6 +45,13 @@ export default function MachineFields({
     );
 
     const isActive = !!Number(data.is_active);
+
+    const isEdit = originalTemplateId !== undefined;
+    const chosenTemplate = templates.find((t) => String(t.id) === String(data.template_id)) ?? null;
+    const templateChanged = isEdit && String(originalTemplateId ?? '') !== String(data.template_id ?? '');
+    const generalTemplates = templates.filter((t) => !t.is_unit_specific);
+    const unitTemplates = templates.filter((t) => t.is_unit_specific);
+    const templateLabel = (t) => `${t.name} · ${t.components_count} komponen${t.is_default ? ' · default' : ''}`;
 
     return (
         <>
@@ -117,12 +126,39 @@ export default function MachineFields({
 
             <div className="sm:col-span-2">
                 <Field name="template_id">
+                    <label htmlFor={`${idPrefix}-template_id`} className="block text-xs text-neu-sub mb-1.5">Template komponen</label>
                     <select {...inputProps('template_id')}>
-                        <option value="">Tanpa template (pakai checklist bawaan)</option>
-                        {templates.map((t) => (
-                            <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
+                        <option value="">Tanpa template</option>
+                        {generalTemplates.length > 0 && (
+                            <optgroup label="Template umum">
+                                {generalTemplates.map((t) => (
+                                    <option key={t.id} value={t.id}>{templateLabel(t)}</option>
+                                ))}
+                            </optgroup>
+                        )}
+                        {unitTemplates.length > 0 && (
+                            <optgroup label="Template per-unit">
+                                {unitTemplates.map((t) => (
+                                    <option key={t.id} value={t.id}>{templateLabel(t)}</option>
+                                ))}
+                            </optgroup>
+                        )}
                     </select>
+                    {chosenTemplate && !isEdit && (
+                        <p className="mt-1.5 text-[11px] text-neu-sub">
+                            Komponen unit akan diisi dari template ini ({chosenTemplate.components_count} komponen).
+                        </p>
+                    )}
+                    {chosenTemplate && templateChanged && (
+                        <p className="mt-1.5 text-[11px] font-semibold text-neu-warn" role="status">
+                            Template diganti: komponen unit akan diganti dengan {chosenTemplate.components_count} komponen dari template ini saat disimpan.
+                        </p>
+                    )}
+                    {!chosenTemplate && templateChanged && (
+                        <p className="mt-1.5 text-[11px] text-neu-sub">
+                            Template dilepas. Komponen unit saat ini tetap dipakai.
+                        </p>
+                    )}
                 </Field>
             </div>
 

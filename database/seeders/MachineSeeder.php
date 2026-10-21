@@ -3,8 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\ChecklistTemplate;
-use App\Models\ChecklistTemplateItem;
+use App\Models\Component;
+use App\Models\Machine;
 use App\Services\MachineImportService;
+use App\Services\TemplateService;
 use Illuminate\Database\Seeder;
 
 class MachineSeeder extends Seeder
@@ -107,31 +109,31 @@ class MachineSeeder extends Seeder
             // mesin lalu menunjuk ke template yang salah.
             $template = ChecklistTemplate::updateOrCreate(
                 ['machine_type' => $type],
-                ['name' => $data['name'], 'is_default' => true],
+                ['name' => $data['name'], 'scope' => ChecklistTemplate::SCOPE_MACHINE, 'is_default' => true],
             );
 
-            $template->items()->delete();
-
+            // Isi template = komponen dari master Komponen / Parts.
+            $sync = [];
             foreach ($data['items'] as $i => $item) {
-                ChecklistTemplateItem::create([
-                    'template_id' => $template->id,
-                    'category' => $item[2],
-                    'name' => $item[0],
-                    'spec' => $item[1],
-                    'sort_no' => $i + 1,
-                ]);
+                $component = Component::firstOrCreate(
+                    ['name' => $item[0], 'category' => $item[2], 'spec' => $item[1]],
+                    ['sort_no' => $i + 1],
+                );
+                $sync[$component->id] = ['sort_no' => $i + 1, 'standard' => null];
             }
+            $template->components()->sync($sync);
         }
 
         $importer = app(MachineImportService::class);
 
         $importer->import(purge: true);
 
-        // Kalau master komponen masih kosong (instalasi baru), komponen diisi
-        // dari template sesuai unit masing-masing. Pada instalasi yang sudah
-        // bermigrasi tsb diisi oleh migrasi, jadi tidak diutak-atik lagi.
-        if (\App\Models\Component::query()->count() === 0) {
-            app(\App\Services\ComponentMigrationService::class)->migrateFromTemplates();
-        }
+        // Unit yang belum punya komponen (instalasi baru) diisi dari
+        // templatenya. Unit yang sudah punya komponen tidak diutak-atik.
+        Machine::with('template')
+            ->doesntHave('components')
+            ->whereNotNull('template_id')
+            ->get()
+            ->each(fn (Machine $machine) => TemplateService::applyToMachine($machine->template, $machine));
     }
 }

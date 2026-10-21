@@ -354,6 +354,7 @@ export default function Machines({ auth, machines = [], allComponents = [], type
                                                     subCategories={subCategories}
                                                     onSubCategoryChange={applySubCategory(editForm.setData)}
                                                     idPrefix={`mesin-ubah-${machine.id}`}
+                                                    originalTemplateId={machine.template_id ?? null}
                                                 />
                                                 <div className="sm:col-span-2 flex flex-wrap gap-2 justify-end">
                                                     <NeuButton type="button" size="sm" variant="ghost" onClick={cancelEdit}>Batal</NeuButton>

@@ -30,7 +30,7 @@ class DashboardService
     {
         $now = now();
 
-        return Machine::with(['template.items', 'pmRecords' => function ($q) use ($year, $period) {
+        return Machine::with(['template', 'pmRecords' => function ($q) use ($year, $period) {
             $q->where('year', $year)->where('period', $period->value);
         }])
             ->where('is_active', true)

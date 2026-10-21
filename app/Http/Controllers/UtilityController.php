@@ -18,7 +18,7 @@ class UtilityController extends Controller
 {
     public function index(Request $request): Response
     {
-        $utilities = Machine::with(['template.items', 'components'])
+        $utilities = Machine::with(['template.components', 'components'])
             ->where('type', MachineType::Utility->value)
             ->orderBy('sort_no')
             ->orderBy('code')
@@ -77,10 +77,7 @@ class UtilityController extends Controller
                 ->map(fn ($t) => ['value' => $t->value, 'label' => $t->label()])
                 ->values()
                 ->toArray(),
-            'templates' => ChecklistTemplate::orderBy('name')
-                ->where('machine_type', 'LIKE', 'utility:%')
-                ->get(['id', 'name', 'machine_type'])
-                ->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'machine_type' => $t->machine_type]),
+            'templates' => ChecklistTemplate::options(ChecklistTemplate::SCOPE_UTILITY),
             'categories' => Machine::where('type', MachineType::Utility->value)
                 ->whereNotNull('category')
                 ->distinct()

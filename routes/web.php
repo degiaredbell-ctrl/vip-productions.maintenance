@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\ActivityLogController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\ComponentController;
+use App\Http\Controllers\Admin\TemplateController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\ApprovalController;
@@ -237,8 +238,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/admin/komponen/{component}', [ComponentController::class, 'destroy'])->name('admin.components.destroy');
         Route::post('/admin/komponen/penugasan', [ComponentController::class, 'assign'])->name('admin.components.assign');
 
-        // URL lama diarahkan supaya bookmark/tautan lama tidak mati.
-        Route::get('/admin/templates', fn () => redirect()->route('admin.components'));
+        // Template: kumpulan komponen untuk Mesin & Utility (Settings → Template).
+        Route::get('/admin/templates', [TemplateController::class, 'index'])->name('admin.templates');
+        Route::post('/admin/templates', [TemplateController::class, 'store'])->name('admin.templates.store');
+        Route::put('/admin/templates/{template}', [TemplateController::class, 'update'])->name('admin.templates.update');
+        Route::delete('/admin/templates/{template}', [TemplateController::class, 'destroy'])->name('admin.templates.destroy');
+        Route::post('/admin/templates/{template}/terapkan', [TemplateController::class, 'apply'])->name('admin.templates.apply');
     });
 
     Route::middleware('can:activity.view')->group(function () {

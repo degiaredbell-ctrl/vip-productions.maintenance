@@ -301,6 +301,7 @@ export default function UtilityIndex({ auth, utilities = [], allComponents = [],
                                                     subCategories={subCategories}
                                                     onSubCategoryChange={applySubCategory(editForm.setData)}
                                                     idPrefix={`utility-ubah-${unit.id}`}
+                                                    originalTemplateId={unit.template_id ?? null}
                                                 />
                                                 <div className="sm:col-span-2 flex flex-wrap gap-2 justify-end">
                                                     <NeuButton type="button" size="sm" variant="ghost" onClick={cancelEdit}>Batal</NeuButton>

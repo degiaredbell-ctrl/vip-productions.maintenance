@@ -77,15 +77,15 @@ class Machine extends Model
                 ->values();
         }
 
-        return ($this->template?->items ?? collect())
-            ->map(fn ($item) => [
+        // Cadangan: unit belum punya komponen sendiri, pakai isi templatenya.
+        // `id` dikosongkan karena komponen ini belum benar-benar ditugaskan.
+        return ($this->template?->components ?? collect())
+            ->map(fn (Component $component) => [
                 'id' => null,
-                'name' => $item->name,
-                'category' => $item->category,
-                // Item template lama tidak punya pivot, jadi standarnya hanya
-                // spesifikasi item itu sendiri.
-                'standard' => null,
-                'spec' => $item->spec,
+                'name' => $component->name,
+                'category' => $component->category,
+                'standard' => $component->pivot->standard,
+                'spec' => $component->spec,
             ])
             ->values();
     }

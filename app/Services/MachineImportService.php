@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Enums\MachineType;
 use App\Models\ChecklistTemplate;
-use App\Models\ChecklistTemplateItem;
+use App\Models\Component;
 use App\Models\Machine;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -466,20 +466,26 @@ class MachineImportService
     {
         $template = ChecklistTemplate::updateOrCreate(
             ['machine_type' => 'utility:'.$code],
-            ['name' => "Utility {$name} ({$code})", 'is_default' => false],
+            [
+                'name' => "Utility {$name} ({$code})",
+                'scope' => ChecklistTemplate::SCOPE_UTILITY,
+                'is_default' => false,
+            ],
         );
 
-        $template->items()->delete();
+        // Isi template = komponen dari master Komponen / Parts; nama komponen
+        // CSV yang belum ada dibuat sebagai komponen baru.
+        $sync = [];
+        foreach ($components as [$component, $category]) {
+            $id = Component::firstOrCreate(
+                ['name' => $component, 'category' => $category, 'spec' => null],
+                ['sort_no' => ((int) Component::query()->max('sort_no')) + 1],
+            )->id;
 
-        foreach ($components as $i => [$component, $category]) {
-            ChecklistTemplateItem::create([
-                'template_id' => $template->id,
-                'category' => $category,
-                'name' => $component,
-                'spec' => null,
-                'sort_no' => $i + 1,
-            ]);
+            $sync[$id] ??= ['sort_no' => count($sync) + 1, 'standard' => null];
         }
+
+        $template->components()->sync($sync);
 
         return (int) $template->id;
     }
