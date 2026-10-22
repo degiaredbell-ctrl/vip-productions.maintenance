@@ -42,5 +42,47 @@ return Application::configure(basePath: dirname(__DIR__))
         }
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        // Halaman error beranimasi (resources/js/Pages/Errors/Error.jsx)
+        // menggantikan halaman error bawaan Laravel / modal error Inertia.
+        // Permintaan JSON murni (axios/fetch) tetap mendapat respons JSON.
+        $exceptions->respond(function (\Symfony\Component\HttpFoundation\Response $response, \Throwable $e, \Illuminate\Http\Request $request) {
+            $status = $response->getStatusCode();
+            $inertia = $request->hasHeader('X-Inertia');
+
+            if ($request->expectsJson() && ! $inertia) {
+                return $response;
+            }
+
+            // Sesi/CSRF kedaluwarsa saat menekan tombol di aplikasi: kembali
+            // ke halaman sebelumnya dengan pesan, bukan halaman error kosong.
+            if ($status === 419 && $inertia) {
+                return back()->with('error', 'Sesi Anda kedaluwarsa. Silakan ulangi tindakan Anda.');
+            }
+
+            // Saat pengembangan lokal, error 500 tetap menampilkan detail debug.
+            if ($status >= 500 && app()->environment('local') && config('app.debug')) {
+                return $response;
+            }
+
+            if (! in_array($status, [403, 404, 405, 419, 429, 500, 503], true)) {
+                return $response;
+            }
+
+            // Pesan dari abort(403, '...') aplikasi (berbahasa Indonesia) ikut
+            // ditampilkan; pesan bawaan framework/paket (Inggris) tidak.
+            $message = $status < 500 ? trim($e->getMessage()) : '';
+            $generic = ['This action is unauthorized.', 'User does not have the right permissions.', 'User does not have the right roles.', 'Forbidden', 'Not Found', 'CSRF token mismatch.', 'Too Many Attempts.', 'Service Unavailable', 'Unauthorized.'];
+            if ($message === '' || in_array($message, $generic, true) || str_starts_with($message, 'No query results') || str_starts_with($message, 'The route ') || str_starts_with($message, 'The ') && str_contains($message, 'method is not supported')) {
+                $message = null;
+            }
+
+            return \Inertia\Inertia::render('Errors/Error', [
+                'status' => $status,
+                'message' => $message,
+                // "/" mengarah ke Beranda (sudah login) atau Login (tamu).
+                'homeUrl' => url('/'),
+            ])
+                ->toResponse($request)
+                ->setStatusCode($status);
+        });
     })->create();

@@ -433,3 +433,106 @@
         animation: none;
     }
 }
+
+/*
+ * Halaman error beranimasi (Pages/Errors/Error.jsx). Warna aksen mengikuti
+ * `--err-tone` per status (merah 403/500, biru 404, oranye 419/429, hijau 503).
+ */
+.err-blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(48px);
+    opacity: 0.35;
+    animation: errBlob 16s ease-in-out infinite;
+}
+.err-blob-1 { width: 320px; height: 320px; left: -80px; top: -60px; background: var(--err-tone); }
+.err-blob-2 { width: 260px; height: 260px; right: -60px; bottom: -40px; background: #1F6FEB; opacity: 0.18; animation-delay: -5s; }
+.err-blob-3 { width: 200px; height: 200px; right: 20%; top: 12%; background: #FFFFFF; opacity: 0.8; animation-delay: -10s; }
+
+.err-particle {
+    position: absolute;
+    bottom: -12px;
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--err-tone);
+    opacity: 0;
+    animation: errRise 11s linear infinite;
+}
+.err-particle:nth-child(3n) { width: 5px; height: 5px; background: #C3CAD6; }
+.err-particle:nth-child(4n) { width: 11px; height: 11px; background: #FFFFFF; box-shadow: 2px 2px 5px #C3CAD6; }
+
+.err-pop-in { animation: errPopIn 0.55s cubic-bezier(0.2, 0.9, 0.3, 1.25) both; }
+.err-pop-out { animation: errPopOut 0.22s ease-in both; }
+
+.err-close:hover svg { transform: rotate(90deg); }
+.err-close svg { transition: transform 0.25s ease; }
+
+.err-digit {
+    display: inline-block;
+    color: var(--err-tone);
+    text-shadow: 3px 3px 6px #C3CAD6, -3px -3px 6px #FFFFFF;
+    animation: errDigit 2.6s ease-in-out infinite;
+}
+
+.err-shadow { transform-origin: 100px 146px; animation: errShadow 3.2s ease-in-out infinite; }
+.err-float { animation: errFloat 3.2s ease-in-out infinite; }
+.err-orbit { transform-origin: 100px 78px; animation: errOrbit 6s linear infinite; }
+.err-orbit-counter { animation: errCounter 6s linear infinite; transform-box: fill-box; transform-origin: center; }
+.err-qmark { transform-box: fill-box; transform-origin: center; animation: errPulse 1.6s ease-in-out infinite; }
+
+.err-ring { transform-box: fill-box; transform-origin: center; opacity: 0; animation: errRing 2.4s ease-out infinite; }
+.err-ring-2 { animation-delay: 1.2s; }
+.err-shake { transform-box: fill-box; transform-origin: 50% 100%; animation: errShake 3s ease-in-out infinite; }
+.err-shackle { animation: errShackle 3s ease-in-out infinite; }
+.err-keyhole { animation: errBlink 3s ease-in-out infinite; }
+
+.err-spin { animation: errSpin 6s linear infinite; }
+.err-spin-rev { animation: errSpin 3.6s linear infinite reverse; }
+.err-spark { transform-box: fill-box; transform-origin: center; opacity: 0; animation: errSpark 1.8s ease-out infinite; }
+.err-spark-2 { animation-delay: 0.9s; }
+.err-smoke { transform-box: fill-box; transform-origin: center; opacity: 0; animation: errSmoke 2.6s ease-out infinite; }
+.err-smoke-2 { animation-delay: 1.3s; }
+
+.err-swing { animation: errSwing 2.2s ease-in-out infinite; }
+.err-stripes { animation: errStripes 0.8s linear infinite; }
+
+.err-hand-fast { animation: errSpin 2s linear infinite; }
+.err-hand-slow { animation: errSpin 24s linear infinite; }
+
+.err-flip { animation: errFlip 4s ease-in-out infinite; }
+.err-sand-top { transform-box: fill-box; transform-origin: 50% 100%; animation: errSandTop 4s linear infinite; }
+.err-sand-bottom { transform-box: fill-box; transform-origin: 50% 100%; animation: errSandBottom 4s linear infinite; }
+.err-sand-stream { animation: errBlink 0.4s steps(2) infinite; }
+
+@keyframes errBlob { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(40px, 30px) scale(1.1); } 66% { transform: translate(-30px, 20px) scale(0.92); } }
+@keyframes errRise { 0% { transform: translateY(0) translateX(0); opacity: 0; } 10% { opacity: 0.7; } 50% { transform: translateY(-50vh) translateX(18px); } 90% { opacity: 0.5; } 100% { transform: translateY(-105vh) translateX(-12px); opacity: 0; } }
+@keyframes errPopIn { 0% { opacity: 0; transform: translateY(24px) scale(0.92); } 100% { opacity: 1; transform: none; } }
+@keyframes errPopOut { to { opacity: 0; transform: translateY(12px) scale(0.94); } }
+@keyframes errDigit { 0%, 60%, 100% { transform: translateY(0) rotate(0); } 70% { transform: translateY(-14px) rotate(-4deg); } 80% { transform: translateY(0) rotate(0); } 88% { transform: translateY(-5px); } }
+@keyframes errFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes errShadow { 0%, 100% { transform: scaleX(1); opacity: 0.9; } 50% { transform: scaleX(0.82); opacity: 0.55; } }
+@keyframes errOrbit { to { transform: rotate(360deg); } }
+@keyframes errCounter { to { transform: rotate(-360deg); } }
+@keyframes errPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.22); } }
+@keyframes errRing { 0% { transform: scale(0.85); opacity: 0.55; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes errShake { 0%, 62%, 100% { transform: rotate(0); } 66% { transform: rotate(-9deg); } 72% { transform: rotate(8deg); } 78% { transform: rotate(-6deg); } 84% { transform: rotate(4deg); } 90% { transform: rotate(0); } }
+@keyframes errShackle { 0%, 40%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } 58% { transform: translateY(0); } }
+@keyframes errBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes errSpin { to { transform: rotate(360deg); } }
+@keyframes errSpark { 0% { transform: scale(0.4); opacity: 0; } 20% { transform: scale(1.15); opacity: 1; } 60% { opacity: 0.8; } 100% { transform: scale(0.6) translateY(-10px); opacity: 0; } }
+@keyframes errSmoke { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 30% { opacity: 0.8; } 100% { transform: translateY(-40px) scale(1.8); opacity: 0; } }
+@keyframes errSwing { 0%, 100% { transform: rotate(-14deg); } 50% { transform: rotate(14deg); } }
+@keyframes errStripes { from { transform: translateX(0); } to { transform: translateX(16px); } }
+@keyframes errFlip { 0%, 80% { transform: rotate(0); } 95%, 100% { transform: rotate(180deg); } }
+@keyframes errSandTop { 0% { transform: scaleY(1); } 80%, 100% { transform: scaleY(0.05); } }
+@keyframes errSandBottom { 0% { transform: scaleY(0.05); } 80%, 100% { transform: scaleY(1); } }
+
+@media (prefers-reduced-motion: reduce) {
+    .err-page *,
+    .err-page *::before,
+    .err-page *::after {
+        animation: none !important;
+    }
+    .err-particle { display: none; }
+}
