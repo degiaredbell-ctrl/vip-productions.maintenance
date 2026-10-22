@@ -4,7 +4,18 @@ Dokumen arsitektur teknis aplikasi **Preventive Maintenance (PM)**.
 Untuk tujuan & ruang lingkup produk, lihat [PRD.md](PRD.md).
 Untuk panduan setup, lihat [README.md](README.md).
 
-**Versi dokumen:** 1.2
+**Versi dokumen:** 1.3
+**Status:** Snapshot dokumen versi 1.3 (terkini)
+
+> **Versi 1.3 — snapshot terkini.** Dokumen ini menggantikan
+> [`../v.1.2/Architecture.md`](../v.1.2/Architecture.md), [`../v.1.1/Architecture.md`](../v.1.1/Architecture.md) dan
+> [`../v.1.1/Architecture.md`](../v.1.1/Architecture.md) (arsip desain awal
+> sebelum aplikasi dibangun) dan mencerminkan implementasi saat ini:
+> **Modul Notifikasi dua saluran**, **Integrasi email Microsoft 365**, **master
+> data Tipe Mesin & Lokasi**, **halaman error beranimasi**, **impor Template dari
+> CSV**, **Activity Log enriched**, **Backup & Restore terjadwal**, dan zona waktu
+> **WIB**. Instruksi kerja untuk AI agent ada di [Agent.md](Agent.md); panduan
+> pemakaian per peran ada di [Guide.md](Guide.md).
 
 ---
 
@@ -22,13 +33,16 @@ Untuk panduan setup, lihat [README.md](README.md).
 10. [Frontend](#10-frontend)
 11. [Ekspor](#11-ekspor)
 12. [Impor CSV](#12-impor-csv)
-13. [Activity Logs](#13-activity-logs)
+13. [Activity Log](#13-activity-log-audit-log)
 14. [Backup & Restore](#14-backup--restore)
 15. [Keamanan](#15-keamanan)
 16. [Deployment](#16-deployment)
 17. [Testing](#17-testing)
 18. [Trade-off & Keputusan Desain](#18-trade-off--keputusan-desain)
 19. [Known Limitations](#19-known-limitations)
+20. [Modul Notifikasi](#20-modul-notifikasi)
+21. [Integrasi Email](#21-integrasi-email)
+22. [Halaman Error](#22-halaman-error)
 
 ---
 
@@ -45,6 +59,14 @@ Tiga invariant yang harus dijaga oleh seluruh kode:
 | 1 | Tahap persetujuan ditentukan server, tidak bisa dilompati | `PmStatus::awaiting()` + `SignatureChain` |
 | 2 | Checklist terkunci setelah ditandatangani | `PmStatus::isEditable()` + `PmRecordPolicy::update()` |
 | 3 | Otorisasi ditegakkan di server, bukan hanya disembunyikan di UI | `can:` middleware + Policy |
+
+Pada v1.3 ditambahkan tiga invariant khusus modul notifikasi:
+
+| # | Invariant | Dijaga oleh |
+|---|-----------|-------------|
+| 4 | Notifikasi tidak pernah menggagalkan proses utama (tanda tangan/approval) | `PmApprovalNotifier::notify()` dibungkus `try/catch` + `Log::warning()` |
+| 5 | Setiap pengiriman notifikasi **tidak pernah dobel** untuk periode/slot yang sama | `notification_dispatches.dedupe_key` **unique** + `QueryException` → skip |
+| 6 | Angka pada laporan email **identik** dengan angka di Beranda | `PmReportBuilder` memakai `DashboardService` yang sama |
 
 ---
 
@@ -64,9 +86,20 @@ Tiga invariant yang harus dijaga oleh seluruh kode:
 | Spreadsheet | Maatwebsite Excel | ^3.1 |
 | PDF | Barryvdh DomPDF | ^3.1 |
 | Web server | Nginx alpine | 1.27 |
+| Antrean | Laravel Queue (driver `database`) | — |
+| Email | Microsoft Graph API (custom transport) + SMTP | — |
 | Testing | PHPUnit | ^11.0 |
 
 Ekstensi PHP yang diaktifkan di image: `pdo_mysql`, `mbstring`, `zip`, `gd`, `intl`, `bcmath`, `opcache`, `pcntl`.
+
+### Container tambahan (v1.3)
+
+| Container | Image | Peran |
+|-----------|-------|-------|
+| `vip_app` | `php:8.3-fpm-alpine` | Aplikasi web (PHP-FPM) |
+| `vip_queue` | `vip-maintenance-app` | Worker antrean: mengirim email notifikasi **di luar** request (tanda tangan/approval tidak menunggu email) |
+| `vip_scheduler` | `vip-maintenance-app` | Scheduler: reminder, keterlambatan, laporan mingguan/bulanan, backup harian 02:00 WIB |
+| `vip_nginx` | `nginx:1.27-alpine` | Reverse proxy + aset statis |
 
 ---
 
@@ -96,25 +129,46 @@ Ekstensi PHP yang diaktifkan di image: `pdo_mysql`, `mbstring`, `zip`, `gd`, `in
                                     │  Policy (Gate)                │
                                     │            ▼                 │
                                     │  Eloquent Model               │
-                                    └───────────┬──────────────────┘
-                                                │
-                    ┌───────────────────────────┼───────────────────────────┐
-                    ▼                           ▼                           ▼
-             ┌────────────┐            ┌──────────────┐            ┌────────────────┐
-             │  MySQL DB  │            │ Filesystem   │            │ public/build   │
-             │            │            │ storage/     │            │ (Vite assets)  │
-             │ users      │            │  app/public/ │            │ volume:shared  │
-             │ machines   │            │  signatures/ │            └────────────────┘
-             │ pm_records │            └──────────────┘
-             │ ...        │
-             └────────────┘
+                                    └─────┬──────────────┬──────────┘
+                                         │              │
+                        Notifikasi (ShouldQueue)          │
+                                         ▼              ▼
+                              ┌────────────────┐  ┌──────────────┐
+                              │  vip_queue     │  │  Filesystem  │
+                              │  queue:work    │  │  storage/    │
+                              │  (email keluar)│  │  signatures/ │
+                              └────────┬───────┘  └──────────────┘
+                                       │ jobs
+                                       ▼
+                              ┌────────────────┐
+                              │ vip_scheduler  │
+                              │ schedule:work  │
+                              │ reminder/      │
+                              │ overdue/laporan│
+                              │ /backup        │
+                              └────────────────┘
+
+                         ┌───────────────────────────┐
+                         │  MySQL DB                 │
+                         │  users, assets, pm_*      │
+                         │  notifications            │
+                         │  notification_dispatches  │
+                         │  app_settings             │
+                         │  machine_types, locations │
+                         └───────────────────────────┘
 ```
+
+> Pada v1.3 ada **dua container tambahan**: `vip_queue` (mengirim email notifikasi
+> di latar belakang, supaya tanda tangan/approval tidak menunggu email) dan
+> `vip_scheduler` (menjalankan jadwal reminder, keterlambatan, laporan, dan
+> backup harian 02:00 WIB). Keduanya ikut berjalan lewat
+> `docker compose up -d --build`.
 
 **Catatan deployment penting:** nginx membaca `public/` dari **named volume**, bukan dari image —
 dan volume hanya diisi dari image saat pertama kali dibuat. Hasil `vite build` karena itu ditaruh di
 `/var/www/html/public-image` (di luar volume) lalu disalin ke volume oleh `docker/app-entrypoint.sh`
 setiap container start. Akibatnya `docker compose up -d --build app` sudah cukup untuk perubahan
-frontend. Detailnya ada di [README — Catatan Deployment](README.md#catatan-deployment).
+frontend. Detailnya ada di [README — Catatan Deployment](../../README.md#catatan-deployment).
 
 ---
 
@@ -177,19 +231,52 @@ app/
 │   ├── AssetScope.php        Batas scope tipe aset (Mesin vs Utility) per role
 │   ├── ComponentMigrationService.php  Migrasi item template lama → master Komponen
 │   ├── PeriodService.php     Periode, tahun, dot notifikasi
-│   ├── DashboardService.php  Agregasi status mesin + filter
+│   ├── DashboardService.php  Sumber tunggal data Beranda (status, ringkasan, filter)
+│   ├── DashboardReportService.php  Angka laporan yang sama dengan Beranda
 │   ├── ReportService.php     Kepatuhan, top part, ringkasan aksi
 │   ├── AuditLogService.php   Penulis audit log
 │   ├── BackupService.php     Dump/restore database via PDO (tanpa biner mysqldump)
 │   ├── MachineImportService.php  Impor CSV mesin idempoten
-│   └── SparePartImportService.php Impor CSV suku cadang idempoten (toleran header dua-baris & koma)
+│   ├── SparePartImportService.php Impor CSV suku cadang idempoten (toleran header dua-baris & koma)
+│   ├── TemplateService.php   Terapkan template ke unit (standar default, pertahankan standar per unit)
+│   ├── TemplateCsvImportService.php  Impor template + komponen dari CSV (alias & komponen baru)
+│   ├── SparePartDashboardService.php  Agregasi dashboard suku cadang
+│   ├── Support/ClientInfo.php  IP (hormati trusted proxies) + ringkasan User-Agent
+│   ├── Auth/LoginOtp.php     Orkestrasi OTP (kirim, verifikasi, cookie "ingat perangkat", bypass)
+│   ├── Integration/
+│   │   ├── IntegrationSettings.php  Baca/tulis pengaturan Integrate di `app_settings`
+│   │   ├── MailConfigurator.php    Terapkan konfigurasi mail saat boot & sebelum tiap job
+│   │   ├── MailNotifier.php       Notifikasi email non-PM (stok menipis)
+│   │   └── PmReportBuilder.php     Bangun isi laporan mingguan/bulanan
+│   └── Notifications/         Modul Notifikasi 2 saluran (lihat §20)
+│       ├── NotificationChannels.php   Tentukan kanal (database/mail) per penerima
+│       ├── NotificationRecipients.php Resolusi penerima per scope (teknisi/PIC/atasan)
+│       ├── PmScheduleScanner.php      Daftar perangkat untuk notifikasi terjadwal
+│       ├── PmAlertDispatcher.php      Kirim reminder/overdue per penerima
+│       ├── PmApprovalNotifier.php     Kirim notifikasi approval (tidak boleh menggagalkan proses utama)
+│       └── PmReportSender.php         Kirim laporan mingguan/bulanan ke atasan + penerima tambahan
+│
+├── Notifications/             Kelas Notification (Laravel)
+│   ├── PmScheduleDigestNotification.php  Digest jadwal/terlambat (Apps + Email)
+│   ├── PmApprovalNotification.php        Notifikasi dokumen approval (4 event)
+│   ├── LoginOtpNotification.php          OTP 6 digit (langsung, tidak lewat antrean)
+│   ├── LowStockNotification.php          Peringatan stok menipis (ShouldQueue)
+│   └── ResetPasswordNotification.php     Email reset password
+│
+├── Mail/
+│   ├── PmReportMail.php                 Mailable laporan PM (PDF ringkasan + lampiran)
+│   └── Transport/MicrosoftGraphTransport.php  Custom transport via Graph `sendMail`
 │
 ├── Exports/                  Maatwebsite Excel mapping
-├── Models/                   Eloquent + cast/relasi (Machine memakai tabel `assets`; + Component; + Backup)
+├── Models/                   Eloquent + cast/relasi (Machine memakai tabel `assets`; + Component, NotificationDispatch, AssetType, Location, AppSetting, Backup)
 └── Console/Commands/
-    ├── ImportMachinesCommand.php
-    ├── ImportSparePartsCommand.php
-    └── BackupDatabaseCommand.php   backup:database (manual/scheduled + prune)
+    ├── ImportMachinesCommand.php     machines:import
+    ├── ImportSparePartsCommand.php   spare-parts:import
+    ├── ImportTemplatesCommand.php    templates:import
+    ├── SendPmAlertCommand.php        notifications:pm-alert (reminder|overdue)
+    ├── SendPmReportCommand.php       integration:send-pm-report (weekly|monthly)
+    ├── BackupDatabaseCommand.php     backup:database
+    └── CleanupE2eDataCommand.php     e2e:cleanup
 ```
 
 ### Kenapa Enum dipakai di mana-mana
@@ -294,6 +381,77 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 
 ★ = snapshot, sengaja diduplikasi agar jejaknya tidak hilang saat akun dihapus.
 
+### ERD — Modul Notifikasi & Master Data (v1.3)
+
+```
+┌──────────────────────────────┐         ┌──────────────────────────────────────┐
+│  notifications  (in-app)     │         │  notification_dispatches             │
+│  id UUID PRIMARY             │         │  id bigint                          │
+│  type (class notifikasi)     │         │  type (reminder/overdue/report.*/   │
+│  notifiable_type / _id (morph)│        │       approval.*)  [index]           │
+│  data (JSON payload)         │         │  dedupe_key (nullable) [UNIQUE]      │
+│  read_at (nullable)          │         │  trigger (schedule|manual|event)     │
+│  created_at / updated_at     │         │  summary (500)                      │
+└──────────────┬───────────────┘         │  recipients/app_sent/email_sent     │
+               │                         │  items                              │
+               │ morph                   │  status (sent|skipped|failed|sending)│
+               ▼                         │  error (text)                       │
+        ┌──────────────┐                 │  triggered_by ──▶ users (nullOnDel) │
+        │    users     │◀────────────────┤  created_at [index]                 │
+        │  (notifiable)│                 └──────────────────────────────────────┘
+        └──────┬───────┘
+               │ FK pic_user_id (nullOnDelete)
+               ▼
+┌──────────────────────┐         ┌──────────────────────┐
+│      assets          │         │    app_settings      │
+│  (Mesin + Utility)   │         │  key UNIQUE         │
+│  pic_user_id ★       │         │  value (text)       │
+└──────────────────────┘         │  is_encrypted (bool)│
+                                 └──────────────────────┘
+┌──────────────────────┐         ┌──────────────────────┐
+│   machine_types      │         │      locations       │
+│  code UNIQUE         │         │  name UNIQUE         │
+│  name, description   │         │  description         │
+│  is_system (bool)    │         └──────────────────────┘
+└──────────────────────┘
+```
+
+★ `assets.pic_user_id` = User/PIC yang bertanggung jawab atas unit. Ini yang
+menyempitkan notifikasi User/PIC hanya ke unit miliknya, sekaligus menjadi
+nama PIC pada form PM. Bila kosong, `NotificationRecipients::lastPicFromHistory()`
+mengambil PIC dari **riwayat PM terakhir** unit tersebut sebagai cadangan.
+
+### Tabel notifikasi — detail kolom
+
+**`notifications`** (format inbox bawaan Laravel, dibuat bila belum ada):
+
+| Kolom | Tipe | Arti |
+|-------|------|------|
+| `id` | `uuid` PK | Id notifikasi (tidak dapat ditebak) |
+| `type` | `string` | Nama kelas notifikasi |
+| `notifiable_type` / `notifiable_id` | morph | Penerima (`App\Models\User`) |
+| `data` | `text` | Payload JSON (judul, body, url, daftar perangkat, alasan, dll.) |
+| `read_at` | `timestamp` null | `null` = belum dibaca |
+| `created_at` / `updated_at` | `timestamp` | Waktu |
+
+**`notification_dispatches`** (riwayat pengiriman + anti duplikasi):
+
+| Kolom | Tipe | Arti |
+|-------|------|------|
+| `id` | `bigIncrements` PK | Id pengiriman |
+| `type` | `string(40)` index | `reminder`, `overdue`, `report.weekly`, `report.monthly`, `approval.submitted`, `approval.pic_approved`, `approval.approved`, `approval.revision` |
+| `dedupe_key` | `string(120)` null **UNIQUE** | Anti duplikasi: `reminder:{tahun}:{periode}`, `overdue:{Y-m-d:H}` |
+| `trigger` | `string(20)` default `schedule` | `schedule` \| `manual` \| `event` |
+| `summary` | `string(500)` null | Ringkasan human-readable |
+| `recipients` | `unsignedInteger` | Jumlah penerima dituju |
+| `app_sent` | `unsignedInteger` | Berhasil terkirim In-App |
+| `email_sent` | `unsignedInteger` | Berhasil terkirim Email |
+| `items` | `unsignedInteger` | Jumlah perangkat/item dalam pengiriman |
+| `status` | `string(20)` | `sent` \| `skipped` \| `failed` \| `sending` |
+| `error` | `text` null | Pesan error gabungan (maks 2000 karakter) |
+| `triggered_by` | FK `users.id` null | Yang mengirim manual |
+| `created_at` | `timestamp` index | Waktu pengiriman (tabel tidak punya `updated_at`) |
+
 ### Catatan `onDelete` yang dipilih
 
 | Relasi | Perilaku | Alasan |
@@ -306,6 +464,8 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 | `component_machine.component_id/machine_id` | `cascade` | Penugasan komponen tidak bermakna bila komponen atau unitnya hilang |
 | `audit_logs.user_id` | **`nullOnDelete`** | Log harus bertahan setelah pelaku keluar |
 | `backups.created_by` | **`nullOnDelete`** | Riwayat backup tetap ada meski akun pembuatnya dihapus |
+| `assets.pic_user_id` | **`nullOnDelete`** | Unit tetap ada walau PIC-nya keluar; notifikasi PIC lalu memakai fallback riwayat |
+| `notification_dispatches.triggered_by` | **`nullOnDelete`** | Riwayat pengiriman tetap terbaca meski akun pengirim dihapus |
 | `spare_part_movements.spare_part_id` | `cascade` | Riwayat transaksi tidak bermakna tanpa suku cadangnya |
 | `spare_part_movements.user_id` | **`nullOnDelete`** | Riwayat stok tetap terbaca meski akun pelakunya dihapus |
 
@@ -321,6 +481,14 @@ sehingga frontend dapat menampilkan label yang konsisten dengan aturan server.
 - `backups`: `created_at`
 - `spare_parts`: unique `code`, `category`, `name`, `location_code`, `(category, name)`
 - `spare_part_movements`: `(spare_part_id, moved_at)`, `(machine_id, year, period)`
+- `notifications`: morph index `(notifiable_type, notifiable_id)`
+- `notification_dispatches`: `type`, `created_at`, unique `dedupe_key`
+- `app_settings`: unique `key`
+- `machine_types`: unique `code`; `locations`: unique `name`
+- `notifications`: morph index `(notifiable_type, notifiable_id)`
+- `notification_dispatches`: `type`, `created_at`, unique `dedupe_key`
+- `app_settings`: unique `key`
+- `machine_types`: unique `code`; `locations`: unique `name`
 
 ### Komponen / Parts (pengganti Template)
 
@@ -415,6 +583,22 @@ POST /machines/{machine}/pm   (technician_name + signature WAJIB)
 
 `POST /pm/{record}/reject` (PIC/Supervisor) → `status = rejected`, `revision_count++`, simpan snapshot.
 
+### Notifikasi pada rantai tanda tangan (v1.3)
+
+Setiap kali tahap berpindah, aplikasi memanggil
+`App\Services\Notifications\PmApprovalNotifier` **dalam** transaksi yang sama
+sebagai perubahan status, tapi **dibungkus `try/catch`** — notifikasi tidak
+pernah menggagalkan persetujuan:
+
+| Yang terjadi | Notifikasi yang dikirim | Penerima |
+|---------------|-------------------------|----------|
+| Teknisi menandatangani (tahap 1) | 3.1 Menunggu persetujuan | **PIC dokumen** |
+| PIC menyetujui (tahap 2) | 3.2 Menunggu Atasan | **Atasan** |
+| Atasan menyetujui (tahap 3) | 3.3 PM selesai | **Teknisi pembuat** |
+| PIC/Atasan menolak | 3.4 Perlu revisi (**Apps saja**) | **Teknisi pembuat** + alasan + peminta revisi |
+
+Detail alur ada di [§20.4](#204-alur-notifikasi-approval-real-time).
+
 ### Nama penanda tangan
 
 Nama di dokumen **diketik manual**, bukan diambil dari akun yang login, karena di
@@ -491,9 +675,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('can:pm.manage')->group(function () { /* /admin/pm-records */ });
     Route::middleware('can:user.manage')->group(function () { /* /admin/users */ });
     Route::middleware('role:admin')->group(function () { /* /admin/roles */ });
-    Route::middleware('can:template.manage')->group(function () { /* /admin/komponen */ });
+    Route::middleware('can:template.manage')->group(function () { /* /admin/komponen, /admin/templates */ });
+    Route::middleware('can:component.manage')->group(function () { /* master Komponen */ });
+    Route::middleware('can:masterdata.manage')->group(function () { /* /admin/tipe-mesin, /admin/lokasi */ });
     Route::middleware('can:activity.view')->group(function () { /* /admin/activity-logs */ });
     Route::middleware('can:backup.manage')->group(function () { /* /admin/backups */ });
+    Route::middleware('can:integration.manage')->group(function () { /* /admin/integrate */ });
+    Route::middleware('can:notification.manage')->group(function () { /* /settings/notifications */ });
 });
 ```
 
@@ -549,12 +737,16 @@ Permission berasal dari `RoleSeeder`:
 | `utility.manage` | admin, tech-all (CRUD Utility) |
 | `utility.view` | tech-utilities, tech-all (scope halaman/daftar Utility) |
 | `template.manage` | admin, manager, tech-all |
+| `component.manage` | admin, tech-all (master Komponen & Parts) |
+| `masterdata.manage` | admin, tech-all (Tipe Mesin & Lokasi/Site) |
 | `sparepart.view` | **semua role** — suku cadang global, di luar scope Mesin/Utility |
 | `sparepart.manage` | admin, tech-all (CRUD + transaksi stok + impor) |
 | `pm.manage` | admin (halaman Admin PM Records — lihat semua record + hapus permanen) |
 | `user.manage` | admin |
-| `activity.view` | admin, manager (halaman Activity Logs) |
-| `backup.manage` | admin (Backup & Restore database) |
+| `activity.view` | admin, manager (nama sebelumnya `audit.view`) |
+| `backup.manage` | admin (backup & restore database) |
+| `integration.manage` | admin (koneksi email, OTP, laporan otomatis — memuat rahasia) |
+| `notification.manage` | admin (matriks & jadwal, PIC perangkat, kirim manual, riwayat) |
 
 Tiga permission tanda tangan **sengaja dipisah** (`pm.sign` / `pm.acknowledge` / `pm.approve`)
 supaya role tidak bisa melompat tahap dengan satu permission generik.
@@ -563,7 +755,12 @@ supaya role tidak bisa melompat tahap dengan satu permission generik.
 membuka keduanya lewat `dashboard.view`. Role teknisi **tech-machines** / **tech-utilities**
 sengaja **tanpa** `dashboard.view`: hanya satu scope terbuka, `/form-maintenance` menampilkan kartu
 di luar scope sebagai abu-abu, dan URL langsungnya diblokir. **tech-all** memegang `machine.manage`
-+ `utility.manage` + `template.manage` (form-maintenance lengkap).
++ `utility.manage` + `template.manage` + `component.manage` + `masterdata.manage`.
+
+**Notifikasi ≠ permission penerima.** `notification.manage` hanya mengatur
+*konfigurasi* notifikasi (matriks, jadwal, PIC perangkat, kirim manual).
+Semua user tetap **menerima** notifikasi di Kotak Masuk miliknya sendiri
+sesuai peran — tidak ada permission yang membatasi menerima notifikasi.
 
 ### Shared props
 
@@ -655,18 +852,22 @@ POST /pm/{record}/sign
 | `/admin/users/{user}/password` | PUT | `UserController@updatePassword` | `can:user.manage` + Policy |
 | `/admin/users/{user}` | DELETE | `UserController@destroy` | `can:user.manage` + Policy |
 | `/admin/roles` | resource | `RoleController` | `role:admin` + `authorizeResource` |
-| `/admin/komponen` | GET/POST/PUT/DELETE | `Admin\ComponentController` | `can:template.manage` |
-| `/admin/komponen/penugasan` | POST | `Admin\ComponentController@assign` | `can:template.manage` |
-| `/admin/templates` | GET | redirect → `/admin/komponen` | `can:template.manage` |
+| `/admin/komponen` | GET/POST/PUT/DELETE | `Admin\ComponentController` | `can:component.manage` |
+| `/admin/komponen/penugasan` | POST | `Admin\ComponentController@assign` | `can:component.manage` |
+| `/admin/templates` | GET/POST/PUT/DELETE | `Admin\TemplateController` | `can:template.manage` |
+| `/admin/templates/{template}/terapkan` | POST | `Admin\TemplateController@apply` | `can:template.manage` |
+| `/admin/tipe-mesin` | GET/POST/PUT/DELETE | `Admin\MachineTypeController` | `can:masterdata.manage` |
+| `/admin/lokasi` | GET/POST/PUT/DELETE | `Admin\LocationController` | `can:masterdata.manage` |
 | `/admin/activity-logs` | GET | `Admin\ActivityLogController@index` | `can:activity.view` |
-| `/admin/backups` | GET | `Admin\BackupController@index` | `can:backup.manage` |
-| `/admin/backups` | POST | `Admin\BackupController@store` | `can:backup.manage` |
+| `/admin/pm-records` | GET | `PmRecordController@adminIndex` | `can:pm.manage` |
+| `/admin/pm-records/{record}` | DELETE | `PmRecordController@adminDestroy` | `can:pm.manage` |
+| `/admin/integrate` | GET/PUT | `Admin\IntegrationController` | `can:integration.manage` |
+| `/admin/integrate/test` | POST | `Admin\IntegrationController@test` | `can:integration.manage`, `throttle:6,1` |
+| `/admin/backups` | GET/POST | `Admin\BackupController` | `can:backup.manage` |
 | `/admin/backups/{backup}/download` | GET | `Admin\BackupController@download` | `can:backup.manage` |
 | `/admin/backups/{backup}/restore` | POST | `Admin\BackupController@restore` | `can:backup.manage` |
 | `/admin/backups/restore-upload` | POST | `Admin\BackupController@uploadRestore` | `can:backup.manage` |
 | `/admin/backups/{backup}` | DELETE | `Admin\BackupController@destroy` | `can:backup.manage` |
-| `/admin/pm-records` | GET | `PmRecordController@adminIndex` | `can:pm.manage` |
-| `/admin/pm-records/{record}` | DELETE | `PmRecordController@adminDestroy` | `can:pm.manage` |
 | `/suku-cadang` | GET | `SparePartController@index` | `can:sparepart.view` |
 | `/suku-cadang` | POST | `SparePartController@store` | `can:sparepart.manage` |
 | `/suku-cadang/import` | POST | `SparePartController@import` | `can:sparepart.manage` (unggah CSV) |
@@ -677,6 +878,17 @@ POST /pm/{record}/sign
 | `/suku-cadang/{sparePart}/restore` | PATCH | `SparePartController@restore` | `can:sparepart.manage` |
 | `/suku-cadang/{sparePart}/movements` | GET | `SparePartController@movements` | `can:sparepart.view` (JSON riwayat) |
 | `/suku-cadang/{sparePart}/movements` | POST | `SparePartController@storeMovement` | `can:sparepart.manage` |
+| `/notifications` | GET | `NotificationController@inbox` | — (semua user login) |
+| `/notifications/feed` | GET | `NotificationController@feed` | — (lonceng header) |
+| `/notifications/read-all` | POST | `NotificationController@markAllRead` | — |
+| `/notifications/read` | DELETE | `NotificationController@clearRead` | — |
+| `/notifications/{id}/open` | GET | `NotificationController@open` | `whereUuid` |
+| `/notifications/{id}/read` | POST | `NotificationController@markRead` | `whereUuid` |
+| `/notifications/{id}` | DELETE | `NotificationController@destroy` | `whereUuid` |
+| `/settings/notifications` | GET/PUT | `NotificationController@index/updateMatrix` | `can:notification.manage` |
+| `/settings/notifications/pic` | PUT | `NotificationController@assignPic` | `can:notification.manage` |
+| `/settings/notifications/preview` | POST | `NotificationController@preview` | `can:notification.manage`, `throttle:20,1` |
+| `/settings/notifications/send` | POST | `NotificationController@send` | `can:notification.manage`, `throttle:6,1` |
 
 ---
 
@@ -708,6 +920,9 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
 | `useSignatureActions` | Logika approve/tolak (nama manual, canvas, catatan, request). Dipakai bersama oleh `SignatureActions` dan `Approvals/ApprovalRow` supaya tidak ada jalur validating mandatory yang berbeda |
 | `Approvals/ApprovalRow` | Satu baris tabel antrean: kolom Nama Penanda Tangan dan Tanda Tangan terpisah |
 | `MachineFields` | Form input mesin (dipakai bersama create/edit) |
+| `NotificationBell` | Lonceng notifikasi di header (badge belum dibaca + dropdown 8 terbaru) |
+| `StatusDot` | Dot status 4 warna (terjadwal / mendekati / terlambat / lewat) |
+| `StockLineChart` | Grafik batang/garis dashboard suku cadang |
 | `ComponentAssignModal` | Modal "Edit Komponen" di halaman Mesin/Utility: multi-select komponen + input Standar per unit |
 
 ### Layout
@@ -722,30 +937,47 @@ Komponen `Neu*` menerapkan gaya **Neumorphism** (permukaan dua arah) agar konsis
   juga, daftar memuat record `draft`/`rejected` milik teknisi — jadi panel tanda tangan
   di halaman ini dipasang untuk tahap apa pun yang sedang menunggu, bukan hanya PIC/Atasan.
 - Sidebar responsif: rail vertikal (desktop) dan drawer (mobile).
+- **Header memuat lonceng notifikasi** (`NotificationBell`) untuk semua user login —
+  dengan badge jumlah belum dibaca dan dropdown notifikasi terbaru. Lonceng ini
+  **bukan** menu Settings: halaman penuh ada di `/notifications` (§20.8).
 
 ### Halaman
 
 | Path | Halaman | Ringkas |
 |------|---------|---------|
-| `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ringkasan tindakan + komponen sering diganti, ekspor |
-| `/settings` | `Settings/Index` | Pusat kartu menu pengelolaan aset: Mesin → `/machines`, Utility → `/utility`; Komponen / Parts & Suku Cadang "Segera hadir"; menggantikan item sidebar terpisah |
+| `/dashboard` | `Dashboard/Index` | Grid status mesin, filter, dot periode, ekspor, panel dashboard suku cadang |
 | `/approvals` | `Approvals/Index` | Antrean per permission, stepper, tabel nama + signature per baris |
-| `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore, Edit Komponen + Standar per unit |
+| `/machines` | `Machines/Index` | CRUD mesin, pencarian, restore, edit komponen & standar per unit |
 | `/machines/{machine}/history` | `Machines/History` | Riwayat PM mesin |
-| `/machines/{machine}/pm` | `Pm/Form` | Checklist + tanda tangan |
-| `/form-maintenance` | `FormMaintenance/Index` | Kartu pilih scope Mesin/Utility |
+| `/machines/{machine}/pm` | `Pm/Form` | Checklist + tanda tangan (mode "Data Saya" / "Isi Manual") |
+| `/form-maintenance` | `FormMaintenance/Index` | Kartu pilih scope Mesin/Utility/Suku Cadang |
 | `/form-maintenance/mesin` | `FormMaintenance/Mesin` | Daftar mesin + status PM per periode |
 | `/form-maintenance/utility` | `FormMaintenance/Utility` | Daftar unit utility + status PM per periode |
-| `/form-maintenance/suku-cadang` | `FormMaintenance/SukuCadang` | Catat pemakaian suku cadang ke unit (Mesin/Utility) per periode PM + riwayat; pemakaian = transaksi stok keluar bertujuan unit |
-| `/utility` | `Utility/Index` | Daftar unit utility + komponen maintenance, Edit Komponen + Standar per unit |
-| `/admin/users` | `Admin/Users` | CRUD pengguna + ganti password + pencarian |
-| `/admin/roles` | `Admin/Roles` | CRUD role + matriks permission |
+| `/form-maintenance/suku-cadang` | `FormMaintenance/SukuCadang` | Catat pemakaian suku cadang + riwayat |
+| `/utility` | `Utility/Index` | Daftar unit utility + komponen maintenance |
+| `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok, riwayat, impor/unggah CSV, hapus massal |
+| `/suku-cadang/dashboard` | `SpareParts/Dashboard` | Dashboard monitoring stok (barang masuk/keluar) |
+| `/settings` | `Settings/Index` | Kartu menu Settings (Mesin, Utility, Template, Komponen, Tipe Mesin, Lokasi, Suku Cadang, Notifications, Integrate) |
+| `/settings/notifications` | `Settings/Notifications` | **3 tab:** Matriks & Jadwal · PIC Perangkat · Kirim & Riwayat |
+| `/notifications` | `Notifications/Inbox` | **Kotak Masuk** (berdiri sendiri, filter & aksi baca/hapus) |
+| `/admin/users` | `Admin/Users` | CRUD pengguna + ganti password + PIN |
+| `/admin/roles` | `Admin/Roles` | CRUD role + Pemilih Permission (kelompok + ringkasan) |
 | `/admin/komponen` | `Admin/Components` | Master Komponen + penugasan ke Mesin/Utility |
+| `/admin/templates` | `Admin/Templates` | Template komponen + terapkan ke unit |
+| `/admin/tipe-mesin` · `/admin/lokasi` | `Admin/MasterData` | Master Tipe Mesin & Lokasi/Site |
 | `/admin/pm-records` | `Admin/PmRecords/Index` | Semua PM Record: filter, cari, hapus permanen |
-| `/admin/activity-logs` | `Admin/ActivityLogs` | Activity Logs: cari, filter aksi/pelaku/tanggal, statistik, detail perubahan |
-| `/admin/backups` | `Admin/Backups` | Backup & Restore database: buat, unduh, pulihkan, unggah, hapus |
-| `/suku-cadang` | `SpareParts/Index` | Master suku cadang global, transaksi stok masuk/keluar, riwayat, impor/unggah CSV, unduh template CSV, hapus massal |
-| `/profile` | `Profile/Edit` | Info akun, ganti password, tanda tangan tersimpan, hapus akun |
+| `/admin/activity-logs` | `Admin/ActivityLogs` | Activity log: filter, pencarian, detail perubahan, IP berlabel |
+| `/admin/backups` | `Admin/Backups` | Backup & restore database |
+| `/admin/integrate` | `Admin/Integrate` | Koneksi Microsoft 365 / SMTP, fitur akun, laporan otomatis |
+| `/profile` | `Profile/Edit` | Info akun, ganti password, PIN, tanda tangan tersimpan, hapus akun |
+| *(error)* | `Errors/Error` | Halaman error beranimasi 403/404/405/419/429/500/503 |
+
+### Komponen notifikasi
+
+| Komponen | Fungsi |
+|----------|--------|
+| `NotificationBell` | Lonceng di header: badge jumlah belum dibaca, dropdown 8 notifikasi terbaru, polling 45 detik, tandai semua dibaca, tautan "Lihat semua notifikasi" |
+| `Notifications/Inbox` | Kotak Masuk: filter chip (Semua/Belum dibaca/Jadwal PM/Terlambat/Approval), daftar, tabel perangkat expandable, pagination 15/halaman |
 
 ---
 
@@ -836,12 +1068,45 @@ Keputusan desain (parser sengaja dibuat toleran karena CSV berasal dari spreadsh
   terhapus via cascade).
 - Dibungkus `DB::transaction()`.
 
+### Impor Template Komponen (v1.3)
+
+```
+php artisan templates:import [--dry-run] [--no-apply] [path?]
+```
+
+Sumber data: `references/data-source/templates/Template_Komponen_Mesin.csv`
+(35 template, 106 unit). Format: **satu baris = satu unit**, berisi
+`Nama Template`, `Code` unit, dan kolom `Komponen 1..N` berurutan.
+
+`App\Services\TemplateCsvImportService` bekerja dalam tiga tahap:
+
+1. **Normalisasi nama komponen** — `ALIASES` memetakan beda huruf besar/kecil,
+   spasi, dan salah ketik yang jelas ke komponen master yang sudah ada
+   (mis. `kalibrasi` → `Kalibrasi`, `Loadcell` → `Load Cell`, `Keyped` →
+   `Keypad`, `Power Supplay` → `Power Supply`). Sisanya dibuat sebagai
+   komponen baru via `NEW_COMPONENTS` (kategori + standar bawaan).
+2. **Pencocokan unit** — kolom Code di CSV memakai akhiran nomor baris
+   (`MC.2-TOMPB-101-16`); akhiran itu dibuang agar cocok dengan
+   `assets.code` (`MC.2-TOMPB-101`).
+3. **Penerapan** — template dibuat/diperbarui per `Nama Template` (cakupan
+   Mesin, tipe mengikuti tipe unitnya), lalu diterapkan ke unitnya lewat
+   `TemplateService` — sama dengan tombol **Terapkan ke Unit**.
+
+Keputusan desain:
+
+- **Idempoten** — aman dijalankan berulang; template/komponen tidak dobel.
+- **`--dry-run`** hanya menampilkan rencana; `--no-apply` membuat template
+  tanpa menerapkannya.
+- Bila master punya beberapa komponen bernama sama, `PREFERRED_SPEC` memilih
+  yang dipakai (mis. **Power Input** memakai standar `"Normal"`, bukan
+  `"220-240V"`, karena tegangan tiap mesin berbeda: 220 V / 380 V).
+- Tab "Terapkan Ke Unit" di UI dan perintah ini memakai **service yang sama**,
+  sehingga hasil keduanya identik.
+
+---
 ---
 
-## 13. Activity Logs
-
-Backing store tetap bernama `audit_logs` (model `AuditLog`, service `AuditLogService`), tetapi
-permukaan fitur di UI kini bernama **Activity Logs** dengan permission `activity.view`.
+## 13. Activity Log (Audit Log)
 
 `AuditLogService::record($action, $subjectType, $subjectId, $changes)` menulis:
 
@@ -851,32 +1116,50 @@ permukaan fitur di UI kini bernama **Activity Logs** dengan permission `activity
 | `action` | Contoh: `machine.create`, `user.update`, `user.password` |
 | `subject_type` / `subject_id` | Objek yang diubah |
 | `changes` | JSON nilai sebelum → sesudah |
-| `ip` | `Request::ip()` |
+| `ip` | `ClientInfo::ip()` — menghormati *trusted proxies* yang dikonfigurasi |
+| `user_agent` | Ringkasan perangkat & browser (mis. "Chrome 141 · Windows 11") |
 | `created_at` | Waktu (tabel ini tidak punya `updated_at` — log bersifat append-only) |
 
 Action yang tercatat:
 
 | Prefix | Action | Sumber |
 |--------|--------|--------|
-| `machine.*` | `create`, `update`, `delete`, `restore` | `MachineController` |
-| `pm.*` | `submit` | `Actions/Pm/SubmitPmRecord` |
-| | `sign.{stage}` (mis. `pm.sign.pic`) | `Actions/Pm/SignPmRecord` |
-| | `reject` | `Actions/Pm/RejectPmRecord` |
-| `user.*` | `create`, `update`, `password`, `delete` | `Admin/UserController` |
-| `sparepart.*` | `create`, `update`, `delete` (tunggal & massal, ditandai `bulk`), `restore`, `movement` (termasuk pemakaian ke unit), `import` | `SparePartController`, `SparePartUsageController` |
-| `backup.*` | `create`, `restore`, `delete` | `Admin/BackupController` |
+| `machine.*` | `create`, `update`, `delete`, `restore`, `components.update` | `MachineController` |
+| `pm.*` | `submit`, `sign.{stage}` (mis. `pm.sign.pic`), `reject`, `offline_sync` | `Actions/Pm/*`, `PmSyncController` |
+| `user.*` | `create`, `update`, `password`, `pin`, `delete` | `Admin/UserController` |
+| `sparepart.*` | `create`, `update`, `delete` (tunggal & massal), `restore`, `movement`, `import` | `SparePartController` |
+| `template.*` | `create`, `update`, `delete`, `apply`, `import` | `Admin/TemplateController`, `ImportTemplatesCommand` |
+| `machine_type.*` | `create`, `update`, `delete` | `Admin/MachineTypeController` |
+| `location.*` | `create`, `update`, `delete` | `Admin/LocationController` |
+| `notification.*` | `settings.update`, `pic.assign` | `NotificationController` |
+| `integration.*` | `update` | `Admin/IntegrationController` |
+| `backup.*` | `create`, `restore`, `delete`, `failed` | `Admin/BackupController` |
+| `auth.*` | `login_otp` | `Auth/LoginOtp` |
 
-> **Cakupan saat ini:** perubahan pada **template checklist** dan **role/permission** belum
-> tercatat di audit log. Keduanya baru bisa ditambah dengan satu baris
+> **Catatan:** perubahan **role/permission** dan **master Komponen** belum
+> tercatat di activity log — menambahkannya cukup satu baris
 > `AuditLogService::record(...)` di controller masing-masing.
 
 **Aturan privasi:** aksi `user.password` **tidak pernah** menulis nilai password, hanya nama & email
 sasaran supaya jejaknya tetap bisa ditelusuri. Password lama pun tidak ikut.
 
-Halaman Activity Logs (`Admin/ActivityLogs`) menampilkan log berurutan `created_at` descending,
-**dipaginasi 25 per halaman**, dengan **pencarian** (aksi/pelaku/subjek/IP) dan **filter** aksi,
-pelaku, serta rentang tanggal (`from`/`to`). Setiap baris bisa dibuka untuk melihat **detail
-perubahan** (JSON `changes`), disertai kartu statistik (total, hari ini, pelaku aktif).
+### IP berlabel & proxy tepercaya
+
+`App\Services\Support\ClientInfo` menentukan IP asli:
+
+- Header `X-Forwarded-For` **diabaikan** kecuali alamat proxy-nya terdaftar di
+  `config('app.trusted_proxies')` — mencegah pengguna memalsukan IP.
+- Setiap IP punya **label** yang bisa dikonfigurasi (mis. "LAN kantor",
+  "Gateway VPN / NAT") agar mudah dibaca di activity log.
+- Aksi otomatis (backup terjadwal, laporan terjadwal, email background) tampil
+  sebagai **"Sistem (otomatis, tanpa perangkat)"**.
+
+### Halaman activity log
+
+Halaman `/admin/activity-logs` (permission `activity.view`) menampilkan log
+dengan **filter** (jenis aksi, pelaku, rentang tanggal) dan **pencarian**, plus
+panel detail perubahan (nilai sebelum → sesudah), serta label IP yang
+membantu mengenali sumber aksi.
 
 ---
 
@@ -887,11 +1170,12 @@ Fitur cadangkan/pulihkan **database** (khusus Admin, permission `backup.manage`)
 ### Mengapa murni PDO, bukan `mysqldump`
 
 Implementasi awal memanggil biner `mysqldump`/`mysql`. Itu gagal di deployment Docker:
-image `php:8.3-fpm-alpine` memakai klien MariaDB, sementara server dananya **MySQL 8** dengan
-autentikasi `caching_sha2_password` — plugin-nya tidak ada di klien Alpine
-(`Plugin caching_sha2_password could not be loaded`). `BackupService` karena itu melakukan
-dump dan restore **lewat koneksi PDO aplikasi** (`DB::connection()`), yang sudah menangani
-autentikasi, charset, dan opsi koneksi dengan benar. Tidak ada ketergantungan biner eksternal.
+image `php:8.3-fpm-alpine` memakai klien MariaDB, sementara server database adalah
+**MySQL 8** dengan autentikasi `caching_sha2_password` — plugin-nya tidak ada di klien
+Alpine (`Plugin caching_sha2_password could not be loaded`). `BackupService` karena itu
+melakukan dump dan restore **lewat koneksi PDO aplikasi** (`DB::connection()`), yang
+sudah menangani autentikasi, charset, dan opsi koneksi dengan benar. Tidak ada
+ketergantungan biner eksternal.
 
 ### Alur
 
@@ -915,8 +1199,9 @@ autentikasi, charset, dan opsi koneksi dengan benar. Tidak ada ketergantungan bi
 
 `config/backup.php`: `disk` (default `backups`), `keep` (default 30), `schedule` (default `02:00`).
 `routes/console.php` menjadwalkan `backup:database --type=scheduled --prune` setiap hari pada
-`config('backup.schedule')`. Karena container **tidak** menjalankan cron, scheduler harus
-diaktifkan dari host (lihat [Deployment](#16-deployment) dan README).
+`config('backup.schedule')` dengan zona waktu Asia/Jakarta. Jadwal ini dijalankan container
+**`vip_scheduler`** (`php artisan schedule:work`) — tanpa container itu backup harian tidak
+berjalan, tetapi tombol **Buat Backup Sekarang** tetap berfungsi.
 
 ---
 
@@ -925,6 +1210,7 @@ diaktifkan dari host (lihat [Deployment](#16-deployment) dan README).
 | Aspek | Implementasi |
 |-------|--------------|
 | Hashing password | Cast `hashed` pada model `User` — plaintext dari form otomatis di-hash, tidak ada kode `Hash::make` yang bisa terlewat |
+| PIN login | `pin_hash` = HMAC-SHA256(`APP_KEY`, pin) + `hash_equals` — tidak pernah disimpan plaintext |
 | CSRF | Middleware `web` bawaan; token disuntik lewat `@routes`/Inertia |
 | Session | `SESSION_ENCRYPT` & `SESSION_DRIVER` dari `.env` |
 | Otorisasi | `can:` / `role:` middleware **dan** Policy pada setiap aksi |
@@ -936,12 +1222,17 @@ diaktifkan dari host (lihat [Deployment](#16-deployment) dan README).
 | Kunci setelah tanda tangan | `PmRecordPolicy::update()` menolak record non-editable |
 | Upload tanda tangan | Validasi prefix data URL + PNG magic bytes + batas 2 MB di `SignatureStorage` |
 | Akses gambar tanda tangan | Disajikan lewat route ber-otorisasi, bukan path mentah |
-| Jejak audit | Append-only, menyimpan pelaku + IP |
+| Jejak audit | Append-only, menyimpan pelaku + IP + perangkat |
 | Validasi input | Seluruh form memakai FormRequest, bukan validasi di frontend |
 | Logout & session | `Auth::logout()` + invalidate session + regenerate token |
+| Rahasia integrasi | `graph.client_secret` & `smtp.password` disimpan **terenkripsi** di `app_settings` dan tidak pernah dikembalikan ke UI |
+| Isolasi notifikasi | Query inbox selalu lewat `$user->notifications()` — satu user tak bisa melihat notifikasi orang lain |
+| Anti open-redirect | `notifications.open` hanya mengarahkan ke URL yang diawali `/` dan bukan `//` |
+| Rate limit | `throttle` pada endpoint kirim notifikasi & uji email; OTP punya batas 5 percobaan |
+| Error 500 | Pesan exception tidak pernah ditampilkan ke pengguna (lihat §22) |
 
 **Catatan produksi:** akun demo dari `UserSeeder` memakai password `password`. Wajib diganti sebelum
-dipakai di lingkungan nyata.
+dipakai di lingkungan nyata. `APP_DEBUG` di live sebaiknya `false`.
 
 ---
 
@@ -951,17 +1242,32 @@ dipakai di lingkungan nyata.
 
 ```
 docker-compose.yml
-├── vip_app     php:8.3-fpm-alpine   (container_name: vip_app)
+├── vip_app        php:8.3-fpm-alpine   (container_name: vip_app)
 │   ├── build: .          ← Dockerfile multi-stage
 │   ├── volumes: app_public:/var/www/html/public
 │   │              ./storage:/var/www/html/storage
 │   └── network: vipnet
-└── vip_nginx   nginx:1.27-alpine    (container_name: vip_nginx)
+├── vip_queue      vip-maintenance-app   (container_name: vip_queue)
+│   ├── command: php artisan queue:work --tries=3 --backoff=30 --sleep=3 --max-time=3600
+│   ├── user: www-data
+│   ├── volumes: ./storage:/var/www/html/storage
+│   └── network: vipnet
+├── vip_scheduler  vip-maintenance-app   (container_name: vip_scheduler)
+│   ├── command: php artisan schedule:work
+│   ├── volumes: ./storage:/var/www/html/storage
+│   └── network: vipnet
+└── vip_nginx      nginx:1.27-alpine    (container_name: vip_nginx)
     ├── ports: "8082:80"
     ├── volumes: app_public:/var/www/html/public:ro
     │              ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     └── network: vipnet
 ```
+
+`vip_queue` ada supaya **email notifikasi tidak menunda** tanda tangan/approval
+(permintaan HTTP selesai begitu job masuk antrean). `vip_scheduler` menjalankan
+jadwal reminder, keterlambatan, laporan, dan backup harian. Keduanya memakai
+image yang sama dengan `vip_app` dan ikut ter-deploy oleh
+`docker compose up -d --build`.
 
 ### Dockerfile (multi-stage)
 
@@ -1032,22 +1338,33 @@ terpisah (lihat Operasional).
 ### Operasional
 
 ```bash
-docker compose up -d --build app     # deploy (PHP + aset frontend)
+docker compose up -d --build         # deploy (PHP + frontend + queue + scheduler)
 docker compose logs -f app           # log
 docker compose restart app           # restart
-docker compose exec app php artisan migrate --force
+docker exec vip_app php artisan migrate --force
+docker exec vip_app php artisan optimize:clear
 ```
 
 Health check Laravel tersedia di `/up` (dikonfigurasi lewat `withRouting(health:)`).
 
-**Backup harian otomatis.** Container tidak menyertakan cron, jadi scheduler harus dijalankan dari
-host, misalnya:
+> **Migrasi TIDAK dijalankan otomatis.** Setiap perubahan skema harus diikuti
+> `php artisan migrate --force` di dalam container.
 
-```bash
-* * * * * docker exec -u www-data vip_app php artisan schedule:run >> /dev/null 2>&1
-```
+### Zona waktu
 
-Tanpa entri itu, jadwal `02:00` tidak berjalan; tombol **Buat Backup Sekarang** tetap berfungsi.
+Seluruh aplikasi memakai **Asia/Jakarta (WIB)**:
+
+- `APP_TIMEZONE=Asia/Jakarta` di `.env`.
+- Koneksi database dikunci ke `+07:00` (`config/database.php`) agar tidak
+  bergantung pengaturan server database.
+- Tanggal yang diformat di browser dipaksa WIB (antrean offline, draft form PM,
+  halaman Admin PM Records) supaya tetap benar di perangkat yang zona waktunya
+  berbeda.
+- Semua jadwal di `routes/console.php` memakai `->timezone('Asia/Jakarta')`.
+
+Data lama digeser +7 jam lewat migrasi
+`2026_10_21_090000_shift_timestamps_from_utc_to_wib.php` (khusus MySQL/MariaDB;
+kolom berisi tanggal saja tanpa jam tidak diubah).
 
 ---
 
@@ -1055,10 +1372,23 @@ Tanpa entri itu, jadwal `02:00` tidak berjalan; tombol **Buat Backup Sekarang** 
 
 | Jenis | Tool | Cakupan |
 |-------|------|---------|
-| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password), Profile & tanda tangan tersimpan, Mesin/Utility (termasuk master Komponen + penugasan + Edit Komponen/Standar per unit), PM & rantai tanda tangan, Admin PM Records, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses), Activity Logs (akses + filter + pencarian), Backup & Restore (akses + guard konfirmasi) |
+| Feature | PHPUnit 11 (`tests/Feature`) | Auth (login/register/reset/verify/password/PIN/OTP), Profile & tanda tangan tersimpan, Mesin/Utility (termasuk master Komponen + penugasan), PM & rantai tanda tangan, Admin PM Records, Suku Cadang (impor CSV, CRUD, hapus massal, transaksi stok, pembatasan akses), **Modul Notifikasi** (matriks, dedupe, PIC, otorisasi), **Impor Template CSV**, **Halaman Error**, Master Data, Integrasi Email, Activity Log/ClientInfo |
+| Manual terotomasi | Playwright (via Docker image `mcr.microsoft.com/playwright`) | Sweep halaman: login nyata, cek blank page, error console, HTTP 5xx, screenshot halaman error 403/404 desktop & mobile |
+| Fungsional | Skrip Playwright ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda, notifikasi (sesi sementara + data contoh yang dibersihkan kembali) |
 | Unit | PHPUnit 11 (`tests/Unit`) | Pemecah skrip SQL `BackupService::splitStatements` (kutip, backtick, komentar, dump bawaan aplikasi) |
-| Manual terotomasi | Puppeteer (`pptr-test.mjs`) | Sweep halaman: login nyata, cek blank page, error console, HTTP 5xx |
-| Fungsional | Skrip Puppeteer ad-hoc (`/tmp/opencode/*.mjs`) | CRUD pengguna, ganti password, guard, login dengan role berbeda |
+
+Untuk notifikasi, verifikasi dilakukan **tanpa mengirim** lewat
+`php artisan notifications:pm-alert overdue --dry-run` (menampilkan penerima,
+peran, perangkat, dan kanal tanpa mengirim apa pun).
+
+Jumlah test pada v1.3: **292 test / 1951 assertion**, seluruhnya hijau.
+
+### Isolation test
+
+`tests/TestCase.php` memaksa **sqlite in-memory**, sehingga `DB_*` di `.env`
+tidak menembusnya — ini melindungi data produksi dari `migrate:fresh`.
+Selain itu `phpunit.xml` mengunci cache/antrean/mail agar test tidak pernah
+memakai cache produksi atau mengirim email sungguhan.
 
 Pola verifikasi yang dipakai: **perilaku server, bukan tampilan UI** — misalnya memastikan role
 pengguna tetap `admin` setelah percobaan demote, dan akun tetap ada setelah percobaan self-delete.
@@ -1084,6 +1414,15 @@ UI bisa-disable tombol, jadi hanya state server yang membuktikan guard bekerja.
 | Impor CSV idempoten | Aman dijalankan ulang | Perlu logika upsert, bukan `insert` |
 | `--purge` eksplisit | Tidak menghapus history tanpa sengaja | Butuh CLI untuk machine purge |
 | Filter diteruskan ke form PM | User tidak kehilangan filter | URL form jadi lebih panjang |
+| Notifikasi **digest** per penerima, bukan satu per perangkat | Inbox tetap ringkas, email tidak menumpuk | Perlu menggabungkan daftar sebelum dikirim |
+| `dedupe_key` unique di DB, bukan cek di memori | Anti duplikasi tetap berlaku walau dua proses berjalan bersamaan | Perlu menangani `QueryException` saat insert |
+| Atasan = pemegang `pm.approve` selain Admin; Admin fallback | Notifikasi tidak masuk ke kotak masuk yang tidak dipakai | Kalau tidak ada role `pm.approve`, semua orang berkewajiban jadi penerima |
+| Notifikasi approval dibungkus `try/catch` | Persetujuan tidak gagal hanya karena email | Kegagalan hanya terlihat di log & riwayat |
+| Laporan memakai `DashboardService` yang sama dengan Beranda | Angka email tidak mungkin berbeda dari layar | Ketergantungan pada service Beranda |
+| Pengaturan integrasi di tabel `app_settings`, bukan `.env` | Bisa diubah dari UI tanpa restart container | Perlu endpoint yang menyimpan rahasia terenkripsi |
+| Email lewat antrean (`ShouldQueue`) | Tanda tangan/approval tidak menunggu SMTP | Butuh container `vip_queue` ikut berjalan |
+| Halaman error dirender via `Exceptions::respond()` | Satu tempat untuk semua status error | Harus mengecualikan respons JSON & 419 |
+| Pesan 500 tidak pernah diisi di halaman error | Tidak membocorkan detail teknis | Admin harus cek log untuk melihat penyebab |
 
 ---
 
@@ -1091,31 +1430,300 @@ UI bisa-disable tombol, jadi hanya state server yang membuktikan guard bekerja.
 
 Hal-hal yang diketahui ada di sistem ini dan perlu dipertimbangkan:
 
-1. **Asset frontend harus disalin manual setelah rebuild** karena named volume `app_public`.
-   Ini penyebab utama "perubahan frontend tidak muncul".
-2. **Tidak ada notifikasi otomatis** (email/WhatsApp) untuk pengingat persetujuan atau PM jatuh tempo.
-3. **Rantai 3 tahap bersifat hardcoded** di enum, belum bisa dikonfigurasi per unit.
-4. **Activity Logs bersifat append-only** — tidak bisa dihapus dari UI. Kini sudah bisa dicari,
-   difilter (aksi/pelaku/rentang tanggal), dan dipaginasi 25 per halaman.
-5. **Scheduler tidak berjalan sendiri di container** — backup harian `02:00` hanya berjalan bila
-   `schedule:run` dipasang pada cron host. Tidak ada pengingat otomatis lain (email/WhatsApp).
-6. **Tidak ada pagination** pada daftar besar; daftar mesin & pengguna memuat seluruh data.
-7. **Tidak ada resize/gambar** — tanda tangan disimpan ukuran canvas apa adanya (dibatasi 2 MB).
-8. **Tidak ada pencarian global** — pencarian hanya per halaman.
-9. **Tidak ada pagination pada laporan** — agregasi dihitung untuk seluruh dataset.
-10. **`pm_records` tidak punya soft delete** — penghapusan mesin yang di-`purge` akan menghapus
-    record PM-nya secara permanen (sengaja, demi kebenaran data).
-11. **Tidak ada rate limiting** pada endpoint login (boneka Laravel default belum diaktifkan).
-12. **Race condition pada signing** — dua request bersamaan pada tahap yang sama bisa saling
-    menimpa; `unique(pm_record_id, stage)` mencegah duplikasi baris, tapi bukan konfirmasi transaksional.
-    Menambahkan lock pada record akan menutup celah ini.
-13. **Backup hanya mencakup database**, bukan berkas unggahan/tanda tangan di `storage/app/public`.
-14. **Restore bersifat menimpa total (all-or-nothing)** dan belum divalidasi untuk file `mysqldump`
-    yang memakai `DELIMITER` (stored routine/trigger); dump buatan aplikasi tidak memakai `DELIMITER`.
+1. **Asset frontend harus disalin oleh entrypoint saat container start.** Named volume
+   `app_public` hanya terisi sekali; `docker/app-entrypoint.sh` menyalin
+   `public-image/build` → `public/build` tiap start. Kalau baris sinkronisasi tidak
+   muncul di log container, image yang berjalan bukan hasil build terbaru.
+2. **Rantai 3 tahap bersifat hardcoded** di enum, belum bisa dikonfigurasi per unit.
+3. **Tidak ada pencarian global** — pencarian hanya per halaman.
+4. **Tidak ada resize/gambar** — tanda tangan disimpan ukuran canvas apa adanya (dibatasi 2 MB).
+5. **Tidak ada pagination pada laporan** — agregasi dihitung untuk seluruh dataset.
+6. **Daftar mesin & pengguna belum dipaginasi** — keduanya memuat seluruh data.
+7. **`pm_records` tidak punya soft delete** — penghapusan mesin yang di-`purge` akan menghapus
+   record PM-nya secara permanen (sengaja, demi kebenaran data).
+8. **Race condition pada signing** — dua request bersamaan pada tahap yang sama bisa saling
+   menimpa; `unique(pm_record_id, stage)` mencegah duplikasi baris, tapi bukan konfirmasi transaksional.
+   Menambahkan lock pada record akan menutup celah ini.
+9. **Tidak ada rate limiting pada `POST /login`** (password biasa). Endpoint verifikasi OTP,
+   PIN, dan pengiriman notifikasi sudah dibatasi `throttle`.
+10. **Scheduler harus berjalan terus** — bila container `vip_scheduler` mati, tidak ada
+    reminder/keterlambatan/laporan/backup yang terjadwal. Pemeriksaan cepat:
+    `docker exec vip_scheduler php artisan schedule:list`.
+11. **Email bergantung pada penyedia** — Microsoft Graph/SMTP bisa menolak (kuota, expired
+    secret, sinkronisasi direktori). Gejalanya terlihat di tab **Kirim & Riwayat** (status
+    `failed` + pesan error) dan di log container.
+12. **Tidak ada WhatsApp/SMS** — hanya dua saluran (In-App + Email).
+13. **Sebagian besar unit belum punya PIC** — fallback ke PIC riwayat PM terakhir
+    bekerja, tetapi reminder User/PIC jadi kurang tepat bila fallback tidak ada.
+14. **Backup hanya mencakup database**, bukan berkas unggahan/tanda tangan di `storage/app/public`.
+15. **Restore bersifat menimpa total (all-or-nothing)** dan belum divalidasi untuk file
+    `mysqldump` yang memakai `DELIMITER` (stored routine/trigger); dump buatan aplikasi
+    tidak memakai `DELIMITER`.
+16. **`APP_DEBUG` di live masih `true`** — halaman error 500 sudah tidak menampilkan
+    detail, tapi data debug tetap terkumpul di log/Whoops. Sebaiknya `APP_DEBUG=false` di produksi.
+
+> Yang **sudah teratasi** di v1.3 dibanding versi 1.2: activity log kini bisa
+> difilter, dicari, dan dipaginasi; ada scheduled job (reminder, keterlambatan,
+> laporan, backup harian 02:00 WIB); modul notifikasi otomatis aktif; dan
+> laporan email memakai angka yang sama dengan Beranda.
+
+## 20. Modul Notifikasi
+
+Modul ini mengirim notifikasi ke **dua saluran**: **In-App** (database) dan
+**Email**. Empat baris matriks (§20.2) dikonfigurasi dari
+**Settings → Notifications** oleh Admin.
+
+### 20.1 Komponen
+
+| File | Tanggung jawab |
+|------|----------------|
+| `app/Services/Notifications/NotificationChannels.php` | Menentukan kanal per penerima: `database` bila Apps aktif, `mail` bila Email aktif **dan** email penerima valid **dan** koneksi email siap |
+| `app/Services/Notifications/NotificationRecipients.php` | **Sumber tunggal** aturan penerima: `technicians()` (dengan scope), `supervisors()`, `picMap()`, `picForRecord()`, `scopeOf()` |
+| `app/Services/Notifications/PmScheduleScanner.php` | Daftar perangkat & unit terlambat. Memakai `DashboardService` yang sama dengan Beranda → angka tidak mungkin berbeda |
+| `app/Services/Notifications/PmAlertDispatcher.php` | Kirim **reminder** (sekali/period) & **keterlambatan** (sekali/slot jam), dideduplikasi, dicatat di `notification_dispatches` |
+| `app/Services/Notifications/PmApprovalNotifier.php` | Kirim notifikasi **real-time** approval (3.1–3.4). Dibungkus `try/catch` — kegagalan tidak menggagalkan persetujuan |
+| `app/Services/Notifications/PmReportSender.php` | Kirim **laporan** mingguan/bulanan (email saja) ke Atasan + penerima tambahan |
+| `app/Services/Integration/PmReportBuilder.php` | Membangun isi laporan (jumlah, persentase, daftar terlambat, aktivitas, antrean, stok) |
+| `app/Notifications/PmScheduleDigestNotification.php` | Digest daftar perangkat (subject + body + view `mail/pm-digest.blade.php`) |
+| `app/Notifications/PmApprovalNotification.php` | Notifikasi dokumen approval (payload berisi nomor dokumen, perangkat, pengirim, waktu, tautan) |
+| `app/Http/Controllers/NotificationController.php` | Inbox, feed lonceng, tandai dibaca/hapus, **matriks**, **PIC perangkat**, pratinjau, kirim manual |
+| `app/Console/Commands/SendPmAlertCommand.php` | `notifications:pm-alert {reminder|overdue} [--dry-run] [--force]` |
+| `app/Console/Commands/SendPmReportCommand.php` | `integration:send-pm-report {weekly|monthly} [--to=*]` |
+
+### 20.2 Matriks
+
+| # | Jenis | Kanal | Penerima | Dedupe key | Pemicu |
+|---|-------|-------|----------|------------|--------|
+| 1 | Reminder Minggu ke-2 | Apps + Email | Teknisi, User/PIC, Atasan | `reminder:{tahun}:{periode}` | Terjadwal, `notif.reminder.time` (default 07:00) |
+| 2 | Keterlambatan PM | Apps + Email | Teknisi, Atasan | `overdue:{Y-m-d:H}` | Terjadwal, `notif.overdue.times` (default `07:00,14:00`) |
+| 3.1 | Menunggu persetujuan | Apps + Email | PIC dokumen | — | Event `SignPmRecord` (tahap Technician) |
+| 3.2 | Menunggu Atasan | Apps + Email | Atasan | — | Event `SignPmRecord` (tahap Pic) |
+| 3.3 | PM selesai | Apps + Email | Teknisi pembuat | — | Event `SignPmRecord` (tahap Supervisor) |
+| 3.4 | Perlu revisi | **Apps saja** | Teknisi pembuat | — | Event `RejectPmRecord` |
+| 4.1 | Laporan mingguan | **Email saja** | Atasan + tambahan | — | Terjadwal, `report.weekly_day` / `report.weekly_time` |
+| 4.2 | Laporan bulanan | **Email saja** | Atasan + tambahan | — | Terjadwal, `report.monthly_day` / `report.monthly_time` |
+
+### 20.3 Alur pengiriman terjadwal (reminder & keterlambatan)
+
+```
+scheduler (vip_scheduler) ──▶ notifications:pm-alert reminder|overdue
+                                   │
+                                   ▼
+                        PmAlertDispatcher::reminder()/overdue()
+                                   │
+                 ┌─────────────────┴──────────────────┐
+                 ▼                                    ▼
+   cek sakelar notif.<jenis>.enabled        dedupe_key?
+   (bila mati → skip + catat)              sudah dipakai → skip
+                 │                                    │
+                 ▼                                    ▼
+        PmScheduleScanner::pending()/overdue()
+        (memakai DashboardService — sama dgn Beranda)
+                 │
+                 ▼
+        NotificationRecipients::targets()
+        (teknisi per scope + PIC map + atasan;
+         satu orang = SATU notifikasi gabungan)
+                 │
+                 ▼
+        NotificationChannels::resolve() per penerima
+                 │
+                 ▼
+        INSERT notification_dispatches (dedupe_key UNIQUE)
+          └─ QueryException (kunci bentrok) → skip "sudah dikirim proses lain"
+                 │
+                 ▼
+        Notification::send() → PmScheduleDigestNotification
+          ├─ database → notifications (in-app)
+          └─ mail     → mail/pm-digest.blade.php
+                 │
+                 ▼
+        UPDATE dispatch: app_sent, email_sent, status, error
+```
+
+### 20.4 Alur notifikasi approval (real-time)
+
+```
+SignPmRecord (tahap Technician)
+   └─▶ PmApprovalNotifier::afterSign($record, SignatureStage::Technician)
+         └─▶ recipient = PIC dokumen  → PmApprovalNotification(SUBMITTED)
+
+SignPmRecord (tahap Pic)
+   └─▶ afterSign(..., Pic)  → recipient = Atasan → PIC_APPROVED
+
+SignPmRecord (tahap Supervisor)
+   └─▶ afterSign(..., Supervisor) → recipient = Teknisi pembuat → APPROVED
+
+RejectPmRecord (PIC / Atasan)
+   └─▶ PmApprovalNotifier::revision($record, $stage, $reason, $by)
+         └─▶ recipient = Teknisi pembuat → REVISION (Apps saja, berisi alasan
+             dan peminta revisi)
+```
+
+Semua pemanggilan dibungkus `try/catch` + `Log::warning()` — notifikasi **tidak**
+boleh menggagalkan persetujuan. Every payload memuat: **nomor dokumen**, **nama
+perangkat**, **pengirim (+peran)**, **waktu (WIB)**, dan **tautan** ke dokumen.
+
+Nomor dokumen diturunkan tanpa kolom baru:
+`PM/{tahun}/{PERIODE}/{id 5 digit}` — lihat `PmRecord::documentNumber()`.
+
+### 20.5 Resolusi penerima
+
+| Kebutuhan | Sumber |
+|-----------|--------|
+| Teknisi | Pemegang `pm.sign` **kecuali** role `admin`; scope per jenis perangkat (`machine.view`/`machine.manage` → Mesin; `utility.view`/`utility.manage` → Utility; `dashboard.view` → keduanya) |
+| Atasan | Pemegang `pm.approve` **kecuali** `admin`; bila kosong, semua pemegang `pm.approve` (termasuk admin) |
+| User/PIC | `pm_records.pic_user_id` → `assets.pic_user_id` → PIC riwayat PM terakhir → (bila tetap kosong, dilewati) |
+| Admin | Tidak pernah menjadi penerima notifikasi terjadwal; hanya fallback bila tidak ada Atasan lain |
+
+### 20.6 Pengaturan
+
+Disimpan di tabel `app_settings` (bukan `.env`) lewat
+`App\Services\Integration\IntegrationSettings`:
+
+| Kunci | Bawaan | Arti |
+|-------|---------|------|
+| `notif.reminder.enabled/app/email` | `true` | Sakelar baris 1 |
+| `notif.reminder.to_technician/to_pic/to_supervisor` | `true` | Sakelar penerima baris 1 |
+| `notif.reminder.time` | `07:00` | Jam reminder (WIB) |
+| `notif.overdue.enabled/app/email` | `true` | Sakelar baris 2 |
+| `notif.overdue.to_technician/to_supervisor` | `true` | Sakelar penerima baris 2 (User/PIC **tidak** menjadi penerima keterlambatan) |
+| `notif.overdue.times` | `07:00,14:00` | Slot jam keterlambatan |
+| `notif.submitted.app/email` | `true` | Baris 3.1 |
+| `notif.pic_approved.app/email` | `true` | Baris 3.2 |
+| `notif.approved.app/email` | `true` | Baris 3.3 |
+| `notif.revision.app` / `.email` | `true` / `false` | Baris 3.4 (email dimatikan bawaan) |
+| `report.to_supervisor` | `true` | Baris 4.x dikirim ke Atasan |
+| `report.recipients` | `''` | Email penerima tambahan (dipisah koma) |
+| `report.attach_pdf` / `attach_excel` | `true` | Lampiran laporan |
+| `report.weekly_enabled/day/time` | `false` / `1` (Senin) / `07:00` | Baris 4.1 |
+| `report.monthly_enabled/day/time` | `false` / `1` / `07:00` | Baris 4.2 |
+
+Kunci `graph.client_secret` & `smtp.password` disimpan **terenkripsi**
+(`is_encrypted = true`).
+
+### 20.7 Jadwal (scheduler)
+
+Semua jadwal memakai zona waktu **Asia/Jakarta**, `withoutOverlapping()`, dan
+`onOneServer()`:
+
+| Command | Cron | Kondisi |
+|---------|------|---------|
+| `notifications:pm-alert reminder` | `dailyAt(notif.reminder.time)` | hanya bila `notif.reminder.enabled` |
+| `notifications:pm-alert overdue` | `dailyAt()` untuk tiap slot `notif.overdue.times` | hanya bila `notif.overdue.enabled` |
+| `integration:send-pm-report weekly` | `weeklyOn(report.weekly_day, report.weekly_time)` | hanya bila `mailReady()` **dan** `report.weekly_enabled` |
+| `integration:send-pm-report monthly` | `monthlyOn(report.monthly_day, report.monthly_time)` | hanya bila `mailReady()` **dan** `report.monthly_enabled` |
+| `backup:database --type=scheduled --prune` | `dailyAt(02:00)` | selalu |
+
+> Baris "Reminder" dijadwalkan setiap hari, tetapi **dikirim sekali per periode**
+> karena `dedupe_key` `reminder:{tahun}:{periode}` — jadi jadwal hari ke-3 dst.
+> diabaikan, bukan terkirim ulang.
+
+### 20.8 Endpoint
+
+| Route | Method | Controller | Middleware |
+|-------|--------|-----------|------------|
+| `/notifications` | GET | `NotificationController@inbox` | `auth`, `verified` |
+| `/notifications/feed` | GET | `NotificationController@feed` | `auth`, `verified` |
+| `/notifications/read-all` | POST | `NotificationController@markAllRead` | `auth`, `verified` |
+| `/notifications/read` | DELETE | `NotificationController@clearRead` | `auth`, `verified` |
+| `/notifications/{id}/open` | GET | `NotificationController@open` | `auth`, `verified`, `whereUuid` |
+| `/notifications/{id}/read` | POST | `NotificationController@markRead` | `auth`, `verified`, `whereUuid` |
+| `/notifications/{id}` | DELETE | `NotificationController@destroy` | `auth`, `verified`, `whereUuid` |
+| `/settings/notifications` | GET | `NotificationController@index` | `can:notification.manage` |
+| `/settings/notifications` | PUT | `NotificationController@updateMatrix` | `can:notification.manage` |
+| `/settings/notifications/pic` | PUT | `NotificationController@assignPic` | `can:notification.manage` |
+| `/settings/notifications/preview` | POST | `NotificationController@preview` | `can:notification.manage`, `throttle:20,1` |
+| `/settings/notifications/send` | POST | `NotificationController@send` | `can:notification.manage`, `throttle:6,1` |
+
+Catatan keamanan: `notifications.open` hanya mengarahkan ke `data['url']` bila
+URL **dimulai dengan `/`** dan **tidak** diawali `//` — mencegah open-redirect.
+Seluruh query inbox memakai `$user->notifications()`, sehingga satu user tidak
+pernah melihat notifikasi orang lain.
+
+---
+
+## 21. Integrasi Email
+
+### 21.1 Transport
+
+| Driver | Keterangan |
+|--------|------------|
+| `graph` | **Utama.** Microsoft Graph API `sendMail` via `App\Mail\Transport\MicrosoftGraphTransport`. Butuh Tenant ID, Client ID, Client Secret, dan alamat pengirim. |
+| `smtp` | Cadangan. SMTP Office 365 (`smtp.office365.com:587`, TLS). |
+
+Konfigurasi disimpan di `app_settings` (`mail.*`, `graph.*`, `smtp.*`), **bukan**
+di `.env`, dan dapat diubah dari halaman **Settings → Integrate**
+(`integration.manage`, hanya Admin). `MailConfigurator::apply()` menerapkannya ke
+config mail **saat boot** dan **sebelum tiap job** di queue, sehingga perubahan
+pengaturan langsung berlaku tanpa restart.
+
+`IntegrationSettings::mailReady()` = `mail.enabled` **dan** `mail.from_address`
+terisi **dan** (driver `smtp` → `smtp.host` terisi; driver `graph` → tenant,
+client id, dan client secret terisi).
+
+### 21.2 Fitur akun
+
+| Fitur | Perilaku |
+|-------|----------|
+| Lupa password | Tautan reset ke email terdaftar, berlaku **60 menit**. Pesan **sama** untuk email terdaftar maupun tidak → tidak bisa dipakai menebak akun. |
+| Login OTP | Kode 6 digit, berlaku **10 menit**, maks **5 kali** salah, kirim ulang tiap **60 detik**. Opsi **"Ingat perangkat ini"** (default **30 hari**) — otomatis batal bila password diganti. Akun tanpa email valid **tidak** diminta OTP. |
+| Darurat | `php artisan integration:disable-otp` mematikan OTP bila email bermasalah (Admin bisa terkunci). |
+
+### 21.3 Peringatan stok
+
+`LowStockNotification` dikirim **sekali** saat stok melewati batas minimum atau
+habis (bukan di setiap transaksi). Penerima dapat diatur lewat
+`notify.low_stock_recipients`.
+
+---
+
+## 22. Halaman Error
+
+### 22.1 Penanganan di server
+
+`bootstrap/app.php` mendaftarkan `Exceptions::respond()`:
+
+| Status | Perlakuan |
+|--------|-----------|
+| 403, 404, 405, 419, 429, 500, 503 | Render `Inertia::render('Errors/Error', …)` dengan status yang sama |
+| 419 pada permintaan **Inertia** | `back()->with('error', 'Sesi Anda kedaluwarsa. …')` — kembali ke halaman sebelumnya dengan pesan |
+| 500 di environment `local` + `debug` | Respons debug biasa (stack trace) — hanya untuk pengembang |
+| Permintaan **JSON** (bukan Inertia) | Respons JSON asli, tidak diubah |
+
+Pesan yang ditampilkan:
+
+- `abort(403, 'Akun Admin hanya dapat diubah oleh Admin.')` → **ditampilkan** (bahasa aplikasi).
+- Pesan bawaan framework/paket (bahasa Inggris, mis. "This action is unauthorized.") → **disembunyikan** dan diganti teks generik berbahasa Indonesia.
+- Status ≥ 500 → pesan **tidak pernah** diisi (tidak ada kebocoran detail teknis).
+
+### 22.2 Halaman
+
+`resources/js/Pages/Errors/Error.jsx` — komponen mandiri (tidak memakai
+`AuthenticatedLayout`, sehingga aman untuk tamu), berisi:
+
+- **Ilustrasi SVG beranimasi per status**: magnifier (404), gembok getar (403),
+  roda gigi berputar + percikan (500), palang stripes (503), jam (419),pasir jam (429).
+- **Angka status** yang memantul bergantian.
+- **Tombol X** di kanan atas + dukungan tombol **Esc**.
+- Tombol **Kembali** dan **Ke Beranda** / **Muat Ulang**.
+- `prefers-reduced-motion: reduce` → semua animasi dimatikan.
+
+Animasi ditulis di `resources/css/app.css` (kelas `err-*`), dengan variabel
+`--err-tone` per status (merah 403/500, biru 404, oranye 419/429, hijau 503).
+
+Menutup halaman: `history.back()` bila ada histori, selain itu `router.visit('/')`.
+Menggunakan `router.visit` (bukan `location.href`) sehingga Inertia tidak
+mengganti halaman; fallback `window.location.reload()` dipakai untuk status
+419/500/503.
 
 ---
 
 ## Related Documents
 
-- [README.md](README.md) — panduan setup & penggunaan
+- [README.md](../../README.md) — panduan setup & penggunaan
 - [PRD.md](PRD.md) — kebutuhan produk & aturan bisnis
+- [Guide.md](Guide.md) — panduan pengguna per peran
+- [Agent.md](Agent.md) — instruksi kerja untuk AI coding agent
+- [`references/v.1.2/`](references/v.1.2/) — arsip dokumen versi sebelumnya (superseded)
+- [`../data-source/`](../data-source/) — sumber data CSV (mesin, suku cadang, template)

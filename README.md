@@ -390,11 +390,16 @@ references/
 │   ├── PRD.md
 │   ├── Architecture.md
 │   └── Agent.md
-└── v.1.2/                 Dokumen versi terkini (snapshot)
-    ├── PRD.md
-    ├── Architecture.md
+├── v.1.2/                 ARSIP snapshot sebelumnya
+│   ├── PRD.md
+│   ├── Architecture.md
+│   ├── Agent.md
+│   └── Guide.md
+└── v.1.3/                 Dokumen versi terkini (snapshot)
     ├── Agent.md
-    └── Guide.md            Panduan pengguna per peran
+    ├── Architecture.md
+    ├── Guide.md
+    └── PRD.md
 
 resources/
 ├── js/
@@ -454,14 +459,14 @@ routes/web.php             Seluruh definisi route
 |---------|-----|
 | [PRD.md](PRD.md) | Product Requirements Document — tujuan, persona, kebutuhan fungsional, aturan bisnis, kriteria penerimaan |
 | [Architecture.md](Architecture.md) | Arsitektur teknis — stack, layer, skema database, alur, keamanan, deployment |
-| [references/v.1.2/Agent.md](references/v.1.2/Agent.md) | Panduan kerja untuk AI coding agent — perintah, konvensi, aturan arsitektur, definition of done |
-| [references/v.1.2/Guide.md](references/v.1.2/Guide.md) | **Panduan pengguna per peran** — login, isi checklist PM, rantai tanda tangan, persetujuan, laporan, suku cadang |
-| [references/v.1.2/PRD.md](references/v.1.2/PRD.md) | Snapshot PRD versi 1.2 |
-| [references/v.1.2/Architecture.md](references/v.1.2/Architecture.md) | Snapshot arsitektur versi 1.2 |
+| [references/v.1.3/Agent.md](references/v.1.3/Agent.md) | Panduan kerja untuk AI coding agent — perintah, konvensi, aturan arsitektur, definition of done |
+| [references/v.1.3/Guide.md](references/v.1.3/Guide.md) | **Panduan pengguna per peran** — login, isi checklist PM, rantai tanda tangan, persetujuan, laporan, suku cadang |
+| [references/v.1.3/PRD.md](references/v.1.3/PRD.md) | Snapshot PRD versi 1.3 |
+| [references/v.1.3/Architecture.md](references/v.1.3/Architecture.md) | Snapshot arsitektur versi 1.3 |
 
 > **Catatan versi dokumen.** `PRD.md` dan `Architecture.md` di root adalah dokumen **aktif**
-> (versi 1.2). Folder [`references/v.1.2/`](references/v.1.2/) menyimpan **snapshot** versi
-> yang sama (plus `Agent.md` dan `Guide.md`), sedangkan [`references/v.1.1/`](references/v.1.1/) adalah
+> (versi 1.3). Folder [`references/v.1.3/`](references/v.1.3/) menyimpan **snapshot** versi
+> yang sama (plus `Agent.md` dan `Guide.md`), sedangkan [`references/v.1.1/`](references/v.1.1/) dan [`references/v.1.2/`](references/v.1.2/) adalah
 > **arsip dokumen desain awal** sebelum aplikasi dibangun (masih menyebut 4 status PM,
 > rencana PWA/offline, `TemplateSeeder`, dan `pm:import`) — gunakan versi 1.2 sebagai acuan.
 > Data sumber CSV untuk impor ada di [`references/data-source/`](references/data-source/).

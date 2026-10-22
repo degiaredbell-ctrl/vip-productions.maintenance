@@ -3,8 +3,27 @@
 **Produk:** Preventive Maintenance System
 **Judul aplikasi:** PM Preventive
 **Client:** Verra Inter Pangan / Redbell Group
-**Versi dokumen:** 1.2
-**Status:** Implementasi berjalan (MVP selesai)
+**Versi dokumen:** 1.3
+**Status:** Implementasi berjalan (MVP + Modul Notifikasi 2 Saluran)
+
+> **Versi 1.3 — snapshot terkini.** Dokumen ini menggantikan
+> [`references/v.1.2/PRD.md`](references/v.1.2/PRD.md) dan [`references/v.1.1/PRD.md`](references/v.1.1/PRD.md) sebagai arsip. Arsitektur teknis ada di
+> [Architecture.md](Architecture.md); instruksi kerja untuk AI agent ada di
+> [references/v.1.3/Agent.md](references/v.1.3/Agent.md); panduan pemakaian per peran ada di
+> [references/v.1.3/Guide.md](references/v.1.3/Guide.md).
+>
+> **What's new di v1.3:**
+> - **Modul Notifikasi dua saluran** (In-App + Email) — matriks 4 baris (§6.14,
+>   §7 BR-11…BR-16).
+> - **Kotak Masuk** berdiri sendiri di `/notifications`, lonceng notifikasi di
+>   header, dan halaman **Settings → Notifications** (3 tab).
+> - **Integrasi email Microsoft 365** (Graph/SMTP) + login OTP + lupa password
+>   yang benar-benar terkirim (§6.15).
+> - **Master data** Tipe Mesin & Lokasi/Site (§6.16).
+> - **Halaman error beranimasi** 403/404/405/419/429/500/503 dengan tombol X
+>   (§6.17).
+> - **Impor Template Komponen Mesin dari CSV** + penerapan ke unit (§6.18).
+> - Zona waktu **WIB (Asia/Jakarta)** untuk seluruh aplikasi.
 
 ---
 
@@ -71,11 +90,16 @@ Nilai utama yang dibawa produk ini:
 
 | Persona | Peran | Tujuan utama | Kebutuhan harian |
 |---------|-------|--------------|-------------------|
-| **Admin** | Administrator sistem | Mengelola seluruh data & akun | CRUD mesin, komponen, role, pengguna, ganti password user, kelola & hapus PM Record, baca audit log |
-| **Manager / Atasan** | Atasan unit | Memastikan PM dikerjakan & menyetujui di tahap akhir | Lihat Beranda, isi mesin & komponen, baca riwayat, laporan + ekspor, audit log, persetujuan tahap 3 |
-| **Technician / Pemeriksa** | Teknisi lapangan | Melakukan & mendokumentasikan pemeriksaan | Isi checklist, tanda tangan tahap 1, riwayat, laporan + ekspor |
-| **User PIC** | Penanggung jawab unit | Mengetahui hasil pemeriksaan tim | Persetujuan tahap 2, riwayat, lihat laporan |
-| **Viewer** | Auditor /_management | Hanya melihat | Lihat Beranda, riwayat, laporan + ekspor |
+| **Admin** | Administrator sistem | Mengelola seluruh data & akun | CRUD mesin, komponen, role, pengguna, ganti password user, kelola & hapus PM Record, baca audit log, **atur matriks notifikasi & PIC perangkat**, **hubungkan email**, **backup & restore** |
+| **Manager / Atasan** | Atasan unit | Memastikan PM dikerjakan & menyetujui di tahap akhir | Lihat Beranda, isi mesin & komponen, baca riwayat, laporan + ekspor, audit log, persetujuan tahap 3, **terima laporan mingguan/bulanan** |
+| **Technician / Pemeriksa** | Teknisi lapangan | Melakukan & mendokumentasikan pemeriksaan | Isi checklist, tanda tangan tahap 1, riwayat, laporan + ekspor, **terima reminder & pengingat keterlambatan** |
+| **User PIC** | Penanggung jawab unit | Mengetahui hasil pemeriksaan tim | Persetujuan tahap 2, riwayat, lihat laporan, **terima pengingat PM unitnya** |
+| **Viewer** | Auditor / management | Hanya melihat | Lihat Beranda, riwayat, laporan + ekspor |
+
+> Matriks menu per peran, langkah pemakaian (isi checklist, tanda tangan,
+> persetujuan, ekspor), dan penanganan masalah ada di [Guide.md](Guide.md).
+> Aplikasi juga mengenal tiga peran teknisi ber-scope (`tech-machines`,
+> `tech-utilities`, `tech-all`) yang dijelaskan pada §8.
 
 ---
 
@@ -86,7 +110,9 @@ Nilai utama yang dibawa produk ini:
 - Dashboard dengan filter periode/tahun/area/status/pencarian + notifikasi tunggakan
 - CRUD mesin (soft delete + restore) + CRUD unit Utility
 - Master Komponen + penugasan ke Mesin/Utility (pengganti template per jenis mesin)
-- Halaman Settings (kartu Mesin/Utility/Komponen/Suku Cadang) sebagai pusat pengelolaan aset, menggantikan item menu terpisah Mesin/Utility/Suku Cadang/Komponen
+- **Master data Tipe Mesin & Lokasi/Site** (dikelola dari Settings)
+- **Template Komponen** (umum & per unit) + penerapan massal ke unit + **impor dari CSV**
+- Halaman Form Maintenance (kartu Mesin/Utility/Suku Cadang) untuk masuk ke form PM
 - Pengisian checklist PM dengan aksi per item
 - Rantai tanda tangan 3 tahap (gambar) + penolakan + revisi
 - Tanda tangan tersimpan per akun (diisi sekali di Profil, dipakai ulang saat persetujuan)
@@ -97,12 +123,17 @@ Nilai utama yang dibawa produk ini:
 - Audit log
 - Laporan kepatuhan, top part, ringkasan aksi
 - Ekspor XLSX & PDF
-- Impor mesin dari CSV
-- Suku Cadang (global): master, transaksi stok masuk/keluar, riwayat transaksi, impor/unggah CSV
-- Pemakaian suku cadang ke unit (Mesin/Utility) per periode PM lewat `/form-maintenance/suku-cadang`
+- Impor mesin & suku cadang dari CSV
+- Suku Cadang (global): master, transaksi stok masuk/keluar, riwayat transaksi, impor/unggah CSV, **dashboard monitoring stok**
+- **Modul Notifikasi dua saluran (In-App + Email)** — reminder mingguan, keterlambatan, approval real-time, laporan mingguan/bulanan
+- **Kotak Masuk notifikasi** berdiri sendiri + lonceng notifikasi di header
+- **Settings → Notifications**: matriks & jadwal, PIC perangkat, kirim manual & riwayat pengiriman
+- **Integrasi email** (Microsoft 365 Graph / SMTP), **login OTP**, **lupa password** yang benar-benar terkirim
+- **Backup & Restore** database (manual + terjadwal 02:00 WIB)
+- **Halaman error beranimasi** (403/404/405/419/429/500/503) dengan tombol tutup
 
-### Tidak Termasuk (v1)
-- Notifikasi email/WhatsApp otomatis
+### Tidak Termasuk (v1.3)
+- WhatsApp / SMS / Telegram sebagai saluran notifikasi
 - Aplikasi mobile native
 - Integrasi dengan sistem ERP / sensor IoT
 - Perhitungan downtime atau biaya maintenance
@@ -280,34 +311,130 @@ REQ bernomor dipakai sebagai acuan kriteria penerimaan.
 | REQ-PMR-02 | Daftar dapat difilter (status, periode, tahun, tipe mesin) dan dicari (nama teknisi, catatan, kode/nama/lokasi mesin) |
 | REQ-PMR-03 | Pemegang `pm.manage` dapat menghapus PM Record secara permanen beserta item, tanda tangan, revisi, dan audit log terkait |
 
-### 6.14 Menu Settings (REQ-SET)
+### 6.14 Modul Notifikasi Dua Saluran (REQ-NOTIF)
 
-> Item sidebar terpisah **Form Maintenance**, **Mesin**, **Utility**, **Suku Cadang**, dan
-> **Komponen / Parts** digantikan satu menu **Settings** (`/settings`). Halaman lama tetap
-> ada dan dapat diakses lewat URL langsung, tetapi tidak lagi tampil di sidebar.
+Notifikasi berjalan di **dua saluran**: **In-App** (database, tampil di Kotak Masuk
+& lonceng header) dan **Email**. Setiap matriks mengatur **kanal** (Apps / Email)
+dan **penerima** secara terpisah, dan dapat dimatikan dari
+**Settings → Notifications**.
+
+#### 6.14.1 Matriks notifikasi (4 bagian)
+
+| ID | Notifikasi | Pemicu / Jadwal (WIB) | Apps | Email | Penerima | Isi |
+|----|------------|----------------------|:---:|:-----:|----------|-----|
+| **1** | **Reminder/info masuk Minggu ke-2** | Terjadwal, sekali per periode (default 07:00) | ✅ | ✅ | Teknisi, User/PIC, Atasan | Nama periode dinamis, minggu ke-2, rentang tanggal, daftar unit yang harus di-PM |
+| **2** | **Keterlambatan PM** | Terjadwal, ulang tiap hari pada jam yang dipilih (default **07:00 & 14:00**) | ✅ | ✅ | Teknisi, Atasan | Periode, minggu, daftar unit terlambat + jumlah hari terlambat |
+| **3.1** | **PM dibuat — menunggu persetujuan** | Real-time saat teknisi submit | ✅ | ✅ | **User/PIC** yang ditunjuk | Nomor dokumen, nama perangkat, pengirim, waktu, tautan |
+| **3.2** | **PIC menyetujui — menunggu Atasan** | Real-time saat PIC menyetujui | ✅ | ✅ | **Atasan** | Nomor dokumen, nama perangkat, pengirim, waktu, tautan |
+| **3.3** | **Atasan menyetujui — PM selesai** | Real-time saat Atasan menyetujui | ✅ | ✅ | **Teknisi** pembuat | Nomor dokumen, nama perangkat, pengirim, waktu, tautan |
+| **3.4** | **Perlu revisi** | Real-time saat PIC/Atasan menolak | ✅ | **❌** | **Teknisi** pembuat | Nomor dokumen, nama perangkat, **alasan**, **peminta revisi**, waktu, tautan |
+| **4.1** | **Laporan PM Mingguan** | Terjadwal, hari + jam (default **Senin 07:00**) | ❌ | ✅ | **Atasan** (+ penerima tambahan) | Ringkasan jumlah, persentase pencapaian, daftar terlambat, lampiran PDF/Excel |
+| **4.2** | **Laporan PM Bulanan** | Terjadwal, tanggal + jam (default **tanggal 1, 07:00**) | ❌ | ✅ | **Atasan** (+ penerima tambahan) | Ringkasan jumlah, persentase pencapaian, daftar terlambat, lampiran PDF/Excel |
+
+> Baris 3 dan 4 **tidak bisa** diubah ke penerima lain — penerima ditentukan
+> oleh aturan bisnis (BR-12). Yang bisa diubah hanya **channel** (Apps/Email),
+> jam/tanggal jadwal, dan (untuk baris 1–2) penerima.
+
+#### 6.14.2 Persyaratan umum
 
 | ID | Kebutuhan |
 |----|-----------|
-| REQ-SET-01 | Menu **Settings** menampilkan kartu Mesin, Utility, Komponen / Parts, dan Suku Cadang |
-| REQ-SET-02 | Kartu **Mesin** mengarah ke halaman kelola `/machines` dan **Utility** ke `/utility` |
-| REQ-SET-03 | Kartu **Komponen / Parts** dan **Suku Cadang** tampil nonaktif dengan label "Segera hadir" |
-| REQ-SET-04 | Kartu hanya dapat diklik bila user memegang permission yang sama dengan rute tujuannya; selain itu tampil abu-abu (menghindari 403) |
-| REQ-SET-05 | Menu Settings tampil untuk user yang memegang `machine.manage`, `machine.view`, `utility.view`, atau `dashboard.view` |
+| REQ-NOTIF-01 | Notifikasi In-App tersimpan per pengguna (tabel `notifications`) dan hanya terlihat oleh pemiliknya |
+| REQ-NOTIF-02 | Notifikasi Email hanya dikirim bila **koneksi email aktif** (`mail.enabled` + transport terisi) dan penerima punya alamat email valid |
+| REQ-NOTIF-03 | Satu orang yang punya beberapa peran (mis. teknisi **dan** PIC) menerima **satu notifikasi gabungan**, bukan notifikasi terpisah per peran |
+| REQ-NOTIF-04 | Notifikasi **Reminder Minggu ke-2** dikirim **sekali per periode** — jadi notifikasi tidak terkirim ulang di hari yang sama |
+| REQ-NOTIF-05 | Notifikasi **Keterlambatan** dikirim **satu kali per slot jam** (mis. `07:00` dan `14:00` terpisah) |
+| REQ-NOTIF-06 | Notifikasi keterlambatan **berhenti otomatis** bila unit concerned sudah selesai di-PM (unit tak lagi masuk daftar terlambat) |
+| REQ-NOTIF-07 | Setiap pengiriman tercatat di **Riwayat Pengiriman**: jenis, pemicu (terjadwal/manual/real-time), ringkasan, jumlah penerima, jumlah App & Email, status, dan pesan error bila gagal |
+| REQ-NOTIF-08 | Admin dapat melihat **pratinjau penerima** (tanpa mengirim) sebelum mengaktifkan jadwal |
+| REQ-NOTIF-09 | Admin dapat **mengirim manual** reminder, keterlambatan, dan laporan mingguan/bulanan dari halaman yang sama |
+| REQ-NOTIF-10 | Notifikasi approval **tidak boleh menggagalkan** proses persetujuan — kegagalan pengiriman hanya dicatat di log |
+| REQ-NOTIF-11 | Perubahan matriks notifikasi & penetapan PIC perangkat tercatat di Activity Log |
+| REQ-NOTIF-12 | Email laporan memuat **ringkasan jumlah + persentase pencapaian + daftar unit terlambat**, dan melampirkan **PDF ringkasan** serta/atau **Excel rekap** bila diaktifkan |
 
-### 6.15 Form Maintenance Suku Cadang (REQ-USE)
-
-> Menu sidebar **Mesin**, **Utility**, dan **Suku Cadang** mengarah langsung ke halaman
-> pengisian form (`/form-maintenance/mesin`, `/form-maintenance/utility`,
-> `/form-maintenance/suku-cadang`), terpisah dari kartu kelola di halaman Settings.
+#### 6.14.3 Kotak Masuk & Lonceng Header
 
 | ID | Kebutuhan |
 |----|-----------|
-| REQ-USE-01 | Halaman `/form-maintenance/suku-cadang` dapat dibuka oleh pemegang `sparepart.view` |
-| REQ-USE-02 | Pemegang `sparepart.manage` dapat mencatat pemakaian: unit (Mesin/Utility), suku cadang, jumlah, tanggal, periode, tahun, dan catatan |
-| REQ-USE-03 | Pemakaian tersimpan sebagai transaksi stok **keluar** (`type = out`) yang menyimpan unit tujuan (`machine_id`) dan periode/tahun PM, lalu mengurangi stok terkini |
-| REQ-USE-04 | Pemakaian dengan jumlah melebihi stok tersedia ditolak dengan pesan validasi |
-| REQ-USE-05 | Halaman menampilkan riwayat pemakaian yang dapat difilter per tahun dan periode |
-| REQ-USE-06 | Aksi mencatat pemakaian tercatat di activity log (`sparepart.movement`) |
+| REQ-INBOX-01 | **Kotak Masuk** berada di halaman mandiri `/notifications`, **tidak** ada di dalam menu Settings |
+| REQ-INBOX-02 | Kotak Masuk dapat difilter: **Semua**, **Belum dibaca**, **Jadwal PM**, **Terlambat**, **Approval** |
+| REQ-INBOX-03 | Pengguna dapat menandai satu notifikasi terbaca, menandai semua terbaca, menghapus satu, dan menghapus semua yang sudah dibaca |
+| REQ-INBOX-04 | Notifikasi approval menampilkan rincian: perangkat, periode, **oleh / diminta oleh**, waktu (WIB), dan **catatan revisi** |
+| REQ-INBOX-05 | Notifikasi jadwal/terlambat menampilkan **daftar perangkat** yang expandable (perangkat, lokasi, minggu, batas, hari terlambat) |
+| REQ-INBOX-06 | **Lonceng notifikasi** di header menampilkan jumlah belum dibaca (badge) dan **8 notifikasi terbaru**; klik item membuka dokumen terkait |
+| REQ-INBOX-07 | Lonceng menyegarkan secara berkala (polling) dan saat tab browser kembali aktif |
+| REQ-INBOX-08 | Notifikasi **approval hanya** sampai ke tangan penerima yang berhak (PIC dokumen, Atasan, atau teknisi pembuat) |
+
+#### 6.14.4 PIC Perangkat
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-PIC-01 | Setiap unit (Mesin/Utility) dapat ditetapkan **User/PIC** bertanggung jawab |
+| REQ-PIC-02 | Admin dapat menetapkan PIC **massal** untuk beberapa unit sekaligus, maupun mengosongkan |
+| REQ-PIC-03 | Paddingatan perangkat memakai **User PIC dari riwayat PM terakhir** sebagai cadangan, dan ditandai jelas di antarmuka |
+| REQ-PIC-04 | Reminder Mingguan (baris 1) hanya dikirim ke PIC **unit yang menjadi tanggung jawabnya** |
+
+### 6.15 Integrasi Email & Fitur Akun (REQ-INTEG)
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-INTEG-01 | Admin dapat menghubungkan email melalui **Microsoft Graph API (OAuth)** sebagai cara utama, atau **SMTP Office 365** sebagai cadangan |
+| REQ-INTEG-02 | Client secret & password SMTP disimpan **terenkripsi** dan tidak pernah ditampilkan lagi setelah disimpan |
+| REQ-INTEG-03 | Admin dapat menguji koneksi email ("Kirim Email Uji") dan melihat pesan error dari penyedia secara langsung |
+| REQ-INTEG-04 | **Lupa password** mengirim tautan reset ke email terdaftar, berlaku **60 menit**, dan pesan identik untuk email terdaftar maupun tidak (tidak bisa dipakai menebak akun) |
+| REQ-INTEG-05 | **Verifikasi login (OTP)** — kode 6 digit via email, berlaku **10 menit**, maksimal **5 kali** salah, kirim ulang tiap **60 detik**; ada opsi **"Ingat perangkat ini"** (default 30 hari) yang otomatis batal bila password diganti |
+| REQ-INTEG-06 | Akun tanpa email valid **tidak** diminta kode OTP |
+| REQ-INTEG-07 | **Peringatan stok menipis/habis** dikirim **sekali** saat stok melewati batas minimum (bukan setiap transaksi), ke penerima yang dapat diatur |
+| REQ-INTEG-08 | **Laporan otomatis** mingguan & bulanan terjadwal, dengan tombol "Kirim sekarang" untuk uji coba |
+| REQ-INTEG-09 | Tombol **matikan OTP darurat** tersedia (perintah `integration:disable-otp`) agar Admin tidak terkunci bila email bermasalah |
+
+### 6.16 Master Data (REQ-MASTER)
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-MASTER-01 | **Tipe Mesin** dikelola dari Settings: nama tampilan + kode (kode immutable setelah dipakai unit/template); tipe sistem `Umum` & `Utility` tidak dapat dihapus |
+| REQ-MASTER-02 | Tipe Mesin yang masih dipakai unit atau template **tidak dapat dihapus** |
+| REQ-MASTER-03 | **Lokasi / Site** dikelola dari Settings; nama unit yang diubah ikut menyesuaikan, dan lokasi yang masih dipakai unit tidak dapat dihapus |
+| REQ-MASTER-04 | Form Mesin/Utility memakai **dropdown** Lokasi dari master, bukan teks bebas; nilai di luar daftar ditolak |
+| REQ-MASTER-05 | Impor CSV unit otomatis menambahkan lokasi baru ke master, agar unit hasil impor tetap bisa diedit |
+| REQ-MASTER-06 | Penambahan, perubahan, dan penghapusan master data tercatat di Activity Log |
+
+### 6.17 Halaman Error (REQ-ERR)
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-ERR-01 | Status **403, 404, 405, 419, 429, 500, 503** menampilkan halaman error khusus, bukan halaman bawaan Laravel |
+| REQ-ERR-02 | Halaman error memiliki **ilustrasi beranimasi** per status (gambar pembesar untuk 404, gembok untuk 403, roda gigi untuk 500, dll.) |
+| REQ-ERR-03 | Halaman error memiliki **tombol X** untuk menutup pesan, dan dapat ditutup dengan tombol **Esc** |
+| REQ-ERR-04 | Menutup halaman error mengembalikan pengguna ke **halaman sebelumnya**; bila halaman dibuka langsung, ke **Beranda** |
+| REQ-ERR-05 | Teks error **berbahasa Indonesia**; pesan bawaan framework (bahasa Inggris) disembunyikan, pesan milik aplikasi ditampilkan |
+| REQ-ERR-06 | **Error 500 tidak membocorkan detail teknis** (pesan exception, stack trace) kepada pengguna |
+| REQ-ERR-07 | Permintaan **JSON/axios** tetap mendapat respons JSON, bukan halaman HTML |
+| REQ-ERR-08 | **Sesi kedaluwarsa (419)** saat menekan tombol di dalam aplikasi kembali ke halaman sebelumnya dengan pesan, bukan halaman error |
+| REQ-ERR-09 | Perangkat dengan pengaturan "kurangi gerakan" menampilkan halaman error **tanpa animasi** |
+
+### 6.18 Template Komponen dari CSV (REQ-TMPL)
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-TMPL-01 | Template komponen dapat diimpor dari CSV: satu baris = satu unit, berisi **Nama Template**, **Code unit**, dan **Komponen 1..N** berurutan |
+| REQ-TMPL-02 | Impor membuat/memperbarui template per **Nama Template** (cakupan Mesin, tipe mengikuti tipe unitnya) |
+| REQ-TMPL-03 | **Nama komponen di CSV dipetakan ke master Komponen/Parts** yang sudah ada (perbedaan huruf besar-kecil, spasi, dan salah ketik yang jelas); sisanya dibuat sebagai komponen baru |
+| REQ-TMPL-04 | Akhiran nomor baris pada kolom Code di CSV dibuang saat pencocokan unit (mis. `MC.2-TOMPB-101-16` → `MC.2-TOMPB-101`) |
+| REQ-TMPL-05 | Impor bersifat **idempoten** — dijalankan ulang tidak membuat template atau komponen ganda; tersedia mode `--dry-run` (rencana saja) dan `--no-apply` (tanpa menerapkan) |
+| REQ-TMPL-06 | **Terapkan ke Unit** memakai komponen template beserta **standar bawaan** per unit, dan Replacing komponen lama unit tersebut |
+
+### 6.19 Activity Log & Backup (REQ-OPS)
+
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-OPS-01 | Activity Log menyimpan **pelaku, waktu, objek, perubahan, IP, dan perangkat/browseryang dipakai** |
+| REQ-OPS-02 | Setiap IP diberi **label** (mis. "LAN kantor", "Gateway VPN / NAT") yang dapat dikonfigurasi; `X-Forwarded-For` dari browser **diabaikan** kecuali proxy tepercaya terdaftar |
+| REQ-OPS-03 | Aksi otomatis (backup terjadwal, laporan, email background) tampil sebagai "Sistem (otomatis, tanpa perangkat)" |
+| REQ-OPS-04 | Halaman Activity Log dapat mencari & memfilter aksi/pelaku/tanggal |
+| REQ-OPS-05 | Admin dapat membuat, mengunduh, memulihkan, dan menghapus **backup database**; restore wajib konfirmasi nama file |
+| REQ-OPS-06 | **Backup otomatis** terjadwal tiap hari pukul **02:00 WIB** dengan retensi configurable |
+| REQ-OPS-07 | Seluruh waktu aplikasi memakai **WIB (UTC+7)** — server, database, dan tampilan browser |
 
 ---
 
@@ -398,11 +525,25 @@ Prinsip:
 - Menu sidebar hanya menampilkan item sesuai permission, **tetapi** otorisasi sesungguhnya ditegakkan di server oleh Policy/middleware (`can_any` + `AssetScope` untuk scope mesin vs utility).
 - Role `admin` memegang seluruh permission.
 - Role `manager` tidak memegang `pm.fill` (tidak melakukan pekerjaan lapangan).
-- Role `user` (User PIC tahap 2) dan `manager` (Atasan tahap 3) dapat **membuka form PM read-only** untuk meninjau lalu menyetujui/menolak, meski tanpa `pm.fill`. Membuka form dibatasi `can_any:pm.fill,pm.acknowledge,pm.approve`, jadi `viewer` yang hanya punya `pm.history.view` tetap tidak bisa membukanya.
-- `machine.view` / `utility.view` adalah **scope** halaman/daftar aset; role general membukanya lewat baseline `dashboard.view`.
-- Role teknisi **tech-machines** / **tech-utilities** tanpa `dashboard.view` → hanya satu scope terbuka; kartu di luar scope pada `/form-maintenance` tampil abu-abu dan URL langsungnya diblokir. **tech-all** memegang `machine.manage` + `utility.manage` + `template.manage` (CRUD mesin & utility, form-maintenance lengkap termasuk Komponen).
-- **Suku Cadang** berdiri di luar scope Mesin/Utility: `sparepart.view` untuk **semua** role, `sparepart.manage` (CRUD + transaksi + impor) hanya Admin & **tech-all**.
-- **Edit Komponen + Standar per unit** dari halaman Mesin/Utility mengikuti izin kelola aset: `machine.manage` (Mesin) / `utility.manage` (Utility) — jadi Manager boleh menyunting komponen Mesin namun tidak Utility, sedangkan **tech-all** boleh keduanya.
+- `machine.view` / `utility.view` adalah **scope** halaman/daftar aset; role general
+  membukanya lewat baseline `dashboard.view`.
+- Role teknisi **tech-machines** / **tech-utilities** tanpa `dashboard.view` → hanya
+  satu scope terbuka; kartu di luar scope pada `/form-maintenance` tampil abu-abu
+  dan URL langsungnya diblokir. **tech-all** memegang `machine.manage` +
+  `utility.manage` + `template.manage` + `component.manage` + `masterdata.manage`.
+- **Suku Cadang** berdiri di luar scope Mesin/Utility: `sparepart.view` untuk
+  **semua** role, `sparepart.manage` (CRUD + transaksi + impor) hanya Admin &
+  **tech-all**.
+- **Notifikasi**: `notification.manage` (matriks, jadwal, PIC perangkat, kirim
+  manual) hanya **Admin**. Semua user **tetap** menerima notifikasi di Kotak Masuk
+  miliknya sendiri — permission ini mengatur *pengaturan*, bukan *penerimaan*.
+- **Integrate** (`integration.manage`) hanya **Admin** — karena memuat client
+  secret & password SMTP.
+- **Activity Log** (`activity.view`) untuk Admin & Manager. Nama permission
+  sebelumnya `audit.view` sudah diganti menjadi `activity.view`.
+- **Admin** dan role lain: akun Admin **tidak bisa** diubah/dihapus oleh role
+  non-Admin, dan option role `admin` disembunyikan dari dropdown (ditegakkan di
+  server, bukan hanya di UI).
 
 ---
 
@@ -432,7 +573,8 @@ users ──< pm_records (technician_id, pic_user_id) ──< pm_record_items
                     └ (approved_by)
 
 assets (model Machine; Mesin + Utility) ──< pm_records
-assets ──< component_machine >── components     (many-to-many, urutan + standar per unit)
+assets ──< component_machine >── components     (many-to-many, urutan per unit)
+assets ──> users (pic_user_id, nullOnDelete)    ← PIC perangkat
 assets ──> checklist_templates (template_id, nullOnDelete) — cadangan data lama
 checklist_templates ──< checklist_template_items
 
@@ -578,5 +720,8 @@ Fitur dianggap selesai bila seluruh butir di bawah ini terpenuhi dan **diverifik
 
 ## Related Documents
 
-- [README.md](README.md) — panduan setup & penggunaan
+- [README.md](../../README.md) — panduan setup & penggunaan
 - [Architecture.md](Architecture.md) — arsitektur teknis
+- [Guide.md](Guide.md) — panduan pengguna per peran
+- [Agent.md](Agent.md) — instruksi kerja untuk AI coding agent
+- [`references/v.1.2/`](references/v.1.2/) — arsip dokumen versi sebelumnya (superseded)
