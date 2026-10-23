@@ -15,9 +15,15 @@ class SparePartDashboardController extends Controller
 {
     public function index(Request $request): Response
     {
-        return Inertia::render('SpareParts/Dashboard', SparePartDashboardService::build(
+        $data = SparePartDashboardService::build(
             SparePartDashboardService::normalizeRange($request->query('range')),
             $request->user()->can('sparepart.manage'),
-        ));
+        );
+
+        // Reset Dashboard/Master Suku Cadang khusus role Admin (lebih sempit
+        // dari `sparepart.manage` yang juga dipegang tech-all).
+        $data['can']['reset'] = $request->user()->hasRole('admin');
+
+        return Inertia::render('SpareParts/Dashboard', $data);
     }
 }

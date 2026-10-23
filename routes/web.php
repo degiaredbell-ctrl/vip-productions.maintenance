@@ -228,6 +228,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->whereNumber('sparePart');
     });
 
+    // Reset Dashboard/Master Suku Cadang: khusus role Admin (lebih sempit
+    // dari `sparepart.manage` yang juga dipegang tech-all).
+    Route::middleware('role:admin')->group(function () {
+        Route::post('/suku-cadang/reset', [SparePartController::class, 'reset'])->name('spareparts.reset');
+    });
+
     // Ekspor laporan PM. Halaman laporan lama (/reports) sudah dilebur ke
     // Beranda, jadi tinggal endpoint ekspor XLSX/PDF yang dipertahankan.
     Route::get('/dashboard/report/export', [ReportController::class, 'export'])

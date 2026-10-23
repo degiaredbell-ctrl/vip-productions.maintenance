@@ -286,6 +286,66 @@ class SparePartController extends Controller
     }
 
     /**
+     * Reset data Suku Cadang — khusus role Admin.
+     *
+     * Dua pilihan cakupan:
+     * - `dashboard`: hapus seluruh transaksi (barang masuk/keluar) dan
+     *   kembalikan stok tiap suku cadang ke STOK AWAL, tapi daftar master
+     *   (kode, nama, kategori, dll.) tetap ada.
+     * - `all`: selain seperti di atas, daftar master suku cadang juga
+     *   dihapus permanen (force delete, termasuk yang sudah soft-deleted).
+     *
+     * Wajib mengetik ulang kata "RESET" sebagai konfirmasi karena aksi ini
+     * tidak dapat dibatalkan.
+     */
+    public function reset(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'scope' => ['required', Rule::in(['dashboard', 'all'])],
+            'confirm' => ['required', 'string'],
+        ]);
+
+        if (strtoupper(trim($validated['confirm'])) !== 'RESET') {
+            throw ValidationException::withMessages([
+                'confirm' => 'Ketik "RESET" untuk konfirmasi.',
+            ]);
+        }
+
+        $scope = $validated['scope'];
+        $partsCount = SparePart::withTrashed()->count();
+        $movementsCount = SparePartMovement::query()->count();
+
+        DB::transaction(function () use ($scope) {
+            SparePartMovement::query()->delete();
+
+            if ($scope === 'all') {
+                SparePart::withTrashed()->get()->each(fn (SparePart $part) => $part->forceDelete());
+
+                return;
+            }
+
+            SparePart::query()->update([
+                'stock' => DB::raw('stock_start'),
+                'stock_in' => 0,
+                'stock_out' => 0,
+                'stock_out_log' => null,
+            ]);
+        });
+
+        AuditLogService::record('sparepart.reset', SparePart::class, null, [
+            'scope' => $scope,
+            'parts' => $partsCount,
+            'movements' => $movementsCount,
+        ]);
+
+        $message = $scope === 'all'
+            ? "Dashboard Suku Cadang dan {$partsCount} data master suku cadang berhasil direset."
+            : "Dashboard Suku Cadang direset: {$movementsCount} transaksi dihapus dan stok dikembalikan ke stok awal.";
+
+        return back()->with('success', $message);
+    }
+
+    /**
      * Unggah CSV untuk memperbarui/menambah master suku cadang.
      */
     public function import(Request $request, SparePartImportService $importer): RedirectResponse

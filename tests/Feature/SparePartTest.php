@@ -335,4 +335,69 @@ class SparePartTest extends TestCase
 
         $this->actingAs($viewer)->get(route('spareparts.template'))->assertForbidden();
     }
+
+    public function test_admin_reset_dashboard_saja_menghapus_transaksi_dan_kembalikan_stok(): void
+    {
+        $admin = $this->user('admin');
+        $part = SparePart::create([
+            'code' => 'SP906', 'name' => 'Bearing', 'stock' => 10,
+            'stock_start' => 5, 'stock_in' => 7, 'stock_out' => 2,
+        ]);
+        SparePartMovement::create([
+            'spare_part_id' => $part->id, 'type' => 'in', 'qty' => 5, 'moved_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->post(route('spareparts.reset'), [
+            'scope' => 'dashboard',
+            'confirm' => 'RESET',
+        ])->assertRedirect();
+
+        $this->assertSame(0, SparePartMovement::count());
+        $this->assertNotSoftDeleted('spare_parts', ['id' => $part->id]);
+
+        $part->refresh();
+        $this->assertSame(5, $part->stock);
+        $this->assertSame(0, $part->stock_in);
+        $this->assertSame(0, $part->stock_out);
+    }
+
+    public function test_admin_reset_semua_menghapus_master_dan_transaksi(): void
+    {
+        $admin = $this->user('admin');
+        $part = SparePart::create(['code' => 'SP907', 'name' => 'Seal', 'stock' => 3]);
+        SparePartMovement::create([
+            'spare_part_id' => $part->id, 'type' => 'out', 'qty' => 1, 'moved_at' => now(),
+        ]);
+
+        $this->actingAs($admin)->post(route('spareparts.reset'), [
+            'scope' => 'all',
+            'confirm' => 'RESET',
+        ])->assertRedirect();
+
+        $this->assertSame(0, SparePartMovement::count());
+        $this->assertSame(0, SparePart::withTrashed()->count());
+    }
+
+    public function test_reset_ditolak_tanpa_konfirmasi_yang_benar(): void
+    {
+        $admin = $this->user('admin');
+        $part = SparePart::create(['code' => 'SP908', 'name' => 'Oli', 'stock' => 3]);
+
+        $this->actingAs($admin)->post(route('spareparts.reset'), [
+            'scope' => 'all',
+            'confirm' => 'salah',
+        ])->assertSessionHasErrors('confirm');
+
+        $this->assertNotSoftDeleted('spare_parts', ['id' => $part->id]);
+    }
+
+    public function test_tech_all_tidak_bisa_reset_meski_punya_sparepart_manage(): void
+    {
+        $techAll = $this->user('tech-all');
+
+        $this->actingAs($techAll)->post(route('spareparts.reset'), [
+            'scope' => 'dashboard',
+            'confirm' => 'RESET',
+        ])->assertForbidden();
+    }
 }
