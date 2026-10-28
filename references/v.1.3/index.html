@@ -1,0 +1,1526 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#E8ECF1">
+    <title>Dashboard Report - PM Preventive (v.1.3 Preview)</title>
+
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230F6E56'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='Plus Jakarta Sans,Arial,sans-serif' font-size='26' font-weight='700' fill='white'%3EPM%3C/text%3E%3C/svg%3E">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='38' fill='%230F6E56'/%3E%3Ctext x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' font-family='Plus Jakarta Sans,Arial,sans-serif' font-size='72' font-weight='700' fill='white'%3EPM%3C/text%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.bunny.net">
+    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+
+    <style>
+        :root {
+            --neu-bg: #E8ECF1;
+            --neu-light: #FFFFFF;
+            --neu-dark: #C3CAD6;
+            --neu-text: #2B3445;
+            --neu-sub: #5A6475;
+            --neu-accent: #0F6E56;
+            --neu-active: #033066;
+            --neu-info: #1F6FEB;
+            --neu-warn: #A86B0B;
+            --neu-bad: #B93A2E;
+            --neu-done: #1F9D63;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            color: var(--neu-text);
+            scrollbar-color: var(--neu-dark) transparent;
+            scrollbar-width: thin;
+        }
+
+        body {
+            background: var(--neu-bg);
+            line-height: 1.6;
+            min-height: 100dvh;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a {
+            text-decoration: none;
+        }
+
+        button {
+            border: none;
+            background: none;
+            font: inherit;
+            cursor: pointer;
+        }
+
+        .app-shell {
+            min-height: 100dvh;
+            background: var(--neu-bg);
+        }
+
+        .sidebar {
+            display: none;
+        }
+
+        @media (min-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                inset: 0 auto 0 0;
+                width: 260px;
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                padding: 24px;
+                background: var(--neu-bg);
+            }
+
+            .main-area {
+                padding-left: 260px;
+                margin-left: 5px;
+            }
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            padding: 0 4px;
+            min-width: 0;
+        }
+
+        .logo-mark {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: radial-gradient(circle at 30% 30%, #ffffff 0%, #f4f7fb 55%, var(--neu-bg) 100%);
+            box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+            display: grid;
+            place-items: center;
+            flex: none;
+        }
+
+        .logo-mark-inner {
+            width: 28px;
+            height: 28px;
+            border-radius: 9px;
+            background: var(--neu-accent);
+            display: grid;
+            place-items: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+        }
+
+        .brand-text {
+            min-width: 0;
+        }
+
+        .brand-title {
+            font-weight: 700;
+            font-size: 18px;
+            line-height: 1.1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            color: var(--neu-sub);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nav-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--neu-sub);
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+            transition: all 150ms ease;
+            min-height: 48px;
+        }
+
+        .nav-item:hover {
+            color: var(--neu-accent);
+            box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+        }
+
+        .nav-item.active {
+            color: var(--neu-accent);
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        .nav-indicator {
+            width: 4px;
+            height: 20px;
+            border-radius: 999px;
+            background: transparent;
+        }
+
+        .nav-item.active .nav-indicator {
+            background: var(--neu-accent);
+        }
+
+        .nav-label {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .nav-pill {
+            margin-left: auto;
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--neu-info);
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        .topbar-mobile {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(232, 236, 241, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        @media (min-width: 1024px) {
+            .topbar-mobile {
+                display: none;
+            }
+        }
+
+        .topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+            font-weight: 700;
+        }
+
+        .topbar-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .neu-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 10px 16px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--neu-accent);
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+            transition: all 150ms ease;
+            white-space: nowrap;
+        }
+
+        .neu-btn:hover {
+            box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+        }
+
+        .neu-btn:active {
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        .neu-btn-sm {
+            min-height: 36px;
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .neu-btn-primary {
+            color: #fff;
+            background: var(--neu-accent);
+            box-shadow: 4px 4px 10px var(--neu-dark), -4px -4px 10px var(--neu-light);
+        }
+
+        .neu-btn-primary:hover {
+            color: var(--neu-accent);
+            background: var(--neu-light);
+            box-shadow: 5px 5px 12px var(--neu-dark), -5px -5px 12px var(--neu-light);
+        }
+
+        .topbar-desktop {
+            display: none;
+        }
+
+        @media (min-width: 1024px) {
+            .topbar-desktop {
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+                gap: 12px;
+                padding: 12px 20px;
+            }
+        }
+
+        .bell-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: grid;
+            place-items: center;
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+            position: relative;
+        }
+
+        .bell-btn:active {
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        .bell-dot {
+            position: absolute;
+            top: 8px;
+            right: 10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neu-info);
+            box-shadow: 0 0 0 3px var(--neu-bg);
+        }
+
+        .user-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 14px;
+            border-radius: 14px;
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+            min-height: 44px;
+        }
+
+        .user-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            line-height: 1.1;
+        }
+
+        .user-name {
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .user-time {
+            font-size: 10px;
+            color: var(--neu-sub);
+        }
+
+        .user-role {
+            display: inline-flex;
+            align-items: center;
+            padding: 3px 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--neu-accent);
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        main {
+            padding: 4px 12px 110px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        @media (min-width: 640px) {
+            main {
+                padding: 4px 16px 96px;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            main {
+                padding: 4px 20px 24px;
+            }
+        }
+
+        .page-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .page-header {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .page-sub {
+            font-size: 11px;
+            color: var(--neu-sub);
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        @media (min-width: 640px) {
+            .page-title {
+                font-size: 20px;
+            }
+        }
+
+        .chip-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 4px 4px 6px;
+        }
+
+        .scroll-row {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 4px 4px 6px;
+            scroll-snap-type: x proximity;
+        }
+
+        .scroll-row::-webkit-scrollbar {
+            height: 6px;
+        }
+
+        .scroll-row::-webkit-scrollbar-thumb {
+            background: transparent;
+        }
+
+        .neu-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 44px;
+            padding: 9px 16px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--neu-sub);
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+            white-space: nowrap;
+            transition: all 150ms ease;
+            scroll-snap-align: start;
+        }
+
+        .neu-chip:hover {
+            color: var(--neu-accent);
+            background: var(--neu-light);
+            box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+        }
+
+        .neu-chip.active {
+            color: #fff;
+            background: var(--neu-active);
+            box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.45), inset -3px -3px 8px rgba(255, 255, 255, 0.16);
+        }
+
+        .neu-chip.active:hover {
+            color: #fff;
+            background: var(--neu-active);
+        }
+
+        .neu-chip.locked {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .neu-chip.locked:hover {
+            color: var(--neu-sub);
+            background: transparent;
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+        }
+
+        .neu-chip.current {
+            box-shadow: 0 0 0 1px rgba(15, 110, 86, 0.3), 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+        }
+
+        .neu-chip.active.current {
+            box-shadow: inset 3px 3px 8px rgba(0, 0, 0, 0.45), inset -3px -3px 8px rgba(255, 255, 255, 0.16), 0 0 0 1px rgba(255, 255, 255, 0.4);
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .dot-green {
+            background: var(--neu-done);
+            box-shadow: 0 0 0 3px var(--neu-bg);
+        }
+
+        .dot-blue {
+            background: var(--neu-info);
+            box-shadow: 0 0 0 3px var(--neu-bg);
+        }
+
+        .dot-orange {
+            background: var(--neu-warn);
+            box-shadow: 0 0 0 3px var(--neu-bg);
+        }
+
+        .dot-red {
+            background: var(--neu-bad);
+            box-shadow: 0 0 0 3px var(--neu-bg);
+        }
+
+        .dot-muted {
+            background: var(--neu-dark);
+            box-shadow: 0 0 0 3px var(--neu-bg);
+        }
+
+        .grid-two {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @media (min-width: 1024px) {
+            .grid-two {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .neu-card {
+            border-radius: 22px;
+            background: var(--neu-bg);
+            box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .neu-card.inset {
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        .ring-row {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        @media (min-width: 640px) {
+            .ring-row {
+                flex-direction: row;
+                align-items: center;
+            }
+        }
+
+        .ring-wrap {
+            position: relative;
+            width: 92px;
+            height: 92px;
+            display: grid;
+            place-items: center;
+            flex: none;
+        }
+
+        .ring-svg {
+            width: 92px;
+            height: 92px;
+            transform: rotate(-90deg);
+        }
+
+        .ring-track {
+            fill: none;
+            stroke: rgba(195, 202, 214, 0.7);
+            stroke-width: 10;
+        }
+
+        .ring-progress {
+            fill: none;
+            stroke: var(--neu-accent);
+            stroke-width: 10;
+            stroke-linecap: round;
+            stroke-dasharray: 251.2;
+            stroke-dashoffset: 40.19;
+        }
+
+        .ring-text {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1;
+        }
+
+        .ring-percent {
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .ring-label {
+            font-size: 10px;
+            color: var(--neu-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .status-grid {
+            flex: 1;
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .status-tile {
+            border-radius: 14px;
+            padding: 8px 4px;
+            text-align: center;
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .status-count {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .status-count.done {
+            color: var(--neu-accent);
+        }
+
+        .status-count.progress {
+            color: var(--neu-info);
+        }
+
+        .status-count.todo {
+            color: var(--neu-warn);
+        }
+
+        .status-count.issue {
+            color: var(--neu-bad);
+        }
+
+        .status-label {
+            font-size: 8px;
+            color: var(--neu-sub);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .card-meta {
+            font-size: 10px;
+            color: var(--neu-sub);
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            gap: 10px;
+            height: 130px;
+            width: 100%;
+        }
+
+        .bar-col {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            height: 100%;
+            min-width: 28px;
+            gap: 6px;
+        }
+
+        .bar-value {
+            font-size: 11px;
+            font-weight: 600;
+            tabular-nums: true;
+        }
+
+        .bar {
+            width: 100%;
+            border-radius: 8px 8px 4px 4px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, transparent 100%);
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+            position: relative;
+        }
+
+        .bar.highlight {
+            box-shadow: 0 0 0 2px rgba(3, 48, 102, 0.4), 4px 4px 10px var(--neu-dark), -4px -4px 10px var(--neu-light);
+        }
+
+        .bar-label {
+            font-size: 10px;
+            color: var(--neu-sub);
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .bar-label.highlight {
+            color: var(--neu-active);
+            font-weight: 600;
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        @media (min-width: 640px) {
+            .mini-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        @media (min-width: 1024px) {
+            .mini-grid {
+                grid-template-columns: repeat(6, 1fr);
+            }
+        }
+
+        .mini-card {
+            border-radius: 14px;
+            padding: 8px 10px;
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .mini-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .mini-label {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .mini-percent {
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .mini-sub {
+            font-size: 8.5px;
+            color: var(--neu-sub);
+        }
+
+        .list-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .list-text {
+            font-size: 14px;
+        }
+
+        .neu-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--neu-accent);
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        .button-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        @media (min-width: 640px) {
+            .button-row {
+                flex-direction: row;
+            }
+
+            .button-row .neu-btn {
+                flex: 1;
+            }
+        }
+
+        .section-header {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        @media (min-width: 640px) {
+            .section-header {
+                flex-direction: row;
+                align-items: flex-end;
+                justify-content: space-between;
+            }
+        }
+
+        .section-title-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        @media (min-width: 640px) {
+            .section-title {
+                font-size: 20px;
+            }
+        }
+
+        .section-sub {
+            font-size: 11px;
+            color: var(--neu-sub);
+        }
+
+        .panel-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        @media (min-width: 1024px) {
+            .panel-grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .panel-card {
+            border-radius: 22px;
+            background: var(--neu-bg);
+            box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .panel-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .panel-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .panel-sub {
+            font-size: 11px;
+            color: var(--neu-sub);
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .stat-tile {
+            border-radius: 16px;
+            padding: 12px;
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .stat-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--neu-sub);
+        }
+
+        .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .table-wrap {
+            border-radius: 22px;
+            background: var(--neu-bg);
+            box-shadow: 6px 6px 14px var(--neu-dark), -6px -6px 14px var(--neu-light);
+            overflow: hidden;
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .table thead th {
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--neu-sub);
+            padding: 12px 18px;
+        }
+
+        .table tbody td {
+            padding: 12px 18px;
+            border-top: 1px solid rgba(90, 100, 117, 0.12);
+        }
+
+        .table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .bottom-nav {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 30;
+            background: var(--neu-bg);
+            box-shadow: 0 -6px 16px rgba(195, 202, 214, 0.55);
+        }
+
+        @media (min-width: 1024px) {
+            .bottom-nav {
+                display: none;
+            }
+        }
+
+        .bottom-scroll {
+            overflow-x: auto;
+        }
+
+        .bottom-list {
+            display: flex;
+            gap: 8px;
+            width: max-content;
+            margin: 0 auto;
+            padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+        }
+
+        .bottom-item {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            min-width: 72px;
+            padding: 8px 10px;
+            border-radius: 14px;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--neu-sub);
+            box-shadow: 3px 3px 8px var(--neu-dark), -3px -3px 8px var(--neu-light);
+        }
+
+        .bottom-item.active {
+            color: var(--neu-accent);
+            box-shadow: inset 4px 4px 9px var(--neu-dark), inset -4px -4px 9px var(--neu-light);
+        }
+
+        .bottom-badge {
+            position: absolute;
+            top: 4px;
+            right: 6px;
+            min-width: 16px;
+            height: 16px;
+            padding: 0 4px;
+            border-radius: 999px;
+            display: grid;
+            place-items: center;
+            background: var(--neu-info);
+            color: #fff;
+            font-size: 9px;
+            font-weight: 700;
+        }
+
+        .footer-note {
+            text-align: center;
+            font-size: 11px;
+            color: var(--neu-sub);
+            padding-bottom: 6px;
+        }
+
+        @media (min-width: 1024px) {
+            .footer-note {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-mark">
+                    <div class="logo-mark-inner">PM</div>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-title">PM Preventive</div>
+                    <div class="brand-sub">Verra Inter Pangan</div>
+                </div>
+            </div>
+            <nav class="nav-list">
+                <a class="nav-item" href="#dashboard">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Beranda</span>
+                </a>
+                <a class="nav-item" href="#approvals">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Persetujuan</span>
+                    <span class="nav-pill">3</span>
+                </a>
+                <a class="nav-item" href="#mesin">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Mesin</span>
+                </a>
+                <a class="nav-item" href="#utility">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Utility</span>
+                </a>
+                <a class="nav-item" href="#suku-cadang">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Suku Cadang</span>
+                </a>
+                <a class="nav-item active" href="#dashboard">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Settings</span>
+                </a>
+                <a class="nav-item" href="#pm-records">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">PM Records</span>
+                </a>
+                <a class="nav-item" href="#users">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Pengguna</span>
+                </a>
+                <a class="nav-item" href="#roles">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Role</span>
+                </a>
+                <a class="nav-item" href="#activity">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Activity Logs</span>
+                </a>
+                <a class="nav-item" href="#backup">
+                    <span class="nav-indicator"></span>
+                    <span class="nav-label">Backup &amp; Restore</span>
+                </a>
+            </nav>
+        </aside>
+
+        <div class="main-area">
+            <header class="topbar-mobile">
+                <div class="topbar-brand">
+                    <div class="logo-mark" style="width: 32px; height: 32px;">
+                        <div class="logo-mark-inner" style="width: 22px; height: 22px; font-size: 9px;">PM</div>
+                    </div>
+                    <span>PM Preventive</span>
+                </div>
+                <div class="topbar-actions">
+                    <button class="bell-btn">
+                        <i class="ti ti-bell" style="font-size: 18px;"></i>
+                        <span class="bell-dot"></span>
+                    </button>
+                    <button class="user-btn">
+                        <div class="user-meta">
+                            <span class="user-name">Admin User</span>
+                            <span class="user-time">Wed Oct 28 2026 14:23 WIB</span>
+                        </div>
+                        <i class="ti ti-chevron-down"></i>
+                    </button>
+                </div>
+            </header>
+
+            <header class="topbar-desktop">
+                <button class="bell-btn">
+                    <i class="ti ti-bell" style="font-size: 18px;"></i>
+                    <span class="bell-dot"></span>
+                </button>
+                <button class="user-btn">
+                    <div class="user-meta">
+                        <span class="user-name">Admin User</span>
+                        <span class="user-time">Wed Oct 28 2026 14:23 WIB</span>
+                    </div>
+                    <span class="user-role">admin</span>
+                    <i class="ti ti-chevron-down"></i>
+                </button>
+            </header>
+
+            <main>
+                <div class="page-container" id="dashboard">
+                    <div class="page-header">
+                        <p class="page-sub">PT Verra Inter Pangan</p>
+                        <h1 class="page-title">Dashboard Report</h1>
+                    </div>
+
+                    <div class="chip-row">
+                        <button class="neu-chip active">Mesin</button>
+                        <button class="neu-chip">Utility</button>
+                    </div>
+
+                    <div class="scroll-row">
+                        <button class="neu-chip active">2026</button>
+                        <button class="neu-chip">2025</button>
+                        <button class="neu-chip">2024</button>
+                        <button class="neu-chip">2023</button>
+                    </div>
+
+                    <div class="scroll-row">
+                        <button class="neu-chip active">Semua Periode</button>
+                        <button class="neu-chip">
+                            <span class="dot dot-green"></span>
+                            Jan–Feb
+                        </button>
+                        <button class="neu-chip">
+                            <span class="dot dot-green"></span>
+                            Mar–Apr
+                        </button>
+                        <button class="neu-chip">
+                            <span class="dot dot-blue"></span>
+                            Mei–Jun
+                        </button>
+                        <button class="neu-chip">
+                            <span class="dot dot-orange"></span>
+                            Jul–Ags
+                        </button>
+                        <button class="neu-chip locked">
+                            <span class="dot dot-muted"></span>
+                            Sep–Okt
+                        </button>
+                        <button class="neu-chip locked">
+                            <span class="dot dot-muted"></span>
+                            Nov–Des
+                        </button>
+                    </div>
+
+                    <div class="grid-two">
+                        <article class="neu-card">
+                            <div class="ring-row">
+                                <div class="ring-wrap">
+                                    <svg class="ring-svg" viewBox="0 0 92 92">
+                                        <circle class="ring-track" cx="46" cy="46" r="40"></circle>
+                                        <circle class="ring-progress" cx="46" cy="46" r="40"></circle>
+                                    </svg>
+                                    <div class="ring-text">
+                                        <span class="ring-percent">84%</span>
+                                        <span class="ring-label">Tercapai</span>
+                                    </div>
+                                </div>
+                                <div class="status-grid">
+                                    <div class="status-tile">
+                                        <span class="status-count done">156</span>
+                                        <span class="status-label">Selesai</span>
+                                    </div>
+                                    <div class="status-tile">
+                                        <span class="status-count progress">18</span>
+                                        <span class="status-label">Sedang Approval</span>
+                                    </div>
+                                    <div class="status-tile">
+                                        <span class="status-count todo">12</span>
+                                        <span class="status-label">Belum</span>
+                                    </div>
+                                    <div class="status-tile">
+                                        <span class="status-count issue">4</span>
+                                        <span class="status-label">Perlu Revisi</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="card-meta">Semua Periode 2026 · Total unit Mesin: 190 · Total entri: 190</p>
+                        </article>
+
+                        <article class="neu-card">
+                            <h2 class="card-title">Jumlah per Status (Semua Periode 2026)</h2>
+                            <div class="bar-chart">
+                                <div class="bar-col">
+                                    <span class="bar-value">156</span>
+                                    <div class="bar" style="height: 82%; background: linear-gradient(180deg, rgba(15,110,86,0.9) 0%, rgba(15,110,86,0.7) 100%);"></div>
+                                    <span class="bar-label">Selesai</span>
+                                </div>
+                                <div class="bar-col">
+                                    <span class="bar-value">18</span>
+                                    <div class="bar" style="height: 16%; background: linear-gradient(180deg, rgba(31,111,235,0.9) 0%, rgba(31,111,235,0.7) 100%);"></div>
+                                    <span class="bar-label">Sedang Approval</span>
+                                </div>
+                                <div class="bar-col">
+                                    <span class="bar-value">12</span>
+                                    <div class="bar" style="height: 12%; background: linear-gradient(180deg, rgba(168,107,11,0.9) 0%, rgba(168,107,11,0.7) 100%);"></div>
+                                    <span class="bar-label">Belum</span>
+                                </div>
+                                <div class="bar-col">
+                                    <span class="bar-value">4</span>
+                                    <div class="bar" style="height: 7%; background: linear-gradient(180deg, rgba(185,58,46,0.9) 0%, rgba(185,58,46,0.7) 100%);"></div>
+                                    <span class="bar-label">Perlu Revisi</span>
+                                </div>
+                            </div>
+                        </article>
+                    </div>
+
+                    <article class="neu-card">
+                        <h2 class="card-title">Progress per Periode 2026</h2>
+                        <div class="bar-chart">
+                            <div class="bar-col">
+                                <span class="bar-value">100%</span>
+                                <div class="bar highlight" style="height: 100%; background: linear-gradient(180deg, rgba(3,48,102,0.95) 0%, rgba(3,48,102,0.75) 100%);"></div>
+                                <span class="bar-label highlight">Jan–Feb</span>
+                            </div>
+                            <div class="bar-col">
+                                <span class="bar-value">96%</span>
+                                <div class="bar" style="height: 96%; background: linear-gradient(180deg, rgba(3,48,102,0.9) 0%, rgba(3,48,102,0.7) 100%);"></div>
+                                <span class="bar-label">Mar–Apr</span>
+                            </div>
+                            <div class="bar-col">
+                                <span class="bar-value">88%</span>
+                                <div class="bar" style="height: 88%; background: linear-gradient(180deg, rgba(3,48,102,0.88) 0%, rgba(3,48,102,0.68) 100%);"></div>
+                                <span class="bar-label">Mei–Jun</span>
+                            </div>
+                            <div class="bar-col">
+                                <span class="bar-value">74%</span>
+                                <div class="bar" style="height: 74%; background: linear-gradient(180deg, rgba(3,48,102,0.82) 0%, rgba(3,48,102,0.64) 100%);"></div>
+                                <span class="bar-label">Jul–Ags</span>
+                            </div>
+                            <div class="bar-col">
+                                <span class="bar-value">0%</span>
+                                <div class="bar" style="height: 10%; background: linear-gradient(180deg, rgba(195,202,214,0.9) 0%, rgba(195,202,214,0.7) 100%);"></div>
+                                <span class="bar-label">Sep–Okt</span>
+                            </div>
+                            <div class="bar-col">
+                                <span class="bar-value">0%</span>
+                                <div class="bar" style="height: 10%; background: linear-gradient(180deg, rgba(195,202,214,0.9) 0%, rgba(195,202,214,0.7) 100%);"></div>
+                                <span class="bar-label">Nov–Des</span>
+                            </div>
+                        </div>
+                        <div class="mini-grid">
+                            <div class="mini-card">
+                                <div class="mini-row">
+                                    <span class="mini-label">Jan–Feb</span>
+                                    <span class="mini-percent">100%</span>
+                                </div>
+                                <span class="mini-sub">38/38 selesai</span>
+                            </div>
+                            <div class="mini-card">
+                                <div class="mini-row">
+                                    <span class="mini-label">Mar–Apr</span>
+                                    <span class="mini-percent">96%</span>
+                                </div>
+                                <span class="mini-sub">36/38 selesai</span>
+                            </div>
+                            <div class="mini-card">
+                                <div class="mini-row">
+                                    <span class="mini-label">Mei–Jun</span>
+                                    <span class="mini-percent">88%</span>
+                                </div>
+                                <span class="mini-sub">37/42 selesai</span>
+                            </div>
+                            <div class="mini-card">
+                                <div class="mini-row">
+                                    <span class="mini-label">Jul–Ags</span>
+                                    <span class="mini-percent">74%</span>
+                                </div>
+                                <span class="mini-sub">27/36 selesai</span>
+                            </div>
+                            <div class="mini-card">
+                                <div class="mini-row">
+                                    <span class="mini-label">Sep–Okt</span>
+                                    <span class="mini-percent">0%</span>
+                                </div>
+                                <span class="mini-sub">0/36 selesai · Belum masuk</span>
+                            </div>
+                            <div class="mini-card">
+                                <div class="mini-row">
+                                    <span class="mini-label">Nov–Des</span>
+                                    <span class="mini-percent">0%</span>
+                                </div>
+                                <span class="mini-sub">0/0 selesai · Belum masuk</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="neu-card inset">
+                        <p class="card-meta">Keterangan: Grafik rekap per Mesin berdasarkan status PM per periode tahun 2026.</p>
+                    </article>
+
+                    <article class="neu-card">
+                        <div class="panel-header">
+                            <div>
+                                <h2 class="card-title">Preventive Maintenance Mesin</h2>
+                                <p class="panel-sub">Lihat daftar unit Mesin untuk mengisi PM &amp; Riwayat</p>
+                            </div>
+                            <button class="neu-btn">Buka Halaman Mesin</button>
+                        </div>
+                    </article>
+
+                    <article class="neu-card">
+                        <h2 class="card-title">Ringkasan Tindakan</h2>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="list-row">
+                                <span class="list-text">Bersihkan</span>
+                                <span class="neu-pill">142x</span>
+                            </div>
+                            <div class="list-row">
+                                <span class="list-text">Perbaiki</span>
+                                <span class="neu-pill">26x</span>
+                            </div>
+                            <div class="list-row">
+                                <span class="list-text">Lumasi</span>
+                                <span class="neu-pill">64x</span>
+                            </div>
+                            <div class="list-row">
+                                <span class="list-text">Perlu Pergantian</span>
+                                <span class="neu-pill">38x</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="neu-card">
+                        <h2 class="card-title">Komponen Paling Sering Diganti</h2>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div class="list-row">
+                                <span class="list-text">V-Belt</span>
+                                <span class="neu-pill">16x</span>
+                            </div>
+                            <div class="list-row">
+                                <span class="list-text">Bearing</span>
+                                <span class="neu-pill">12x</span>
+                            </div>
+                            <div class="list-row">
+                                <span class="list-text">Oil Filter</span>
+                                <span class="neu-pill">9x</span>
+                            </div>
+                            <div class="list-row">
+                                <span class="list-text">Seal</span>
+                                <span class="neu-pill">7x</span>
+                            </div>
+                            <div class="list-row">
+                                <span class="list-text">Packing Gasket</span>
+                                <span class="neu-pill">6x</span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <div class="button-row">
+                        <button class="neu-btn neu-btn-primary">Ekspor Excel</button>
+                        <button class="neu-btn">Cetak PDF</button>
+                    </div>
+
+                    <section style="display: flex; flex-direction: column; gap: 16px; margin-top: 20px;">
+                        <div class="section-header">
+                            <div class="section-title-group">
+                                <h2 class="section-title">Dashboard Suku Cadang</h2>
+                                <p class="section-sub">Pantau stok, kebutuhan restock, dan pemakaian suku cadang ke unit.</p>
+                            </div>
+                            <button class="neu-btn neu-btn-sm">Buka Dashboard Suku Cadang</button>
+                        </div>
+                        <div class="panel-grid">
+                            <article class="panel-card">
+                                <div class="panel-header">
+                                    <div>
+                                        <h3 class="panel-title">Ringkasan Stok</h3>
+                                        <p class="panel-sub">Berdasarkan kondisi saat ini</p>
+                                    </div>
+                                    <span class="neu-pill">6 Bulan Terakhir</span>
+                                </div>
+                                <div class="stat-row">
+                                    <div class="stat-tile">
+                                        <div class="stat-top">
+                                            <span class="stat-label">Total Item</span>
+                                            <i class="ti ti-box" style="color: var(--neu-sub);"></i>
+                                        </div>
+                                        <span class="stat-value">248</span>
+                                    </div>
+                                    <div class="stat-tile">
+                                        <div class="stat-top">
+                                            <span class="stat-label">Stok Menipis</span>
+                                            <i class="ti ti-alert-triangle" style="color: var(--neu-warn);"></i>
+                                        </div>
+                                        <span class="stat-value">17</span>
+                                    </div>
+                                    <div class="stat-tile">
+                                        <div class="stat-top">
+                                            <span class="stat-label">Habis</span>
+                                            <i class="ti ti-circle-x" style="color: var(--neu-bad);"></i>
+                                        </div>
+                                        <span class="stat-value">4</span>
+                                    </div>
+                                    <div class="stat-tile">
+                                        <div class="stat-top">
+                                            <span class="stat-label">Aman</span>
+                                            <i class="ti ti-circle-check" style="color: var(--neu-accent);"></i>
+                                        </div>
+                                        <span class="stat-value">227</span>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <article class="panel-card">
+                                <div class="panel-header">
+                                    <div>
+                                        <h3 class="panel-title">Pemakaian Terbanyak</h3>
+                                        <p class="panel-sub">Akumulasi pemakaian per item</p>
+                                    </div>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 10px;">
+                                    <div class="list-row">
+                                        <span class="list-text">V-Belt A-38</span>
+                                        <span class="neu-pill">24x</span>
+                                    </div>
+                                    <div class="list-row">
+                                        <span class="list-text">Bearing 6205-2RS</span>
+                                        <span class="neu-pill">18x</span>
+                                    </div>
+                                    <div class="list-row">
+                                        <span class="list-text">Air Filter Element</span>
+                                        <span class="neu-pill">16x</span>
+                                    </div>
+                                    <div class="list-row">
+                                        <span class="list-text">Grease Lithium EP2</span>
+                                        <span class="neu-pill">14x</span>
+                                    </div>
+                                    <div class="list-row">
+                                        <span class="list-text">Coupling Rubber</span>
+                                        <span class="neu-pill">12x</span>
+                                    </div>
+                                </div>
+                            </article>
+
+                            <article class="panel-card">
+                                <div class="panel-header">
+                                    <div>
+                                        <h3 class="panel-title">Butuh Restock</h3>
+                                        <p class="panel-sub">Rekomendasi berdasarkan min stok</p>
+                                    </div>
+                                </div>
+                                <div class="table-wrap">
+                                    <table class="table">
+                                        <thead>
+                                            <tr>
+                                                <th>Kode</th>
+                                                <th>Nama</th>
+                                                <th style="text-align: right;">Stok / Min</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>SP-00412</td>
+                                                <td>Seal Kit Hydroulic</td>
+                                                <td style="text-align: right;">2 / 10</td>
+                                            </tr>
+                                            <tr>
+                                                <td>SP-00187</td>
+                                                <td>V-Belt B-52</td>
+                                                <td style="text-align: right;">3 / 12</td>
+                                            </tr>
+                                            <tr>
+                                                <td>SP-00264</td>
+                                                <td>Bearing 6308</td>
+                                                <td style="text-align: right;">4 / 15</td>
+                                            </tr>
+                                            <tr>
+                                                <td>SP-00321</td>
+                                                <td>O-Ring Set</td>
+                                                <td style="text-align: right;">1 / 8</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </article>
+                        </div>
+                    </section>
+
+                    <p class="footer-note">© 2026 PT Verra Inter Pangan · PM Preventive · v.1.3 UI Preview (HTML Only)</p>
+                </div>
+            </main>
+        </div>
+
+        <nav class="bottom-nav">
+            <div class="bottom-scroll">
+                <div class="bottom-list">
+                    <a class="bottom-item" href="#dashboard">
+                        <i class="ti ti-home-2" style="font-size: 18px;"></i>
+                        <span>Beranda</span>
+                    </a>
+                    <a class="bottom-item" href="#approvals">
+                        <i class="ti ti-checklist" style="font-size: 18px;"></i>
+                        <span>Persetujuan</span>
+                        <span class="bottom-badge">3</span>
+                    </a>
+                    <a class="bottom-item" href="#mesin">
+                        <i class="ti ti-settings-automation" style="font-size: 18px;"></i>
+                        <span>Mesin</span>
+                    </a>
+                    <a class="bottom-item" href="#utility">
+                        <i class="ti ti-plug" style="font-size: 18px;"></i>
+                        <span>Utility</span>
+                    </a>
+                    <a class="bottom-item" href="#suku-cadang">
+                        <i class="ti ti-tool" style="font-size: 18px;"></i>
+                        <span>Suku Cadang</span>
+                    </a>
+                    <a class="bottom-item active" href="#dashboard">
+                        <i class="ti ti-adjustments" style="font-size: 18px;"></i>
+                        <span>Settings</span>
+                    </a>
+                </div>
+            </div>
+        </nav>
+    </div>
+</body>
+
+</html>
